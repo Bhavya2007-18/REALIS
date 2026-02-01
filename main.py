@@ -100,13 +100,33 @@ def run_verification_demo():
     
     r_err = run_loop("RK4  ", rk4_step, visualizer=vis)
     
-    if vis:
-        vis.close()
     
-    if r_err < 1e-5:
-         print("  ✅ RK4 stability excellent.")
-    else:
-         print("  ⚠️ RK4 showing significant drift.")
+    # 3. Export Data (for Web Visualization)
+    print("\n[Test 3] Generating Data for Web Visualization (Exporting)")
+    try:
+        from interface.exporter import SimulationExporter
+        exporter = SimulationExporter(system_name="Mass-Spring Verification")
+        exporter.set_metadata("RK4", dt)
+        
+        # Run standard loop with recording
+        t = 0.0
+        s = state0
+        for _ in range(steps):
+             # Record before step
+             e = system.total_energy(s)
+             exporter.record_step(t, s, energy=e)
+             
+             s = rk4_step(s, t, dt, system.derivatives, None)
+             t += dt
+             
+        # Record final
+        exporter.record_step(t, s, system.total_energy(s))
+        
+        saved_path = exporter.save()
+        print(f"  ✅ Data exported to {saved_path}")
+        
+    except ImportError as e:
+         print(f"  ⚠️  Exporter unavailable: {e}")
 
     print("\nVerification Complete.")
 
