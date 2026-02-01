@@ -47,29 +47,61 @@ def run_verification_demo():
     else:
         print("  ✅ RK4 convergence normal.")
 
-    # 2. Conservation / Stability Analysis
+    # 2. Conservation / Stability Analysis (with Visualization)
     print("\n[Test 2] Energy Conservation (Long-run stability)")
+    run_vis = True
+    try:
+        from visualization.gl_renderer import GLVisualizer
+        print("  ✅ Visualization module loaded. Opening window...")
+    except ImportError as e:
+        print(f"  ⚠️  Visualization module unavailable: {e}")
+        run_vis = False
+
     dt = 0.01
     steps = 1000
     print(f"  Running {steps} steps at dt={dt}...")
     
-    # Helper to run loop
-    def run_loop(name, stepper):
+    def run_loop(name, stepper, visualizer=None):
         t = 0.0
         s = state0
         history = [s]
-        for _ in range(steps):
+        
+        # If visualizing, we only want to visualize ONE run (e.g. RK4) or sequential?
+        # Let's visualize RK4 since it's the stable one.
+        
+        should_render = (visualizer is not None)
+        
+        for i in range(steps):
             s = stepper(s, t, dt, system.derivatives, None)
             history.append(s)
             t += dt
+            
+            if should_render:
+                visualizer.update(s, t)
+                if visualizer.should_close():
+                    break
+                # Simple throttle
+                import time
+                time.sleep(0.01) # Maintain ~60-100 FPS roughly
         
         # Analyze
         max_err, _, drift = calculate_energy_error(history, system)
         print(f"  {name}: Drift = {drift:+.2e} | Max Rel Err = {max_err:.2e}")
         return max_err
         
-    e_err = run_loop("Euler", euler_step)
-    r_err = run_loop("RK4  ", rk4_step)
+    e_err = run_loop("Euler", euler_step, visualizer=None) # Don't visualize bad Euler
+    
+    vis = None
+    if run_vis:
+        try:
+            vis = GLVisualizer(title="REALIS: RK4 Verification")
+        except Exception as e:
+            print(f"  ⚠️  Failed to create window: {e}")
+    
+    r_err = run_loop("RK4  ", rk4_step, visualizer=vis)
+    
+    if vis:
+        vis.close()
     
     if r_err < 1e-5:
          print("  ✅ RK4 stability excellent.")
