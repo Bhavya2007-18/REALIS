@@ -38,3 +38,7 @@ def Cylinder(pAxis=[0,0,0], vAxis=[1,0,0], radius=0.1, color=[0.5,0.5,0.5,1]):
         'radius': radius,
         'color': np.array(color)
     }
+
+def Line(pAxis=[0,0,0], vAxis=[1,0,0], radius=0.02, color=[0,0,0,1]):
+    # Alias to Cylinder for now
+    return Cylinder(pAxis, vAxis, radius, color)

@@ -1,7 +1,7 @@
 
 import numpy as np
 from .main_solver import MainSolver
-from numpy.linalg import inv, solve, norm
+from numpy.linalg import inv, solve, norm, pinv, LinAlgError
 
 class GeneralizedAlphaSolver(MainSolver):
     """
@@ -40,8 +40,11 @@ class GeneralizedAlphaSolver(MainSolver):
         # ComputeODE2RHS should return (F_ext - F_int).
         
         # Simple solve for a0
-        # If M is diagonal, easy. If not, use solve.
-        a = solve(M, F) # Initial acceleration
+        try:
+            a = solve(M, F) # Initial acceleration
+        except LinAlgError:
+            a = np.dot(pinv(M), F)
+
         
         t = startTime
         
@@ -129,7 +132,10 @@ class GeneralizedAlphaSolver(MainSolver):
                 S = M_curr # Approximation
                 
                 # da = -S^-1 * Res
-                delta_a = solve(S, -Res)
+                try:
+                    delta_a = solve(S, -Res)
+                except LinAlgError:
+                     delta_a = np.dot(pinv(S), -Res)
                 
                 a_new += delta_a
             

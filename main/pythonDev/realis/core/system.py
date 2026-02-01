@@ -69,6 +69,27 @@ class MainSystem:
             'q_t': np.zeros(self.total_ode2_coordinates)
         }
         
+        # Populate Initial State
+        curr_idx = 0
+        for node in self.nodes:
+            if hasattr(node, 'initialVelocities'):
+                # 3 Translational
+                self.system_state['q_t'][curr_idx:curr_idx+3] = node.initialVelocities
+            
+            if hasattr(node, 'initialAngularVelocities') and hasattr(node, 'referenceRotations'):
+                 # Convert AngVel to EulerParam derivative?
+                 # q_dot = 0.5 * G^T * omega
+                 # Need G based on reference rotation
+                 from ..geometry.rotations import ComputeGMatrix
+                 G = ComputeGMatrix(node.referenceRotations)
+                 q_dot = 0.5 * G.T @ np.array(node.initialAngularVelocities)
+                 
+                 # Store in q_t
+                 # Rigid node structure: 3 Pos + 4 Rot
+                 self.system_state['q_t'][curr_idx+3:curr_idx+7] = q_dot
+                 
+            curr_idx += node.GetNumberOfCoordinates()
+        
         self.is_assembled = True
         print(f"System Assembled: {len(self.nodes)} nodes, {len(self.objects)} objects, {self.total_ode2_coordinates} coordinates.")
 
@@ -110,6 +131,8 @@ class MainSystem:
         
         for obj in self.objects:
              if hasattr(obj, 'ComputeODE2RHS'):
+                 obj.ComputeODE2RHS(rhs, self.nodes, self.system_state)
+                 
         return rhs
 
     def GetGraphicsData(self):
