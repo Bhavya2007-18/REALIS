@@ -137,59 +137,73 @@ class DoublePendulumRenderer {
 class RollingDiskRenderer {
     setup(scene) {
         this.group = new THREE.Group();
-
-        // 1. Slope Group: Rotated by -theta to align "x" with slope surface
         this.slopeGroup = new THREE.Group();
-        this.theta = Math.PI / 6; // Default, will update
+        this.theta = Math.PI / 6;
         this.slopeGroup.rotation.z = -this.theta;
-
-        // Visual Ground (Inside Slope Group)
-        const ground = new THREE.Mesh(
-            new THREE.BoxGeometry(20, 0.2, 5),
-            new THREE.MeshLambertMaterial({ color: 0x444444 })
-        );
-        ground.position.y = -0.1; // Just below x-axis
+        const ground = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 5), new THREE.MeshLambertMaterial({ color: 0x444444 }));
+        ground.position.y = -0.1;
         this.slopeGroup.add(ground);
-
-        // 2. Translational Group (Moves along X)
         this.transGroup = new THREE.Group();
         this.slopeGroup.add(this.transGroup);
-
-        // 3. Disk Mesh (Rotates locally)
-        this.disk = new THREE.Mesh(
-            new THREE.CylinderGeometry(1, 1, 0.2, 32),
-            new THREE.MeshLambertMaterial({ color: 0x00ff00 })
-        );
-        // Align cylinder axis (Y) to world Z initially (rolling axis)
-        // Rotate X by 90 deg -> Axis becomes Z.
+        this.disk = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.2, 32), new THREE.MeshLambertMaterial({ color: 0x00ff00 }));
         this.disk.rotation.x = Math.PI / 2;
-        this.disk.position.y = 1.0; // Radius = 1.0, sits on top of axis
-
-        // Marker
-        const marker = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.8, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-        // Marker needs to be attached to disk before rotation
-        this.disk.add(marker);
-
+        this.disk.position.y = 1.0;
+        this.disk.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.8, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000 })));
         this.transGroup.add(this.disk);
         this.group.add(this.slopeGroup);
+        scene.add(this.group);
+        return this.group;
+    }
+    update(state) {
+        const x = state[0];
+        this.transGroup.position.x = x;
+        this.disk.rotation.z = -x;
+    }
+}
+
+class NBodyRenderer {
+    setup(scene) {
+        this.group = new THREE.Group();
+        // Setup will be dynamic based on first update or inferred from state size?
+        // We'll init empty and spawn in update logic if needed, or strictly assume max N.
+        // Let's assume we can spawn spheres on the fly or in first update.
+        // But setup runs once. Let's create a pool of spheres.
+        this.spheres = [];
+        this.maxSpheres = 10;
+        for (let i = 0; i < this.maxSpheres; i++) {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 16, 16),
+                new THREE.MeshLambertMaterial({ color: 0xffaa00 })
+            );
+            sphere.visible = false;
+            this.group.add(sphere);
+            this.spheres.push(sphere);
+        }
+
+        // Track visual ground
+        const track = new THREE.Mesh(new THREE.BoxGeometry(20, 0.1, 1), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+        track.position.y = -0.2;
+        this.group.add(track);
 
         scene.add(this.group);
         return this.group;
     }
 
     update(state) {
-        const x = state[0];
+        // state: [x, v, x, v ...]
+        // N = state.length / 2
+        const N = Math.floor(state.length / 2);
 
-        // Move along slope
-        this.transGroup.position.x = x;
-
-        // Rotate disk
-        // v = omega * r => x = theta * r => theta = x / r
-        const r = 1.0;
-        const angle = x / r;
-
-        // Visual Rotation (Negative because rolling down positive x usually means clockwise rotation)
-        this.disk.rotation.z = -angle;
+        for (let i = 0; i < this.maxSpheres; i++) {
+            if (i < N) {
+                this.spheres[i].visible = true;
+                const x = state[2 * i];
+                // y = 0
+                this.spheres[i].position.set(x, 0, 0);
+            } else {
+                this.spheres[i].visible = false;
+            }
+        }
     }
 }
 
@@ -204,6 +218,7 @@ function setSystemType(type) {
     if (type === "simple_pendulum") activeRenderer = new SimplePendulumRenderer();
     else if (type === "double_pendulum") activeRenderer = new DoublePendulumRenderer();
     else if (type === "rolling_disk") activeRenderer = new RollingDiskRenderer();
+    else if (type === "nbody_1d") activeRenderer = new NBodyRenderer();
     else activeRenderer = new MassSpringRenderer(); // Default
 
     currentSystemGroup = activeRenderer.setup(scene);
@@ -228,7 +243,13 @@ function updateVisuals(time) {
     let alpha = (time - t1) / (t2 - t1);
     if (alpha < 0) alpha = 0; if (alpha > 1) alpha = 1;
 
+    // LERP
     const s = [];
+    if (s1.length !== s2.length) {
+        // Should not happen unless data corrupt
+        console.warn("State size mismatch");
+        return;
+    }
     for (let i = 0; i < s1.length; i++) {
         s.push(s1[i] + (s2[i] - s1[i]) * alpha);
     }
@@ -277,9 +298,8 @@ async function fetchRuns() {
         opt.innerText = `${r.metadata.system} [${sys}]`;
         sel.appendChild(opt);
     });
-    // Auto load top
     if (runs.length > 0) {
-        // Optional: loadRun(runs[0].id);
+        // Optional auto load
     }
 }
 
@@ -356,6 +376,9 @@ function setupUI() {
         } else if (m === "rolling_disk") {
             paramsInput.value = '{"mass":2.0, "radius":0.5, "theta":0.52}';
             stateInput.value = '[0.0, 0.0]';
+        } else if (m === "nbody_1d") {
+            paramsInput.value = '{"masses":[1.0, 1.0], "positions":[0.0, 3.0], "restitution":1.0}';
+            stateInput.value = '[0.0, 5.0, 3.0, 0.0]';
         }
     };
 

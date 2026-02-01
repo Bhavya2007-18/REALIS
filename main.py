@@ -46,6 +46,21 @@ def main():
         "dt": 0.02,
         "steps": 300
     })
+    
+    # 5. Collision Test (Newton's Cradle - 2 balls)
+    print("Running Collision Test (Elastic)...")
+    # Ball 1 at x=0, Ball 2 at x=2. Ball 1 moving right v=5.
+    run_simulation({
+        "model": "nbody_1d",
+        "params": {
+            "masses": [1.0, 1.0], 
+            "positions": [0.0, 3.0], 
+            "restitution": 1.0
+        },
+        "state0": [0.0, 5.0,  3.0, 0.0], # x1, v1, x2, v2
+        "dt": 0.01,
+        "steps": 200
+    })
 
 if __name__ == "__main__":
     main()
