@@ -18,7 +18,7 @@ function init() {
     scene.background = new THREE.Color(0x111111);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 2, 8);
+    camera.position.set(0, 2, 10);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -28,7 +28,9 @@ function init() {
     controls.enableDamping = true;
 
     // Grid
-    const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+    const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+    // Move grid down slightly
+    gridHelper.position.y = -2;
     scene.add(gridHelper);
 
     // Axes
@@ -137,26 +139,65 @@ class DoublePendulumRenderer {
 class RollingDiskRenderer {
     setup(scene) {
         this.group = new THREE.Group();
-        this.slopeGroup = new THREE.Group();
-        this.theta = Math.PI / 6;
-        this.slopeGroup.rotation.z = -this.theta;
-        const ground = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 5), new THREE.MeshLambertMaterial({ color: 0x444444 }));
-        ground.position.y = -0.1;
-        this.slopeGroup.add(ground);
-        this.transGroup = new THREE.Group();
-        this.slopeGroup.add(this.transGroup);
-        this.disk = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.2, 32), new THREE.MeshLambertMaterial({ color: 0x00ff00 }));
-        this.disk.rotation.x = Math.PI / 2;
-        this.disk.position.y = 1.0;
+        this.theta = Math.PI / 6; // 30 deg
+
+        // Static Wedge (Triangle)
+        // Length 10, Height 10*tan(theta)
+        const L = 20;
+        const H = L * Math.tan(this.theta);
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(L, 0);
+        shape.lineTo(L, -H);
+        shape.lineTo(0, 0); // Close? No, slope is down.
+        // Let's make a wedge: Top Left (0,0) -> Top Right (L, -H) -> Bottom Right (L, -H-1) -> Bottom Left (0, -1)
+
+        const wedgeGeom = new THREE.ExtrudeGeometry(shape, { depth: 5, bevelEnabled: false });
+
+        // Simpler: Box rotated, but let's conform to user request "x,y axis only".
+        // Let's just draw a line for the slope to be clean.
+        const slopePts = [new THREE.Vector3(-10, 5, 0), new THREE.Vector3(10, 5 - 20 * Math.tan(this.theta), 0)];
+        const slopeLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(slopePts),
+            new THREE.LineBasicMaterial({ color: 0x888888 })
+        );
+        this.group.add(slopeLine);
+
+        // Origin of calculation: Top Left (-10, 5)
+        this.origin = new THREE.Vector3(-10, 5, 0);
+
+        // Disk
+        this.disk = new THREE.Mesh(
+            new THREE.CylinderGeometry(1, 1, 0.2, 32),
+            new THREE.MeshLambertMaterial({ color: 0x00ff00 })
+        );
+        this.disk.rotation.x = Math.PI / 2; // Orient flat against Z-plane
+
+        // Marker
         this.disk.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.8, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000 })));
-        this.transGroup.add(this.disk);
-        this.group.add(this.slopeGroup);
+
+        this.group.add(this.disk);
         scene.add(this.group);
         return this.group;
     }
+
     update(state) {
-        const x = state[0];
-        this.transGroup.position.x = x;
+        const x = state[0]; // Distance down slope
+
+        // Pos = Origin + x * DirectionVector
+        // Direction is (cos theta, -sin theta)
+        const dx = x * Math.cos(this.theta);
+        const dy = -x * Math.sin(this.theta);
+
+        this.disk.position.set(
+            this.origin.x + dx,
+            this.origin.y + dy + 1.0, // + Radius (sit on line)
+            0
+        );
+
+        // Rotation
+        // theta_rot = x / r
         this.disk.rotation.z = -x;
     }
 }
@@ -164,23 +205,23 @@ class RollingDiskRenderer {
 class NBodyRenderer {
     setup(scene) {
         this.group = new THREE.Group();
-        // Setup will be dynamic based on first update or inferred from state size?
-        // We'll init empty and spawn in update logic if needed, or strictly assume max N.
-        // Let's assume we can spawn spheres on the fly or in first update.
-        // But setup runs once. Let's create a pool of spheres.
         this.spheres = [];
         this.maxSpheres = 10;
         for (let i = 0; i < this.maxSpheres; i++) {
             const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(0.2, 16, 16),
-                new THREE.MeshLambertMaterial({ color: 0xffaa00 })
+                new THREE.SphereGeometry(0.2, 32, 32), // High poly for balls
+                new THREE.MeshPhysicalMaterial({
+                    color: 0xeeeeee,
+                    metalness: 0.8,
+                    roughness: 0.1,
+                    clearcoat: 1.0
+                })
             );
             sphere.visible = false;
             this.group.add(sphere);
             this.spheres.push(sphere);
         }
 
-        // Track visual ground
         const track = new THREE.Mesh(new THREE.BoxGeometry(20, 0.1, 1), new THREE.MeshLambertMaterial({ color: 0x333333 }));
         track.position.y = -0.2;
         this.group.add(track);
@@ -190,15 +231,11 @@ class NBodyRenderer {
     }
 
     update(state) {
-        // state: [x, v, x, v ...]
-        // N = state.length / 2
         const N = Math.floor(state.length / 2);
-
         for (let i = 0; i < this.maxSpheres; i++) {
             if (i < N) {
                 this.spheres[i].visible = true;
                 const x = state[2 * i];
-                // y = 0
                 this.spheres[i].position.set(x, 0, 0);
             } else {
                 this.spheres[i].visible = false;
@@ -241,15 +278,11 @@ function updateVisuals(time) {
     const s2 = states[idx];
 
     let alpha = (time - t1) / (t2 - t1);
-    if (alpha < 0) alpha = 0; if (alpha > 1) alpha = 1;
+    // if (alpha < 0) alpha = 0; if (alpha > 1) alpha = 1; 
+    // Constrain?
 
-    // LERP
     const s = [];
-    if (s1.length !== s2.length) {
-        // Should not happen unless data corrupt
-        console.warn("State size mismatch");
-        return;
-    }
+    if (s1.length !== s2.length) return;
     for (let i = 0; i < s1.length; i++) {
         s.push(s1[i] + (s2[i] - s1[i]) * alpha);
     }
@@ -287,19 +320,20 @@ function animate() {
 
 // Data Fetching
 async function fetchRuns() {
-    const res = await fetch('/api/runs');
-    const runs = await res.json();
-    const sel = document.getElementById('runSelect');
-    sel.innerHTML = '';
-    runs.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r.id;
-        const sys = r.metadata.system_type || "Unknown";
-        opt.innerText = `${r.metadata.system} [${sys}]`;
-        sel.appendChild(opt);
-    });
-    if (runs.length > 0) {
-        // Optional auto load
+    try {
+        const res = await fetch('/api/runs');
+        const runs = await res.json();
+        const sel = document.getElementById('runSelect');
+        sel.innerHTML = '';
+        runs.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            const sys = r.metadata.system_type || "Unknown";
+            opt.innerText = `${r.metadata.system} [${sys}]`;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.error("Fetch failed", e);
     }
 }
 
@@ -321,13 +355,10 @@ async function loadRun(id) {
 
 // UI Setup
 function setupUI() {
-    // Load button
     document.getElementById('btnLoad').onclick = () => {
         const id = document.getElementById('runSelect').value;
         loadRun(id);
     };
-
-    // Playback
     document.getElementById('btnPlay').onclick = () => {
         isPlaying = true;
         document.getElementById('btnPlay').innerText = "Play";
@@ -339,16 +370,12 @@ function setupUI() {
         updateVisuals(0);
         isPlaying = false;
     };
-
-    // Speed
     const speedRange = document.getElementById('speedRange');
     const speedVal = document.getElementById('speedVal');
     speedRange.oninput = () => {
         playbackSpeed = parseFloat(speedRange.value);
         speedVal.innerText = playbackSpeed.toFixed(1) + "x";
     };
-
-    // Timeline
     document.getElementById('timeline').onclick = (e) => {
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -357,7 +384,6 @@ function setupUI() {
         updateVisuals(currentTime);
     };
 
-    // Sim Model defaults
     const modelSelect = document.getElementById('simModel');
     const paramsInput = document.getElementById('simParams');
     const stateInput = document.getElementById('simState');
@@ -373,21 +399,16 @@ function setupUI() {
         } else if (m === "double_pendulum") {
             paramsInput.value = '{"L1":1.0, "L2":1.0, "m1":1.0, "m2":1.0}';
             stateInput.value = '[1.57, 1.57, 0.0, 0.0]';
-        } else if (m === "rolling_disk") {
-            paramsInput.value = '{"mass":2.0, "radius":0.5, "theta":0.52}';
-            stateInput.value = '[0.0, 0.0]';
         } else if (m === "nbody_1d") {
             paramsInput.value = '{"masses":[1.0, 1.0], "positions":[0.0, 3.0], "restitution":1.0}';
             stateInput.value = '[0.0, 5.0, 3.0, 0.0]';
         }
     };
 
-    // API Run
     document.getElementById('btnRunSim').onclick = async () => {
         const btn = document.getElementById('btnRunSim');
         btn.innerText = "Running...";
         btn.disabled = true;
-
         try {
             const config = {
                 model: modelSelect.value,
@@ -396,25 +417,22 @@ function setupUI() {
                 steps: parseInt(document.getElementById('simSteps').value),
                 dt: 0.01
             };
-
             const req = await fetch('/api/simulate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             });
             const res = await req.json();
-
             if (res.status === "success") {
-                await fetchRuns(); // Refresh list
+                await fetchRuns();
                 document.getElementById('runSelect').value = res.id;
-                loadRun(res.id); // Auto load
+                loadRun(res.id);
             } else {
-                alert("Sim failed: " + res.error);
+                alert("Sim failed: " + (res.error || "Unknown error"));
             }
         } catch (e) {
             alert("Error: " + e);
         }
-
         btn.innerText = "Run Simulation";
         btn.disabled = false;
     };

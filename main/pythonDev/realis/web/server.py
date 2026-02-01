@@ -4,6 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import glob
 import json
+import sys
+# Add parent directory to path to allow importing from root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from pydantic import BaseModel
+from typing import Dict, List, Any
+from interface.runner import run_simulation
 
 app = FastAPI()
 
@@ -31,8 +37,6 @@ def list_runs():
         basename = os.path.basename(f)
         try:
            with open(f, 'r') as file_handle:
-               # Read just the header/metadata if possible, but JSON reads all
-               # For strictly huge files, we'd need streaming. For now, read all.
                content = json.load(file_handle)
                runs.append({
                    "id": basename,
@@ -53,23 +57,7 @@ def get_run(run_id: str):
     with open(path, 'r') as f:
         return json.load(f)
 
-# Mount static files (Frontend)
-# We expect index.html in web/static
-static_dir = os.path.join(os.getcwd(), "web", "static")
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
-
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 # API Extension
-from pydantic import BaseModel
-from typing import Dict, List, Any
-from interface.runner import run_simulation
-
 class SimulationConfig(BaseModel):
     model: str
     params: Dict[str, float]
@@ -89,3 +77,14 @@ def trigger_simulation(config: SimulationConfig):
         import traceback
         traceback.print_exc()
         return {"error": str(e), "status": "failed"}
+
+# Mount static files (Frontend)
+static_dir = os.path.join(os.getcwd(), "web", "static")
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
