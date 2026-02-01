@@ -3,204 +3,220 @@ Physics-Correct Virtual Prototyping System
 
 REALIS is a software-only, physics-faithful virtual prototyping platform designed to simulate, test, fail, and validate machines before any real-world construction begins.
 
-The goal is not pretty animations.
-The goal is truthful physics.
+*The goal is not pretty animations*.
+The goal is **truthful physics**.
 
 REALIS focuses on deterministic simulation, numerical correctness, and engineering honesty, enabling confident design decisions grounded in real physical laws.
 
- Core Objective
+### Core Objective
 
-Build a system where:
+1. Build a system where:
 
-Machines are designed digitally
+* Machines are designed digitally
 
-Physical behavior is simulated using real laws
+* Physical behavior is simulated using real laws
 
-Failures are discovered before manufacturing
+* Failures are discovered before manufacturing
 
-Confidence and limitations are explicitly quantified
+* Confidence and limitations are explicitly quantified
 
-All without touching real hardware.
+* All without touching real hardware.
 
- Design Philosophy
+2. Design Philosophy
 
-REALIS follows a strict engineering-first mindset:
+* REALIS follows a strict engineering-first mindset:
 
-Physics over visuals
+    * Physics over visuals
 
-Correctness over convenience
+    * Correctness over convenience
 
-Determinism over heuristics
+    * Determinism over heuristics
 
-Explicit assumptions over hidden magic
+    * Explicit assumptions over hidden magic
 
-If a result looks impressive but violates physics, REALIS rejects it.
+**If a result looks impressive but violates physics, REALIS rejects it**.
 
- System Roadmap
-Phase 0 – Engineering Mindset Bootloader
+---
 
-Learn how engineers reason about models and limits.
+### System Roadmap
+<details>
+<summary>Phase 0 – Engineering Mindset Bootloader</summary>
+<ul><li>Learn how engineers reason about models and limits.</li>
 
-Dimensional analysis and unit consistency
+<li>Dimensional analysis and unit consistency</li>
 
-Scaling laws and order-of-magnitude estimates
+<li>Scaling laws and order-of-magnitude estimates</li>
 
-Well-posed vs ill-posed problems
+<li>Well-posed vs ill-posed problems</li>
 
-Physical vs numerical instability
+<li>Physical vs numerical instability</li></ul>
+</details>
 
-Phase 1 – Mathematical Skeleton
+<details>
+<summary>Phase 1 – Mathematical Skeleton</summary>
+<ul><li>The mathematical backbone of all simulations.</li>
 
-The mathematical backbone of all simulations.
+<li>Linear algebra (vectors, matrices, eigenvalues, sparse systems)</li>
 
-Linear algebra (vectors, matrices, eigenvalues, sparse systems)
+<li>Calculus and differential equations (ODEs, IVP, BVP)</li>
 
-Calculus and differential equations (ODEs, IVP, BVP)
+<li>Numerical methods (Euler, Runge–Kutta, Newton–Raphson)</li>
 
-Numerical methods (Euler, Runge–Kutta, Newton–Raphson)
+<li>Floating-point error, stiffness, conditioning</li></ul>
+</details>
 
-Floating-point error, stiffness, conditioning
+<details>
+<summary>Phase 2 – Core Mechanics</summary>
+<ul><li>Classical mechanics implemented correctly.</li>
 
-Phase 2 – Core Mechanics
+<li>Newtonian and Lagrangian mechanics</li>
 
-Classical mechanics implemented correctly.
+<li>Rigid body dynamics and constraints</li>
 
-Newtonian and Lagrangian mechanics
+<li>Stress, strain, elastic and plastic deformation</li>
 
-Rigid body dynamics and constraints
+<li>Failure theories: fatigue, buckling, fracture</li></ul>
+</details>
 
-Stress, strain, elastic and plastic deformation
+<details>
+<summary>Phase 3 – Finite Element Method (FEM)</summary>
+<ul><li>Structural analysis without numerical lies.</li>
 
-Failure theories: fatigue, buckling, fracture
+<li>Weak form derivation</li>
 
-Phase 3 – Finite Element Method (FEM)
+<li>Element formulation</li>
 
-Structural analysis without numerical lies.
+<li>Meshing strategies and convergence studies</li>
 
-Weak form derivation
+<li>Linear and nonlinear solvers</li>
 
-Element formulation
+<li>Numerical artifacts (locking, artificial stiffness, damping)</li></ul>
+</details>
 
-Meshing strategies and convergence studies
+<details>
+<summary>Phase 4 – Multibody and Constraint Systems</summary>
+<ul><li>Complex mechanical assemblies.</li>
 
-Linear and nonlinear solvers
+<li>Kinematic chains and joint modeling</li>
 
-Numerical artifacts (locking, artificial stiffness, damping)
+<li>Contact, collision, and friction</li>
 
-Phase 4 – Multibody and Constraint Systems
+<li>Constraint drift correction</li>
 
-Complex mechanical assemblies.
+<li>Energy consistency in dynamics</li></ul>
+</details>
 
-Kinematic chains and joint modeling
+<details>
+<summary>Phase 5 – Geometry and CAD Integrity</summary>
+<ul><li>Geometry that doesn’t silently break physics.</li>
 
-Contact, collision, and friction
+<li>B-rep vs mesh representations</li>
 
-Constraint drift correction
+<li>STEP, IGES, STL limitations</li>
 
-Energy consistency in dynamics
+<li>Geometric tolerances</li>
 
-Phase 5 – Geometry and CAD Integrity
+<li>Boolean operation failures</li>
 
-Geometry that doesn’t silently break physics.
+<li>Parametric rebuild integrity</li></ul>
+</details>
 
-B-rep vs mesh representations
+<details>
+<summary>Phase 6 – Visualization Without Lying</summary>
+<ul><li>Seeing results without distortion.</li>
 
-STEP, IGES, STL limitations
+<li>True-scale vs exaggerated deformation</li>
 
-Geometric tolerances
+<li>Stress color-map ethics</li>
 
-Boolean operation failures
+<li>Time interpolation correctness</li>
 
-Parametric rebuild integrity
+<li>Data-driven visualization</li></ul>
+</details>
 
-Phase 6 – Visualization Without Lying
+<details>
+<summary>Phase 7 – System Architecture</summary>
+<ul><li>Engineering-grade software structure.</li>
 
-Seeing results without distortion.
+<li>Solver-authoritative architecture</li>
 
-True-scale vs exaggerated deformation
+<li>Deterministic simulation pipelines</li>
 
-Stress color-map ethics
+<li>Data provenance and reproducibility</li>
 
-Time interpolation correctness
+<li>Versioned simulation outputs</li>
 
-Data-driven visualization
+<li>Regression testing</li></ul>
+</details>
 
-Phase 7 – System Architecture
+<details>
+<summary>Phase 8 – Verification and Validation</summary>
+<ul><li>Proving the system deserves trust.</li>
 
-Engineering-grade software structure.
+<li>Numerical verification and convergence</li>
 
-Solver-authoritative architecture
+<li>Validation against real experiments</li>
 
-Deterministic simulation pipelines
+<li>Error bounds and confidence intervals</li>
 
-Data provenance and reproducibility
+<li>Explicit documentation of assumptions</li></ul>
+</details>
 
-Versioned simulation outputs
+---
 
-Regression testing
+### 🏁 Final Outcome
 
-Phase 8 – Verification and Validation
+1. A physics-faithful virtual prototyping platform capable of guiding real-world machine construction with:
 
-Proving the system deserves trust.
+1. Quantified confidence
 
-Numerical verification and convergence
+1. Known limitations
 
-Validation against real experiments
+1. Reproducible results
 
-Error bounds and confidence intervals
+1. Engineering-grade credibility
 
-Explicit documentation of assumptions
+---
 
-🏁 Final Outcome
+### Project Status
 
-A physics-faithful virtual prototyping platform capable of guiding real-world machine construction with:
+*Early-stage / Foundation Phase*
 
-Quantified confidence
+#### REALIS is currently focused on:
 
-Known limitations
+* Architecture planning
 
-Reproducible results
+* Mathematical and physical foundations
 
-Engineering-grade credibility
+* Solver-first design decisions
 
- Project Status
+* Expect breaking changes. Expect iteration. Expect correctness to come before speed.
 
-Early-stage / Foundation Phase
+### 📚 Inspiration Domains
 
-REALIS is currently focused on:
++ Computational Mechanics
 
-Architecture planning
++ Finite Element Analysis
 
-Mathematical and physical foundations
++ Multibody Dynamics
 
-Solver-first design decisions
++ Scientific Computing
 
-Expect breaking changes. Expect iteration. Expect correctness to come before speed.
++ Engineering Simulation Software
 
-📚 Inspiration Domains
+### Contributions
+Thank you for your interest in contributing to REALIS
 
-Computational Mechanics
+#### This project values:
 
-Finite Element Analysis
++ Clear reasoning
 
-Multibody Dynamics
++ Mathematical rigor
 
-Scientific Computing
++ Engineering discipline
 
-Engineering Simulation Software
+**If you contribute, expect to justify assumptions**.
 
- Contributions
+#### License
 
-This project values:
-
-Clear reasoning
-
-Mathematical rigor
-
-Engineering discipline
-
-If you contribute, expect to justify assumptions.
-
- License
-
-License to be decided.
+> License to be decided.
