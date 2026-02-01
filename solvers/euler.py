@@ -1,5 +1,12 @@
-# euler integration solver
+import numpy as np
+
 def step(state, t, dt, derivs, params):
-    dx, dv = derivs(state, t, params)
-    x, v = state
-    return x + dx * dt, v + dv * dt
+    """
+    Explicit Euler Integration Step.
+    Vectorized for arbitrary state dimension.
+    """
+    y = np.array(state, dtype=float)
+    dydt = np.array(derivs(y, t, params))
+    
+    y_next = y + dydt * dt
+    return y_next

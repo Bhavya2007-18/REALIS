@@ -64,3 +64,28 @@ app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# API Extension
+from pydantic import BaseModel
+from typing import Dict, List, Any
+from interface.runner import run_simulation
+
+class SimulationConfig(BaseModel):
+    model: str
+    params: Dict[str, float]
+    state0: List[float]
+    dt: float = 0.01
+    steps: int = 1000
+
+@app.post("/api/simulate")
+def trigger_simulation(config: SimulationConfig):
+    """Run a new simulation and return the file ID."""
+    print(f"Running simulation: {config.model}")
+    try:
+        filepath = run_simulation(config.dict())
+        basename = os.path.basename(filepath)
+        return {"id": basename, "status": "success"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "status": "failed"}

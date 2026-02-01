@@ -1,15 +1,26 @@
+import numpy as np
+
 def step(state, t, dt, derivs, params):
-    x, v = state
-
-    k1x, k1v = derivs((x, v), t, params)
-    k2x, k2v = derivs((x + 0.5 * dt * k1x,
-                       v + 0.5 * dt * k1v), t + 0.5 * dt, params)
-    k3x, k3v = derivs((x + 0.5 * dt * k2x,
-                       v + 0.5 * dt * k2v), t + 0.5 * dt, params)
-    k4x, k4v = derivs((x + dt * k3x,
-                       v + dt * k3v), t + dt, params)
-
-    x_next = x + (dt / 6.0) * (k1x + 2*k2x + 2*k3x + k4x)
-    v_next = v + (dt / 6.0) * (k1v + 2*k2v + 2*k3v + k4v)
-
-    return x_next, v_next
+    """
+    Runge-Kutta 4th Order Integration Step.
+    Vectorized for arbitrary state dimension.
+    """
+    # Ensure state is a numpy array for vector math
+    y = np.array(state, dtype=float)
+    
+    # K1
+    k1 = np.array(derivs(y, t, params))
+    
+    # K2
+    k2 = np.array(derivs(y + 0.5 * dt * k1, t + 0.5 * dt, params))
+    
+    # K3
+    k3 = np.array(derivs(y + 0.5 * dt * k2, t + 0.5 * dt, params))
+    
+    # K4
+    k4 = np.array(derivs(y + dt * k3, t + dt, params))
+    
+    # Combine
+    y_next = y + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
+    
+    return y_next

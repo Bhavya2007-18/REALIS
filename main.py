@@ -1,144 +1,51 @@
 import sys
-from verification.benchmarks import HarmonicOscillator
-from verification.convergence import estimate_order_of_accuracy
-from verification.conservation import calculate_energy_error
-from solvers.euler import step as euler_step
-from solvers.rk4 import step as rk4_step
-
-# Try to import CLI, but don't fail if partially implemented
-try:
-    from interface.cli import start_cli
-    HAS_CLI = True
-except ImportError:
-    HAS_CLI = False
-
-def run_verification_demo():
-    print("========================================")
-    print("   REALIS PHYSICS VERIFICATION SUITE    ")
-    print("========================================")
-    print("Verifying Solvers against Analytical Harmonic Oscillator")
-    print("System: Mass-Spring (k=10.0, m=1.0)")
-    
-    # Setup Benchmark
-    k, m = 10.0, 1.0
-    system = HarmonicOscillator(k, m)
-    state0 = (1.0, 0.0)
-    t_span = 2.0 * 3.14159265359 # Approx one period
-    
-    # 1. Convergence Order Analysis
-    print("\n[Test 1] Convergence Order (refinement analysis)")
-    
-    # Euler (1st Order)
-    p_euler = estimate_order_of_accuracy(euler_step, system, state0, t_span, 0.01)
-    print(f"  Euler Order: {p_euler:.4f} (Target: 1.0)")
-    
-    # RK4 (4th Order)
-    p_rk4 = estimate_order_of_accuracy(rk4_step, system, state0, t_span, 0.05)
-    print(f"  RK4 Order:   {p_rk4:.4f} (Target: 4.0)")
-    
-    # Assertions
-    if abs(p_euler - 1.0) > 0.2:
-        print("  ❌ Euler convergence suspect!")
-    else:
-        print("  ✅ Euler convergence normal.")
-        
-    if abs(p_rk4 - 4.0) > 0.1:
-        print("  ❌ RK4 convergence suspect!")
-    else:
-        print("  ✅ RK4 convergence normal.")
-
-    # 2. Conservation / Stability Analysis (with Visualization)
-    print("\n[Test 2] Energy Conservation (Long-run stability)")
-    run_vis = True
-    try:
-        from visualization.gl_renderer import GLVisualizer
-        print("  ✅ Visualization module loaded. Opening window...")
-    except ImportError as e:
-        print(f"  ⚠️  Visualization module unavailable: {e}")
-        run_vis = False
-
-    dt = 0.01
-    steps = 1000
-    print(f"  Running {steps} steps at dt={dt}...")
-    
-    def run_loop(name, stepper, visualizer=None):
-        t = 0.0
-        s = state0
-        history = [s]
-        
-        # If visualizing, we only want to visualize ONE run (e.g. RK4) or sequential?
-        # Let's visualize RK4 since it's the stable one.
-        
-        should_render = (visualizer is not None)
-        
-        for i in range(steps):
-            s = stepper(s, t, dt, system.derivatives, None)
-            history.append(s)
-            t += dt
-            
-            if should_render:
-                visualizer.update(s, t)
-                if visualizer.should_close():
-                    break
-                # Simple throttle
-                import time
-                time.sleep(0.01) # Maintain ~60-100 FPS roughly
-        
-        # Analyze
-        max_err, _, drift = calculate_energy_error(history, system)
-        print(f"  {name}: Drift = {drift:+.2e} | Max Rel Err = {max_err:.2e}")
-        return max_err
-        
-    e_err = run_loop("Euler", euler_step, visualizer=None) # Don't visualize bad Euler
-    
-    vis = None
-    if run_vis:
-        try:
-            vis = GLVisualizer(title="REALIS: RK4 Verification")
-        except Exception as e:
-            print(f"  ⚠️  Failed to create window: {e}")
-    
-    r_err = run_loop("RK4  ", rk4_step, visualizer=vis)
-    
-    
-    # 3. Export Data (for Web Visualization)
-    print("\n[Test 3] Generating Data for Web Visualization (Exporting)")
-    try:
-        from interface.exporter import SimulationExporter
-        exporter = SimulationExporter(system_name="Mass-Spring Verification")
-        exporter.set_metadata("RK4", dt)
-        
-        # Run standard loop with recording
-        t = 0.0
-        s = state0
-        for _ in range(steps):
-             # Record before step
-             e = system.total_energy(s)
-             exporter.record_step(t, s, energy=e)
-             
-             s = rk4_step(s, t, dt, system.derivatives, None)
-             t += dt
-             
-        # Record final
-        exporter.record_step(t, s, system.total_energy(s))
-        
-        saved_path = exporter.save()
-        print(f"  ✅ Data exported to {saved_path}")
-        
-    except ImportError as e:
-         print(f"  ⚠️  Exporter unavailable: {e}")
-
-    print("\nVerification Complete.")
+import numpy as np
+from interface.runner import run_simulation
 
 def main():
-    # If arguments provided, maybe parse them. For now, default to verification demo.
-    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
-        if HAS_CLI:
-            start_cli()
-        else:
-            print("CLI module not available.")
-    else:
-        run_verification_demo()
+    print("========================================")
+    print("   REALIS PHYSICS SCENARIO RUNNER       ")
+    print("========================================")
+    
+    # 1. Damped Oscillator
+    print("Running Damped Oscillator...")
+    run_simulation({
+        "model": "mass_spring",
+        "params": {"k": 10.0, "m": 1.0, "c": 0.5},
+        "state0": [2.0, 0.0],
+        "dt": 0.02,
+        "steps": 500
+    })
+    
+    # 2. Simple Pendulum
+    print("Running Simple Pendulum...")
+    run_simulation({
+        "model": "simple_pendulum",
+        "params": {"length": 1.0, "mass": 1.0},
+        "state0": [np.pi/1.5, 0.0],
+        "dt": 0.02,
+        "steps": 500
+    })
+    
+    # 3. Double Pendulum
+    print("Running Double Pendulum...")
+    run_simulation({
+        "model": "double_pendulum",
+        "params": {"L1": 1.0, "L2": 1.0, "m1": 1.0, "m2": 1.0},
+        "state0": [np.pi/2, np.pi/2, 0.0, 0.0],
+        "dt": 0.01,
+        "steps": 2000
+    })
+    
+    # 4. Rolling Disk
+    print("Running Rolling Disk...")
+    run_simulation({
+        "model": "rolling_disk",
+        "params": {"mass": 2.0, "radius": 0.5, "theta": np.pi/6},
+        "state0": [0.0, 0.0],
+        "dt": 0.02,
+        "steps": 300
+    })
 
 if __name__ == "__main__":
     main()
