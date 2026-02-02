@@ -18,14 +18,25 @@ World::World(float dt)
 }
 
 void World::step() {
-    // Calculate acceleration (F = ma, so a = F/m)
-    Vec3 acceleration = gravity;  // Only gravity for now (mass=1 simplifies to a=g)
+    float dt = timestep.get_dt();
     
-    // Semi-implicit Euler integration
-    integrate_semi_implicit_euler(position, velocity, acceleration, timestep.get_dt());
+    // 1. Integration (Dynamics)
+    // Legacy integration for single point mass
+    // In full engine, this iterates over all bodies
+    Vec3 accel = gravity;
+    velocity = velocity + accel * dt;
+    position = position + velocity * dt;
     
-    // Advance time
+    // 2. Solve Constraints
+    if (!constraints.empty()) {
+        constraint_solver.solve(constraints, dt);
+    }
+    
     timestep.advance();
+}
+
+void World::add_constraint(Constraint* c) {
+    constraints.push_back(c);
 }
 
 float World::compute_energy() const {
