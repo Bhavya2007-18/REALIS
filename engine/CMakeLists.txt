@@ -12,12 +12,20 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Source files (add as development progresses)
+# Source files (Phase 4 - Collisions & Contacts)
 set(REALIS_SOURCES
-    # Math
-    # core/world.cpp
-    # dynamics/rigid_body.cpp
-    # etc.
+    math/vec3.cpp
+    math/quat.cpp
+    math/mat3.cpp
+    core/timestep.cpp
+    core/integrator.cpp
+    core/world.cpp
+    dynamics/rigid_body.cpp
+    dynamics/force_registry.cpp
+    dynamics/inertia.cpp
+    dynamics/contact_resolver.cpp
+    collision/collision_detector.cpp
+    energy/energy_monitor.cpp
 )
 
 # Header include directories
@@ -27,6 +35,19 @@ include_directories(
 
 # Build library
 add_library(realis_core ${REALIS_SOURCES})
+
+# Build Demo Targets
+add_executable(phase1_point_mass ../examples/phase1_point_mass.cpp)
+target_link_libraries(phase1_point_mass realis_core)
+
+add_executable(phase2_energy_drift ../examples/phase2_energy_drift.cpp)
+target_link_libraries(phase2_energy_drift realis_core)
+
+add_executable(phase3_rotation ../examples/phase3_rotation.cpp)
+target_link_libraries(phase3_rotation realis_core)
+
+add_executable(phase4_collision ../examples/phase4_collision.cpp)
+target_link_libraries(phase4_collision realis_core)
 
 # Install rules
 install(TARGETS realis_core DESTINATION lib)
