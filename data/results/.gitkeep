@@ -1,0 +1,11 @@
+# Simulation results stored here
+
+Results from simulations will be saved in subdirectories by date/time.
+
+Format: `run_YYYY_MM_DD_HHMMSS/`
+
+Each run contains:
+- `config.json` - Simulation parameters
+- `trajectory.csv` - Object positions over time
+- `energy.csv` - Energy conservation data
+- `metrics.json` - Performance metrics

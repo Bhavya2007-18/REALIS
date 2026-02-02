@@ -1,0 +1,8 @@
+{
+    "name": "steel",
+    "density": 7850.0,
+    "youngs_modulus": 200e9,
+    "poissons_ratio": 0.30,
+    "yield_strength": 250e6,
+    "notes": "Structural steel properties"
+}

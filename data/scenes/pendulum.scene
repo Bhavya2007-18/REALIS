@@ -1,0 +1,24 @@
+{
+    "scene": "simple_pendulum",
+    "description": "Simple pendulum constraint test",
+    "gravity": [0, -9.81, 0],
+    "objects": [
+        {
+            "type": "rigid_body",
+            "name": "pendulum_bob",
+            "mass": 1.0,
+            "position": [0, -1, 0],
+            "velocity": [0, 0, 0]
+        }
+    ],
+    "constraints": [
+        {
+            "type": "distance",
+            "object": "pendulum_bob",
+            "anchor": [0, 0, 0],
+            "distance": 1.0
+        }
+    ],
+    "duration": 10.0,
+    "timestep": 0.01
+}
