@@ -3,22 +3,29 @@
 #include "../math/vec3.hpp"
 #include "../math/quat.hpp"
 #include "../math/mat3.hpp"
+// Forward declare Shape to avoid circular dependency
+namespace realis {
+    namespace geometry { class Shape; }
+}
 
 namespace realis {
 
 class RigidBody {
 public:
-    // Translational state
+    // State
     Vec3 position;
     Vec3 velocity;
     Vec3 force;
     float mass;
     float inv_mass;
     
-    // Rotational state
+    // Rotation
     Quat orientation;
     Vec3 angular_velocity;
     Vec3 torque;
+    
+    // Geometry
+    geometry::Shape* shape;
     Mat3 inertia_tensor;
     Mat3 inv_inertia_tensor;
     

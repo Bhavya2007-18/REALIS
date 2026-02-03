@@ -25,6 +25,11 @@ set(REALIS_SOURCES
     dynamics/inertia.cpp
     dynamics/contact_resolver.cpp
     collision/collision_detector.cpp
+    constraints/contact_constraint.cpp
+    constraints/constraint_solver.cpp
+    engine/cad/cad_importer.cpp
+    engine/cad/cad_validator.cpp
+    engine/geometry/contact_generator.cpp
     energy/energy_monitor.cpp
 )
 

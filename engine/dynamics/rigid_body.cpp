@@ -12,6 +12,7 @@ RigidBody::RigidBody()
     , orientation(1, 0, 0, 0)
     , angular_velocity(0, 0, 0)
     , torque(0, 0, 0)
+    , shape(nullptr)
 {
 }
 
