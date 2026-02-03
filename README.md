@@ -37,7 +37,7 @@ REALIS/
 └── build/             # Build artifacts
 ```
 
-### physics_lab/ - Where Physics Starts
+### physics_lab/ - Where Physics Starts 
 
 Every physics concept begins here. Every experiment must:
 - **Plot** its results
