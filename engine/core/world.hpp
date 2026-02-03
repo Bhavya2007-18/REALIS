@@ -8,6 +8,8 @@
 
 namespace realis {
 
+class RigidBody; // Forward declaration
+
 class World {
 public:
     // Construction
@@ -27,17 +29,21 @@ public:
     Vec3 get_position() const;
     Vec3 get_velocity() const;
     float get_time() const;
+    Vec3 get_gravity() const { return gravity; }
     
+    // Rigid Body Management (Phase 9 Integration)
+    void add_body(RigidBody* body);
+    void remove_body(RigidBody* body);
+    
+    // Public for easy access in demos/adapters for now
+    std::vector<RigidBody*> bodies;
+    std::vector<Constraint*> constraints;
+
 private:
     Timestep timestep;
     ConstraintSolver constraint_solver;
     
-    // Bodies and Constraints
-    // For Phase 6A, we manage a simplified list
-    std::vector<Constraint*> constraints;
-    
     // Point mass state (Legacy Phase 1/2) 
-    // We should transition to managing RigidBody objects
     Vec3 position;
     Vec3 velocity;
     float mass;

@@ -3,6 +3,7 @@
 
 #include "world.hpp"
 #include "integrator.hpp"
+#include "../dynamics/rigid_body.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -20,14 +21,31 @@ World::World(float dt)
 void World::step() {
     float dt = timestep.get_dt();
     
-    // 1. Integration (Dynamics)
-    // Legacy integration for single point mass
-    // In full engine, this iterates over all bodies
+    // 1. Point Mass Integration (Legacy)
     Vec3 accel = gravity;
     velocity = velocity + accel * dt;
     position = position + velocity * dt;
     
-    // 2. Solve Constraints
+    // 2. Rigid Body Integration
+    // Explicit Euler for velocity, Symplectic for position
+    for (auto* b : bodies) {
+        if (b->inv_mass > 0) { // Dynamic
+            // F = mg (plus others if applied)
+            Vec3 force = gravity * b->mass; // Simple gravity only for now
+            // v += (F/m) * dt
+            b->velocity = b->velocity + (force * b->inv_mass) * dt;
+            b->position = b->position + b->velocity * dt;
+            
+            // Rotation? Need torque. Assuming zero torque for simple gravity falling.
+            // b->orientation integration matches phase 6 logic.
+        }
+    }
+    
+    // 3. Solve Constraints
+    // Need to collect all constraints (Persistent + Contact)
+    // For Phase 9 Demos, we will rely on external contact generators adding to `constraints`
+    // OR World needs to run collision detection.
+    // For now, solve registered constraints.
     if (!constraints.empty()) {
         constraint_solver.solve(constraints, dt);
     }
@@ -37,6 +55,20 @@ void World::step() {
 
 void World::add_constraint(Constraint* c) {
     constraints.push_back(c);
+}
+
+void World::add_body(RigidBody* body) {
+    bodies.push_back(body);
+}
+
+void World::remove_body(RigidBody* body) {
+    // Linear scan remove
+    for (auto it = bodies.begin(); it != bodies.end(); ++it) {
+        if (*it == body) {
+            bodies.erase(it);
+            break;
+        }
+    }
 }
 
 float World::compute_energy() const {
