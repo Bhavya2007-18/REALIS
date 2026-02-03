@@ -21,6 +21,18 @@ struct Vec3 {
     
     float magnitude() const;
     Vec3 normalized() const;
+    
+    // Accessor
+    float& operator[](int i) {
+        if (i == 0) return x;
+        if (i == 1) return y;
+        return z;
+    }
+    float operator[](int i) const {
+        if (i == 0) return x;
+        if (i == 1) return y;
+        return z;
+    }
 };
 
 } // namespace realis

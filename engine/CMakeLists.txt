@@ -30,6 +30,8 @@ set(REALIS_SOURCES
     engine/cad/cad_importer.cpp
     engine/cad/cad_validator.cpp
     engine/geometry/contact_generator.cpp
+    engine/fem/fem_solver.hpp
+    engine/coupling/rigid_fem_coupler.cpp
     energy/energy_monitor.cpp
 )
 
