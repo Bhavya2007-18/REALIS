@@ -9,6 +9,8 @@ const STATUS_COLORS = {
 export default function StatusBar() {
     const activeWorkspace = useStore((s) => s.activeWorkspace)
     const simulationState = useStore((s) => s.simulationState)
+    const simTime = useStore((s) => s.simTime)
+    const fps = useStore((s) => s.fps)
 
     return (
         <footer
@@ -30,11 +32,11 @@ export default function StatusBar() {
             <div className="flex items-center gap-4">
                 <span className="text-[10px] tabular-nums"
                     style={{ color: 'var(--color-text-muted)' }}>
-                    60 FPS
+                    {fps} FPS
                 </span>
                 <span className="text-[10px] tabular-nums"
                     style={{ color: 'var(--color-text-muted)' }}>
-                    t = 0.000s
+                    t = {simTime.toFixed(3)}s
                 </span>
                 <span className="text-[10px]"
                     style={{ color: 'var(--color-border-strong)' }}>

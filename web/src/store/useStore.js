@@ -4,6 +4,9 @@ const useStore = create((set, get) => ({
     activeTab: 'Design',
     activeWorkspace: 'design',
     simulationState: 'idle',
+    simTime: 0,
+    fps: 0,
+    energyHistory: [], // [{ t, k, p, tot }]
 
     selectedObject: null,
     sceneObjects: [],

@@ -7,6 +7,7 @@ import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel'
 import StatusBar from '../components/StatusBar/StatusBar'
 import CommandPalette from '../components/CommandPalette/CommandPalette'
 import useStore from '../store/useStore'
+import useSimulationLoop from '../hooks/useSimulationLoop'
 
 const SHORTCUT_MAP = {
     '1': 'design',
@@ -17,6 +18,7 @@ const SHORTCUT_MAP = {
 }
 
 export default function AppLayout() {
+    useSimulationLoop()
     const setActiveWorkspace = useStore((s) => s.setActiveWorkspace)
     const [paletteOpen, setPaletteOpen] = useState(false)
 
