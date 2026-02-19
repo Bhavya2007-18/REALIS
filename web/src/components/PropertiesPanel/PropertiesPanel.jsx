@@ -1,4 +1,5 @@
 import useStore from '../../store/useStore'
+import useResizable from '../../hooks/useResizable'
 import PanelSection from '../shared/PanelSection'
 import InputField from '../shared/InputField'
 
@@ -15,37 +16,89 @@ const WORKSPACE_PANELS = {
 export default function PropertiesPanel() {
     const activeWorkspace = useStore((s) => s.activeWorkspace)
     const Panel = WORKSPACE_PANELS[activeWorkspace] ?? DesignPanel
+    const { size, onMouseDown } = useResizable({ initial: 280, min: 200, max: 420, direction: 'left' })
 
     return (
-        <aside className="flex flex-col flex-shrink-0 border-l overflow-y-auto"
+        <aside className="relative flex flex-col shrink-0 border-l overflow-y-auto"
             style={{
-                width: '280px',
+                width: `${size}px`,
                 borderColor: 'var(--color-border)',
                 backgroundColor: 'var(--color-bg-panel)',
             }}>
+            <div className="resize-handle resize-handle-left" onMouseDown={onMouseDown} />
             <Panel />
         </aside>
     )
 }
 
 function DesignPanel() {
-    const selectedObject = useStore((s) => s.selectedObject)
+    const selectedId = useStore((s) => s.selectedObject)
+    const obj = useStore((s) => s.sceneObjects.find((o) => o.id === s.selectedObject) ?? null)
+    const updateObject = useStore((s) => s.updateObject)
+
+    if (!obj) {
+        return (
+            <PanelSection title="Object Properties">
+                <div className="text-[11px] py-3 text-center" style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>
+                    Select an object to edit
+                </div>
+            </PanelSection>
+        )
+    }
+
+    function update(key, raw) {
+        const num = parseFloat(raw)
+        updateObject(obj.id, { [key]: isNaN(num) ? raw : num })
+    }
 
     return (
         <>
-            <PanelSection title="Object Properties">
-                <InputField label="Name" placeholder={selectedObject ?? 'None selected'} disabled={!selectedObject} />
-                <InputField label="Mass (kg)" placeholder="—" disabled />
-                <InputField label="Position" placeholder="x: 0  y: 0  z: 0" disabled />
-                <InputField label="Velocity" placeholder="vx: 0  vy: 0  vz: 0" disabled />
+            <PanelSection title={`${obj.type} – ${obj.name}`}>
+                <InputField label="Name" value={obj.name} onChange={(v) => updateObject(obj.id, { name: v })} />
+                <InputField label="Type" value={obj.type} disabled />
             </PanelSection>
-            <PanelSection title="Materials">
-                <InputField label="Density" placeholder="—" disabled />
-                <InputField label="Friction" placeholder="—" disabled />
-                <InputField label="Restitution" placeholder="—" disabled />
+
+            <PanelSection title="Transform">
+                <div className="flex gap-2">
+                    <InputField label="X" value={obj.x} onChange={(v) => update('x', v)} />
+                    <InputField label="Y" value={obj.y} onChange={(v) => update('y', v)} />
+                </div>
             </PanelSection>
-            <PanelSection title="Constraints">
-                <InputField label="Type" placeholder="None" disabled />
+
+            <PanelSection title="Physics">
+                <InputField label="Mass (kg)" value={obj.mass} onChange={(v) => update('mass', v)} />
+                <div className="flex gap-2">
+                    <InputField label="Vx" value={obj.vx} onChange={(v) => update('vx', v)} />
+                    <InputField label="Vy" value={obj.vy} onChange={(v) => update('vy', v)} />
+                </div>
+                <InputField label="Restitution" value={obj.restitution} onChange={(v) => update('restitution', v)} />
+                <InputField label="Friction" value={obj.friction} onChange={(v) => update('friction', v)} />
+            </PanelSection>
+
+            <PanelSection title="Appearance">
+                <InputField label="Color" value={obj.color} onChange={(v) => updateObject(obj.id, { color: v })} />
+                {obj.radius !== undefined && (
+                    <InputField label="Radius" value={obj.radius} onChange={(v) => update('radius', v)} />
+                )}
+                {obj.width !== undefined && (
+                    <>
+                        <InputField label="Width" value={obj.width} onChange={(v) => update('width', v)} />
+                        <InputField label="Height" value={obj.height} onChange={(v) => update('height', v)} />
+                    </>
+                )}
+            </PanelSection>
+
+            <PanelSection title="Flags">
+                <label className="flex items-center gap-2 text-[11px] cursor-pointer"
+                    style={{ color: 'var(--color-text-muted)' }}>
+                    <input
+                        type="checkbox"
+                        checked={obj.fixed}
+                        onChange={(e) => updateObject(obj.id, { fixed: e.target.checked })}
+                        className="accent-[var(--color-accent)]"
+                    />
+                    Fixed position
+                </label>
             </PanelSection>
         </>
     )
@@ -54,7 +107,6 @@ function DesignPanel() {
 function SimulatePanel() {
     const simulationState = useStore((s) => s.simulationState)
     const setSimulationState = useStore((s) => s.setSimulationState)
-
     return (
         <>
             <PanelSection title="Simulation Controls">
@@ -97,7 +149,6 @@ function AnalyzePanel() {
             <PanelSection title="Plot Settings">
                 <InputField label="X Axis" placeholder="Time (s)" disabled />
                 <InputField label="Y Axis" placeholder="Energy (J)" disabled />
-                <InputField label="Scale" placeholder="Linear" disabled />
             </PanelSection>
             <PanelSection title="Export">
                 <InputField label="Format" placeholder="CSV" disabled />

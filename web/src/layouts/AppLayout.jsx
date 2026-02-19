@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Navbar from '../components/Navbar/Navbar'
 import WorkspaceSwitcher from '../components/WorkspaceSwitcher/WorkspaceSwitcher'
 import Sidebar from '../components/Sidebar/Sidebar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
 import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel'
 import StatusBar from '../components/StatusBar/StatusBar'
+import CommandPalette from '../components/CommandPalette/CommandPalette'
 import useStore from '../store/useStore'
 
 const SHORTCUT_MAP = {
@@ -17,12 +18,17 @@ const SHORTCUT_MAP = {
 
 export default function AppLayout() {
     const setActiveWorkspace = useStore((s) => s.setActiveWorkspace)
+    const [paletteOpen, setPaletteOpen] = useState(false)
 
     useEffect(() => {
         function handleKeyDown(e) {
             if (e.ctrlKey && SHORTCUT_MAP[e.key]) {
                 e.preventDefault()
                 setActiveWorkspace(SHORTCUT_MAP[e.key])
+            }
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault()
+                setPaletteOpen((o) => !o)
             }
         }
         window.addEventListener('keydown', handleKeyDown)
@@ -33,7 +39,7 @@ export default function AppLayout() {
         <div
             className="flex flex-col h-screen w-screen overflow-hidden"
             style={{ backgroundColor: 'var(--color-bg-base)' }}>
-            <Navbar />
+            <Navbar onOpenPalette={() => setPaletteOpen(true)} />
             <WorkspaceSwitcher />
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar />
@@ -41,6 +47,7 @@ export default function AppLayout() {
                 <PropertiesPanel />
             </div>
             <StatusBar />
+            <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         </div>
     )
 }
