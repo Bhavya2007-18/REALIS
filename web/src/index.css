@@ -1,68 +1,148 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg-base: #0b0f14;
-  --color-bg-panel: #111827;
-  --color-bg-panel-hover: #1a2233;
-  --color-border: #1f2d3d;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-text-primary: #e2e8f0;
-  --color-text-muted: #64748b;
+  /* Base surfaces — shifted to Resolve charcoal */
+  --color-bg-base: #161616;
+  --color-bg-panel: #1c1c1c;
+  --color-bg-panel-hover: #252525;
+  --color-bg-ws-bar: #111111;
+  --color-bg-ws-active: #2a2a2a;
+
+  /* Borders & separators */
+  --color-border: #2e2e2e;
+  --color-border-strong: #3a3a3a;
+
+  /* Accent */
+  --color-accent: #4b7cf3;
+  --color-accent-hover: #3b6de3;
+  --color-ws-indicator: #4b7cf3;
+
+  /* Typography */
+  --color-text-primary: #d8d8d8;
+  --color-text-muted: #5a5a5a;
+  --color-text-ws-active: #f0f0f0;
+  --color-text-ws-inactive: #616161;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--color-bg-panel);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: var(--color-border-strong);
+  border-radius: 2px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
 
+/* ── Canvas grid ── */
 .canvas-grid {
   background-color: var(--color-bg-base);
   background-image:
     linear-gradient(var(--color-border) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-size: 28px 28px;
 }
 
+/* ── Sidebar section animation ── */
 .sidebar-section-content {
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.25s ease;
+  transition: max-height 0.22s ease;
 }
+
 .sidebar-section-content.open {
   max-height: 400px;
 }
 
+/* ── Navbar tabs ── */
 .tab-active {
   color: var(--color-text-primary);
   border-bottom: 2px solid var(--color-accent);
 }
+
 .tab-inactive {
   color: var(--color-text-muted);
   border-bottom: 2px solid transparent;
+}
+
+/* ── Workspace switcher item ── */
+.ws-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 22px;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  color: var(--color-text-ws-inactive);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  border-right: 1px solid var(--color-border);
+}
+
+.ws-item:first-child {
+  border-left: 1px solid var(--color-border);
+}
+
+.ws-item:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-ws-active);
+}
+
+.ws-item.active {
+  color: var(--color-text-ws-active);
+  background-color: var(--color-bg-ws-active);
+}
+
+.ws-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background-color: var(--color-ws-indicator);
+  border-radius: 1px 1px 0 0;
+}
+
+/* ── Workspace placeholder ── */
+.workspace-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  user-select: none;
 }
