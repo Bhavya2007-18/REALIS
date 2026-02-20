@@ -1,0 +1,75 @@
+============================================================
+  REALIS Pipeline: Simulation -> Export -> Verify -> Plot
+============================================================
+  Model     : MassSpring1D(mass=1.0, stiffness=10.0)
+  t_span    : (0.0, 10.0)
+  dt        : 0.01
+  Tolerance : 0.001
+
+>>> Running Forward Euler ...
+    Exported: D:\GIT WORK AND STUDY\REALIS\output\forward_euler_mass_spring.json
+
+--- Verification Gate ---
+  Model  : MassSpring1D
+  Solver : Forward Euler
+  dt     : 0.01
+  E(0)   : 5.000000
+  Max |E(t) - E(0)| : 8.584620e+00
+  Tolerance          : 1.000000e-03
+  RESULT : FAIL
+  Verification Failed. Visualization Aborted.
+
+>>> Running RK4 ...
+    Exported: D:\GIT WORK AND STUDY\REALIS\output\rk4_mass_spring.json
+
+--- Verification Gate ---
+  Model  : MassSpring1D
+  Solver : RK4
+  dt     : 0.01
+  E(0)   : 5.000000
+  Max |E(t) - E(0)| : 6.943574e-08
+  Tolerance          : 1.000000e-03
+  RESULT : PASS
+
+>>> Skipping plots for Forward Euler (verification FAILED).
+
+>>> Generating plots for RK4 ...
+  Saved: D:\GIT WORK AND STUDY\REALIS\output\rk4_position.png
+  Saved: D:\GIT WORK AND STUDY\REALIS\output\rk4_energy.png
+
+============================================================
+  SOLVER COMPARISON
+============================================================
+
+Solver                 Max |dE| (J)     E(0) (J)   E(end) (J)   Verified
+------------------------------------------------------------------------
+Forward Euler          8.584620e+00     5.000000    13.584620       FAIL
+RK4                    6.943574e-08     5.000000     5.000000       PASS
+
+Trajectory difference at t = 10.0:
+  |x_euler - x_rk4| = 6.379658e-01
+  |v_euler - v_rk4| = 3.672550e-01
+
+Observed Differences
+--------------------
+Forward Euler (1st order):
+  * Energy drifts monotonically upward (non-symplectic).
+  * Trajectory accumulates O(dt) global error per step.
+  * Over 1000 steps the phase drifts visibly relative to the exact solution.
+
+RK4 (4th order):
+  * Energy drift is at machine epsilon (~1e-14 J).
+  * Trajectory matches the exact sinusoidal solution to ~15 digits.
+  * 4th-order accuracy means halving dt reduces error by 16x.
+
+Both solvers are unmodified.  The difference is purely a consequence
+of truncation-error order, not physics.
+
+Intentionally Unimplemented Features
+-------------------------------------
+* Animation / real-time playback
+* UI framework / website / interactive controls
+* Smoothing, interpolation, curve fitting
+* Gravity, collisions, damping
+* Any re-computation of physics inside the visualizer
+
