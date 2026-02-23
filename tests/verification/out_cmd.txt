@@ -1,0 +1,13 @@
+=== Phase 1A Architecture Validation: Multiple Bodies & Superposition ===
+
+--- SCENARIO 1: Two Bodies, Uniform Gravity ---
+[Semi-Implicit Euler | dt=0.01 ] Max E Drift: 5.77493 | L2 b1: 0.803969 | L2 b2: 0.803996
+[Semi-Implicit Euler | dt=0.005] Max E Drift: 2.88498 | L2 b1: 0.567561 | L2 b2: 0.567437
+[RK4 Integrator      | dt=0.01 ] Max E Drift: 0.000823975 | L2 b1: 3.6785e-005 | L2 b2: 1.22439e-005
+
+--- SCENARIO 2: Force Superposition (Gravity + Spring) ---
+[Semi-Implicit Euler | dt=0.01 ] Max E Drift: 9.53223
+[RK4 Integrator      | dt=0.01 ] Max E Drift: 0.0410156
+
+--> Solver independence verified (swapped integrators seamlessly).
+--> Superposition achieved (System mathematically summed forces).

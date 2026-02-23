@@ -4,6 +4,7 @@
 #include "../constraints/constraint_solver.hpp"
 #include "../dynamics/force_field.hpp"
 #include "../math/vec3.hpp"
+#include "system.hpp"
 #include "timestep.hpp"
 #include <vector>
 
@@ -12,7 +13,7 @@ namespace realis {
 class RigidBody;  // Forward declaration
 class Integrator; // Forward declaration
 
-class World {
+class World : public System {
 public:
   // Construction
   World(float dt = 0.01f);
@@ -32,6 +33,11 @@ public:
 
   // State access
   float get_time() const;
+  // System interface overrides
+  std::vector<float> get_state() const override;
+  void set_state(const std::vector<float> &state) override;
+  std::vector<float> compute_derivatives(const std::vector<float> &state,
+                                         float t) override;
 
   // Public for easy access in demos/adapters for now
   std::vector<RigidBody *> bodies;
