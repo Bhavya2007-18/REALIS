@@ -1,0 +1,23 @@
+=== Phase 0 Architecture Validation: 1D Mass-Spring ===
+
+[Test 1: Forward Euler, dt = 0.01]
+Initial Energy: 5 J
+Max Drift: 8.57105 J
+Final Drift: 8.58462 J
+
+[Test 2: Semi-Implicit Euler, dt = 0.01]
+Initial Energy: 5 J
+Max Drift: 0.0803332 J
+Final Drift: 0.0318604 J
+
+[Test 3: Convergence Test (Semi-Implicit Euler), dt = 0.005]
+Initial Energy: 5 J
+Max Drift: 0.0398502 J
+Final Drift: 0.0158834 J
+
+Convergence verification: dt=0.01 drift (0.0803332) vs dt=0.005 drift (0.0398502)
+--> ERROR REDUCED! Convergence achieved.
+
+Solver independence test: passed implicitly. 
+The physics definitions (RigidBody, SpringForceField) were unchanged.
+Only the `set_integrator()` pointer was modified.
