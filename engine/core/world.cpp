@@ -61,54 +61,114 @@ void World::add_force_field(ForceField *field) {
 void World::set_integrator(Integrator *integ) { integrator = integ; }
 
 float World::compute_energy() const {
-  float total_KE = 0.0f;
-  float total_PE = 0.0f;
+  float kinetic = 0.0f;
+  float potential = 0.0f;
 
-  for (auto *b : bodies) {
-    float v_squared = b->velocity.dot(b->velocity);
-    total_KE += 0.5f * b->mass * v_squared;
+  for (const auto *b : bodies) {
+    // Translational Kinetic: 1/2 m v^2
+    if (b->inv_mass > 0) {
+      kinetic += 0.5f * b->mass * b->velocity.dot(b->velocity);
 
-    for (auto *f : force_fields) {
-      total_PE += f->compute_potential_energy(*b);
+      // Rotational Kinetic: 1/2 w^T I w  (All in body frame, invariant under
+      // rotation)
+      Vec3 Iw = b->inertia_tensor * b->angular_velocity;
+      kinetic += 0.5f * b->angular_velocity.dot(Iw);
+    }
+
+    // Potential Energy (from fields)
+    if (b->inv_mass > 0) {
+      for (const auto *f : force_fields) {
+        potential += f->compute_potential_energy(*b);
+      }
     }
   }
 
-  return total_KE + total_PE;
+  return kinetic + potential;
+}
+
+Vec3 World::compute_angular_momentum() const {
+  Vec3 L_total(0, 0, 0);
+  for (const auto *b : bodies) {
+    if (b->inv_mass > 0) {
+      // L_body = I_body * w_body
+      Vec3 L_body = b->inertia_tensor * b->angular_velocity;
+
+      // L_world = R * L_body
+      // Since `orientation` maps local to world, multiplying by quaternion
+      // performs rotation:
+      Quat q = b->orientation;
+      // q * L_body * q^-1
+      // Simplified quaternion vector rotation via Quat math mapping natively:
+      Quat v_q(0, L_body.x, L_body.y, L_body.z);
+      Quat q_inv(q.w, -q.x, -q.y, -q.z); // conjugate of unit quaternion
+      Quat v_rot = q * v_q * q_inv;
+
+      Vec3 L_world(v_rot.x, v_rot.y, v_rot.z);
+      L_total = L_total + L_world;
+    }
+  }
+  return L_total;
 }
 
 // -----------------------------------------------------------------------------
 // System State Interface
 // -----------------------------------------------------------------------------
 std::vector<float> World::get_state() const {
-  // State length: 6 floats per body (px, py, pz, vx, vy, vz)
-  std::vector<float> state(bodies.size() * 6);
+  // State length: 13 floats per body (px, py, pz, vx, vy, vz, qw, qx, qy, qz,
+  // wx, wy, wz)
+  std::vector<float> state(bodies.size() * 13);
 
   for (size_t i = 0; i < bodies.size(); ++i) {
     const auto *b = bodies[i];
-    size_t offset = i * 6;
+    size_t offset = i * 13;
+    // Translation
     state[offset + 0] = b->position.x;
     state[offset + 1] = b->position.y;
     state[offset + 2] = b->position.z;
     state[offset + 3] = b->velocity.x;
     state[offset + 4] = b->velocity.y;
     state[offset + 5] = b->velocity.z;
+
+    // Rotation
+    state[offset + 6] = b->orientation.w;
+    state[offset + 7] = b->orientation.x;
+    state[offset + 8] = b->orientation.y;
+    state[offset + 9] = b->orientation.z;
+    state[offset + 10] = b->angular_velocity.x;
+    state[offset + 11] = b->angular_velocity.y;
+    state[offset + 12] = b->angular_velocity.z;
   }
   return state;
 }
 
 void World::set_state(const std::vector<float> &state) {
-  if (state.size() != bodies.size() * 6)
+  if (state.size() != bodies.size() * 13)
     return;
 
   for (size_t i = 0; i < bodies.size(); ++i) {
     auto *b = bodies[i];
-    size_t offset = i * 6;
+    size_t offset = i * 13;
+
+    // Translation
     b->position.x = state[offset + 0];
     b->position.y = state[offset + 1];
     b->position.z = state[offset + 2];
     b->velocity.x = state[offset + 3];
     b->velocity.y = state[offset + 4];
     b->velocity.z = state[offset + 5];
+
+    // Rotation
+    b->orientation.w = state[offset + 6];
+    b->orientation.x = state[offset + 7];
+    b->orientation.y = state[offset + 8];
+    b->orientation.z = state[offset + 9];
+    // Enforce rigid body SO(3) normalization independently of integration
+    // errors
+    b->orientation.normalize();
+
+    b->angular_velocity.x = state[offset + 10];
+    b->angular_velocity.y = state[offset + 11];
+    b->angular_velocity.z = state[offset + 12];
   }
 }
 
@@ -131,12 +191,13 @@ std::vector<float> World::compute_derivatives(const std::vector<float> &state,
   }
 
   // 4. Assemble derivative vector
-  // dq/dt = [v_x, v_y, v_z, F_x/m, F_y/m, F_z/m]
-  std::vector<float> derivs(bodies.size() * 6, 0.0f);
+  // dq/dt = [v_x, v_y, v_z, F_x/m, F_y/m, F_z/m, q_dot(w,x,y,z), alpha(x,y,z)]
+  std::vector<float> derivs(bodies.size() * 13, 0.0f);
   for (size_t i = 0; i < bodies.size(); ++i) {
     auto *b = bodies[i];
-    size_t offset = i * 6;
+    size_t offset = i * 13;
 
+    // --- TRANSLATION ---
     // dx/dt = v
     derivs[offset + 0] = b->velocity.x;
     derivs[offset + 1] = b->velocity.y;
@@ -149,10 +210,36 @@ std::vector<float> World::compute_derivatives(const std::vector<float> &state,
       derivs[offset + 4] = accel.y;
       derivs[offset + 5] = accel.z;
     } else {
-      // Kinematic or static object
       derivs[offset + 3] = 0.0f;
       derivs[offset + 4] = 0.0f;
       derivs[offset + 5] = 0.0f;
+    }
+
+    // --- ROTATION ---
+    // dq/dt = 0.5 * q * (0, w)
+    Quat w_pure(0.0f, b->angular_velocity.x, b->angular_velocity.y,
+                b->angular_velocity.z);
+    Quat q_dot = b->orientation * w_pure;
+
+    derivs[offset + 6] = 0.5f * q_dot.w;
+    derivs[offset + 7] = 0.5f * q_dot.x;
+    derivs[offset + 8] = 0.5f * q_dot.y;
+    derivs[offset + 9] = 0.5f * q_dot.z;
+
+    // dw/dt = I^-1 * (tau - w x (Iw))
+    if (b->inv_mass > 0) {
+      Vec3 Iw = b->inertia_tensor * b->angular_velocity;
+      Vec3 w_x_Iw = b->angular_velocity.cross(Iw);
+      Vec3 tau_effective = b->torque - w_x_Iw;
+      Vec3 alpha = b->inv_inertia_tensor * tau_effective;
+
+      derivs[offset + 10] = alpha.x;
+      derivs[offset + 11] = alpha.y;
+      derivs[offset + 12] = alpha.z;
+    } else {
+      derivs[offset + 10] = 0.0f;
+      derivs[offset + 11] = 0.0f;
+      derivs[offset + 12] = 0.0f;
     }
   }
 

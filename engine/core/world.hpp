@@ -22,6 +22,7 @@ public:
   // Simulation
   void step();
   float compute_energy() const;
+  Vec3 compute_angular_momentum() const;
   void log_state() const;
 
   // Setup

@@ -1,0 +1,10 @@
+=== Phase 1B Rotational Validation: Dzhanibekov Tumbling ===
+
+--- 1. Torque-Free Rotational Tracking ---
+[ Semi-Implicit Euler | dt=0.01] Max E Drift: 33.8309 J | Max L Drift: 3.24917 kg*m^2/s
+[ Semi-Implicit Euler | dt=0.005] Max E Drift: 13.9378 J | Max L Drift: 1.31092 kg*m^2/s
+
+[      RK4 Integrator | dt=0.01] Max E Drift: 5.72205e-005 J | Max L Drift: 1.8152e-005 kg*m^2/s
+[      RK4 Integrator | dt=0.005] Max E Drift: 0.000171661 J | Max L Drift: 1.68391e-005 kg*m^2/s
+
+--> Verifying solver independence mapping pure structural constants...

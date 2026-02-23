@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <vector>
 
-
 namespace realis {
 
 // --- Forward Euler (Explicit) ---
@@ -18,26 +17,43 @@ void ForwardEuler::step(System &sys, float dt) {
 }
 
 // --- Semi-Implicit Euler ---
-// Processes state linearly assuming typical translation [p1, v1, p2, v2...]
-// strides
+// Processes state linearly assuming typical translation stride length `N`
+// Because Phase 1B incorporates rotational states (which don't linearly
+// integrate simply using nested v/p coupling trivially over generic indexes
+// without knowing the map structure), we will structurally apply the symplectic
+// form purely to the translational sector `[pos, vel]` (indices 0-5), and
+// explicitly integrate the complex rotational structures `[quat, omega]`
+// natively generically (indices 6-12).
 void SemiImplicitEuler::step(System &sys, float dt) {
   std::vector<float> y_n = sys.get_state();
-  std::vector<float> k1 = sys.compute_derivatives(
-      y_n, 0.0f); // Evaluates acceleration at current pos
+  std::vector<float> k1 = sys.compute_derivatives(y_n, 0.0f);
 
   std::vector<float> y_np1 = y_n;
 
-  // We linearly assume strides of 6 representing (px,py,pz, vx,vy,vz)
-  for (size_t i = 0; i < y_n.size(); i += 6) {
+  // Length is 13 floats per body
+  for (size_t i = 0; i < y_n.size(); i += 13) {
+    // Translation: Symplectic Semi-Implicit
     // v_{n+1} = v_n + a_n * dt
     y_np1[i + 3] = y_n[i + 3] + dt * k1[i + 3];
     y_np1[i + 4] = y_n[i + 4] + dt * k1[i + 4];
     y_np1[i + 5] = y_n[i + 5] + dt * k1[i + 5];
 
     // p_{n+1} = p_n + v_{n+1} * dt
-    y_np1[i + 0] = y_n[i + 0] + dt * y_np1[i + 3];
+    y_np1[i + 0] = y_n[i + 0] + dt * y_np1[i + 3]; // using new vel
     y_np1[i + 1] = y_n[i + 1] + dt * y_np1[i + 4];
     y_np1[i + 2] = y_n[i + 2] + dt * y_np1[i + 5];
+
+    // Rotation: Explicit Euler
+    // w_{n+1} = w_n + alpha_n * dt
+    y_np1[i + 10] = y_n[i + 10] + dt * k1[i + 10];
+    y_np1[i + 11] = y_n[i + 11] + dt * k1[i + 11];
+    y_np1[i + 12] = y_n[i + 12] + dt * k1[i + 12];
+
+    // q_{n+1} = q_n + q_dot_n * dt
+    y_np1[i + 6] = y_n[i + 6] + dt * k1[i + 6];
+    y_np1[i + 7] = y_n[i + 7] + dt * k1[i + 7];
+    y_np1[i + 8] = y_n[i + 8] + dt * k1[i + 8];
+    y_np1[i + 9] = y_n[i + 9] + dt * k1[i + 9];
   }
 
   sys.set_state(y_np1);
