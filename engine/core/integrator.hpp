@@ -1,13 +1,25 @@
-// Numerical integrator
+// Numerical integrators
 #pragma once
+#include "../dynamics/rigid_body.hpp"
 #include "../math/vec3.hpp"
+#include <vector>
 
 namespace realis {
 
-// Semi-implicit Euler (symplectic)
-// v_new = v + a*dt
-// x_new = x + v_new*dt  (uses updated velocity)
-void integrate_semi_implicit_euler(Vec3& position, Vec3& velocity,
-                                   const Vec3& acceleration, float dt);
+class Integrator {
+public:
+  virtual ~Integrator() = default;
+  virtual void step(std::vector<RigidBody *> &bodies, float dt) = 0;
+};
+
+class SemiImplicitEuler : public Integrator {
+public:
+  void step(std::vector<RigidBody *> &bodies, float dt) override;
+};
+
+class ForwardEuler : public Integrator {
+public:
+  void step(std::vector<RigidBody *> &bodies, float dt) override;
+};
 
 } // namespace realis
