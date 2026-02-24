@@ -1,5 +1,5 @@
-// World - simulation container
 #include "world.hpp"
+#include "../collision/collision_detector.hpp"
 #include "../dynamics/rigid_body.hpp"
 #include "integrator.hpp"
 #include <cmath>
@@ -32,6 +32,23 @@ void World::step() {
   if (integrator) {
     integrator->step(*this, dt);
   }
+
+  // 3.5 Detect and Resolve Collisions (Impulses)
+  std::vector<Contact> contacts;
+  for (size_t i = 0; i < bodies.size(); ++i) {
+    for (size_t j = i + 1; j < bodies.size(); ++j) {
+      if (bodies[i]->inv_mass == 0.0f && bodies[j]->inv_mass == 0.0f)
+        continue;
+
+      if (CollisionDetector::gjk_test(bodies[i], bodies[j])) {
+        Contact contact = CollisionDetector::get_contact(bodies[i], bodies[j]);
+        if (contact.colliding) {
+          contacts.push_back(contact);
+        }
+      }
+    }
+  }
+  contact_solver.solve_contacts(contacts);
 
   // 4. Solve Constraints
   if (!constraints.empty()) {
@@ -84,6 +101,16 @@ float World::compute_energy() const {
   }
 
   return kinetic + potential;
+}
+
+Vec3 World::compute_linear_momentum() const {
+  Vec3 p(0, 0, 0);
+  for (const auto *b : bodies) {
+    if (b->inv_mass > 0) {
+      p = p + b->velocity * b->mass;
+    }
+  }
+  return p;
 }
 
 Vec3 World::compute_angular_momentum() const {

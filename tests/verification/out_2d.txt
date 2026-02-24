@@ -1,0 +1,16 @@
+=== Phase 2A Verification: 2D Oblique Collision ===
+
+--- 2D Oblique Elastic Collision Testing (dt=0.01) ---
+Before Collision:
+  E_total: 5.5 J
+  P_total: (1, 0, 0) kg m/s
+  v1: (2, 0, 0) m/s
+  v2: (-1, 0, 0) m/s
+
+Collision occurred around t = 2.76 s
+After Collision:
+  E_total: 5.5 J (Error: 4.76837e-007 J)
+  P_total: (1, -2.38419e-007, 0) kg m/s (Error: 3.37175e-007 kg m/s)
+  v1: (-0.690528, 1.56428, 0) m/s
+  v2: (0.793686, -1.04285, 0) m/s
+

@@ -1,5 +1,6 @@
 // Physics world container
 #pragma once
+#include "../collision/solver.hpp"
 #include "../constraints/constraint.hpp"
 #include "../constraints/constraint_solver.hpp"
 #include "../dynamics/force_field.hpp"
@@ -22,6 +23,7 @@ public:
   // Simulation
   void step();
   float compute_energy() const;
+  Vec3 compute_linear_momentum() const;
   Vec3 compute_angular_momentum() const;
   void log_state() const;
 
@@ -48,6 +50,7 @@ public:
 private:
   Timestep timestep;
   ConstraintSolver constraint_solver;
+  ContactSolver contact_solver;
   Integrator *integrator;
 };
 

@@ -1,0 +1,16 @@
+=== Phase 2A Verification: Impulse Dynamics ===
+
+--- 1D Elastic Collision Testing (dt=0.01) ---
+Before Collision:
+  E_total: 5.5 J
+  P_total: (1, 0, 0) kg m/s
+  v1: 2 m/s
+  v2: -1 m/s
+
+Collision occurred around t = 2.67 s
+After Collision:
+  E_total: 5.5 J (Error: 4.29153e-006 J)
+  P_total: (1, 0, 0) kg m/s (Error: 4.76837e-007 kg m/s)
+  v1: -1.6 m/s (Expected: -1.6 m/s)
+  v2: 1.4 m/s (Expected: 1.4 m/s)
+
