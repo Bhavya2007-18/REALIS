@@ -1,0 +1,9 @@
+In file included from ../../engine/dynamics/contact_resolver.cpp:2:0:
+../../engine/dynamics/contact_resolver.hpp:3:23: fatal error: contact.hpp: No such file or directory
+ #include "contact.hpp"
+                       ^
+compilation terminated.
+../../engine/dynamics/inertia.cpp:2:20: fatal error: mat3.hpp: No such file or directory
+ #include "mat3.hpp"
+                    ^
+compilation terminated.

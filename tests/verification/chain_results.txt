@@ -1,0 +1,12 @@
+--- 3-Body Chain Testing (Gravity applied, dt=0.01) ---
+Initial Energy: 0 J
+After 500 steps:
+  E_total: 2.9171 J (Error: 2.9171 J)
+  Max Constraint Drift (Any link): 0.0376546 m
+
+--- 3-Body Chain Testing (Gravity applied, dt=0.005) ---
+Initial Energy: 0 J
+After 1000 steps:
+  E_total: 1.38963 J (Error: 1.38963 J)
+  Max Constraint Drift (Any link): 0.0186402 m
+

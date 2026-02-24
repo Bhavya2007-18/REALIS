@@ -5,6 +5,11 @@
 namespace realis {
 
 void ContactSolver::solve_contacts(const std::vector<Contact> &contacts) {
+  // NOTE (Architecture limitation):
+  // Sequential impulse application is inherently order-dependent.
+  // Solving multiple simultaneous contacts correctly requires a global LCP
+  // solver. For Phase 1B, this is acceptable as long as we process collisions
+  // deterministically.
   for (const auto &contact : contacts) {
     if (!contact.colliding || !contact.body_a || !contact.body_b)
       continue;

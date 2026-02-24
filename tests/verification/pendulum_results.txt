@@ -1,0 +1,14 @@
+--- Pendulum Testing (Gravity applied, dt=0.01) ---
+Initial Energy: 0 J
+After 500 steps:
+  E_total: 0.326496 J (Error: 0.326496 J)
+  Final Distance: 1.99938 m
+  Max Constraint Drift: 0.00976539 m
+
+--- Pendulum Testing (Gravity applied, dt=0.005) ---
+Initial Energy: 0 J
+After 1000 steps:
+  E_total: 0.159222 J (Error: 0.159222 J)
+  Final Distance: 1.99969 m
+  Max Constraint Drift: 0.00484347 m
+

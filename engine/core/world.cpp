@@ -1,9 +1,11 @@
 #include "world.hpp"
-#include "../collision/collision_detector.hpp"
+#include "../collision/broadphase.hpp"
+#include "../collision/narrowphase.hpp"
 #include "../dynamics/rigid_body.hpp"
 #include "integrator.hpp"
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 namespace realis {
 
@@ -28,32 +30,29 @@ void World::step() {
     }
   }
 
-  // 3. Integrate System State
+  // Constraints are now solved internally within the Integrator's evaluation
+  // of compute_derivatives() to ensure RK4 and Euler get correct forces at each
+  // sub-step.
+
+  // 4. Integrate System State
   if (integrator) {
     integrator->step(*this, dt);
   }
 
-  // 3.5 Detect and Resolve Collisions (Impulses)
+  // 5. Detect and Resolve Collisions (Impulses)
   std::vector<Contact> contacts;
-  for (size_t i = 0; i < bodies.size(); ++i) {
-    for (size_t j = i + 1; j < bodies.size(); ++j) {
-      if (bodies[i]->inv_mass == 0.0f && bodies[j]->inv_mass == 0.0f)
-        continue;
 
-      if (CollisionDetector::gjk_test(bodies[i], bodies[j])) {
-        Contact contact = CollisionDetector::get_contact(bodies[i], bodies[j]);
-        if (contact.colliding) {
-          contacts.push_back(contact);
-        }
-      }
+  // BroadPhase: Prune distant pairs
+  std::vector<BroadPhasePair> potential_pairs = BroadPhase::detect(bodies);
+
+  // NarrowPhase: Generate precise contacts
+  for (const auto &pair : potential_pairs) {
+    Contact contact = NarrowPhase::generate_contact(pair.a, pair.b);
+    if (contact.colliding) {
+      contacts.push_back(contact);
     }
   }
   contact_solver.solve_contacts(contacts);
-
-  // 4. Solve Constraints
-  if (!constraints.empty()) {
-    constraint_solver.solve(constraints, dt);
-  }
 
   timestep.advance();
 }
@@ -215,6 +214,12 @@ std::vector<float> World::compute_derivatives(const std::vector<float> &state,
         b->apply_force(f->compute_force(*b));
       }
     }
+  }
+
+  // Phase 2A: Solve constraints for this evaluation state so constraint forces
+  // are included
+  if (!constraints.empty()) {
+    constraint_solver.solve(constraints, timestep.get_dt());
   }
 
   // 4. Assemble derivative vector

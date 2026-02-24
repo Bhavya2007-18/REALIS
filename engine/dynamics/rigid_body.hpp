@@ -15,6 +15,9 @@ namespace realis {
 
 class RigidBody {
 public:
+  // Material
+  float restitution = 1.0f; // Coefficient of restitution
+
   // State
   Vec3 position;
   Vec3 velocity;

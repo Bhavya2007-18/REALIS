@@ -1,7 +1,7 @@
 // Abstract constraint base class
 #pragma once
-#include "../math/vec3.hpp"
 #include "../dynamics/rigid_body.hpp"
+#include "../math/vec3.hpp"
 
 namespace realis {
 
@@ -11,48 +11,50 @@ namespace realis {
  */
 class Constraint {
 public:
-    RigidBody* bodyA;
-    RigidBody* bodyB;
+  RigidBody *bodyA;
+  RigidBody *bodyB;
 
-    // Jacobian components for 1D constraint between two bodies
-    Vec3 linearA;
-    Vec3 angularA;
-    Vec3 linearB;
-    Vec3 angularB;
+  // Jacobian components for 1D constraint between two bodies
+  Vec3 linearA;
+  Vec3 angularA;
+  Vec3 linearB;
+  Vec3 angularB;
 
-    float bias;          // b in J*v + b = 0 (Restitution, Baumgarte stabilization)
-    float effectiveMass; // 1 / (J * M^-1 * J^T)
-    float lambda;        // Accumulated impulse for PGS stability
+  float bias;          // Baumgarte stabilization (or restitution bias)
+  float effectiveMass; // Only used by PGS temporarily if needed, but not by
+                       // exact solver if it builds global M
+  float lambda; // The stored exact multiplier (can be used for warm-starting or
+                // clamping)
 
-    // Limits for inequality constraints
-    float minLambda;
-    float maxLambda;
+  // Continuous constraint quantities
+  float C_val;   // C(q) value
+  float J_dot_v; // \dot{J} * v value
 
-    Constraint(RigidBody* a, RigidBody* b) 
-        : bodyA(a), bodyB(b)
-        , bias(0.0f)
-        , effectiveMass(0.0f)
-        , lambda(0.0f)
-        , minLambda(-1e20f)
-        , maxLambda(1e20f) 
-    {}
+  // Limits for inequality constraints
+  float minLambda;
+  float maxLambda;
 
-    virtual ~Constraint() = default;
+  Constraint(RigidBody *a, RigidBody *b)
+      : bodyA(a), bodyB(b), bias(0.0f), effectiveMass(0.0f), lambda(0.0f),
+        C_val(0.0f), J_dot_v(0.0f), minLambda(-1e20f), maxLambda(1e20f) {}
 
-    // Prepare solver data: compute Jacobian, Effective Mass, and Bias
-    virtual void pre_step(float dt) = 0;
+  virtual ~Constraint() = default;
 
-    // Apply the computed impulse lambda to bodies
-    void apply_impulse(float dLambda) {
-        if (bodyA && bodyA->inv_mass > 0) {
-            bodyA->velocity = bodyA->velocity + linearA * (bodyA->inv_mass * dLambda);
-            bodyA->angular_velocity = bodyA->angular_velocity + angularA * (dLambda); // Simplified angular for now
-        }
-        if (bodyB && bodyB->inv_mass > 0) {
-            bodyB->velocity = bodyB->velocity + linearB * (bodyB->inv_mass * dLambda);
-            bodyB->angular_velocity = bodyB->angular_velocity + angularB * (dLambda);
-        }
+  // Prepare solver data: compute Jacobian, C_val, J_dot_v, Effective Mass, and
+  // Bias
+  virtual void pre_step(float dt) = 0;
+
+  // Apply the computed constraint force to bodies
+  void apply_constraint_force(float lambda_val) {
+    if (bodyA && bodyA->inv_mass > 0) {
+      bodyA->apply_force(linearA * lambda_val);
+      // Ignore angular force apply for now until full inertia maps are aligned
     }
+    if (bodyB && bodyB->inv_mass > 0) {
+      bodyB->apply_force(linearB * lambda_val);
+      // Ignore angular force apply for now
+    }
+  }
 };
 
 } // namespace realis

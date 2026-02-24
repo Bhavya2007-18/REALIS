@@ -1,0 +1,65 @@
+verify_constraint_chain.cpp: In function 'void verify_chain(realis::Integrator*, float)':
+verify_constraint_chain.cpp:23:18: error: no matching function for call to 'realis::RigidBody::RigidBody(realis::geometry::Sphere*)'
+   RigidBody b1(&s);
+                  ^
+In file included from ../../engine/constraints/constraint.hpp:3:0,
+                 from ../../engine/constraints/distance_constraint.hpp:3,
+                 from verify_constraint_chain.cpp:1:
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note: candidate: realis::RigidBody::RigidBody()
+   RigidBody();
+   ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note:   candidate expects 0 arguments, 1 provided
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(const realis::RigidBody&)
+ class RigidBody {
+       ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'const realis::RigidBody&'
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(realis::RigidBody&&)
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'realis::RigidBody&&'
+verify_constraint_chain.cpp:26:18: error: no matching function for call to 'realis::RigidBody::RigidBody(realis::geometry::Sphere*)'
+   RigidBody b2(&s);
+                  ^
+In file included from ../../engine/constraints/constraint.hpp:3:0,
+                 from ../../engine/constraints/distance_constraint.hpp:3,
+                 from verify_constraint_chain.cpp:1:
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note: candidate: realis::RigidBody::RigidBody()
+   RigidBody();
+   ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note:   candidate expects 0 arguments, 1 provided
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(const realis::RigidBody&)
+ class RigidBody {
+       ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'const realis::RigidBody&'
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(realis::RigidBody&&)
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'realis::RigidBody&&'
+verify_constraint_chain.cpp:29:18: error: no matching function for call to 'realis::RigidBody::RigidBody(realis::geometry::Sphere*)'
+   RigidBody b3(&s);
+                  ^
+In file included from ../../engine/constraints/constraint.hpp:3:0,
+                 from ../../engine/constraints/distance_constraint.hpp:3,
+                 from verify_constraint_chain.cpp:1:
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note: candidate: realis::RigidBody::RigidBody()
+   RigidBody();
+   ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note:   candidate expects 0 arguments, 1 provided
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(const realis::RigidBody&)
+ class RigidBody {
+       ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'const realis::RigidBody&'
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(realis::RigidBody&&)
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   no known conversion for argument 1 from 'realis::geometry::Sphere*' to 'realis::RigidBody&&'
+verify_constraint_chain.cpp:44:51: error: no matching function for call to 'realis::RigidBody::RigidBody(realis::geometry::Sphere&, float)'
+   RigidBody *static_anchor = new RigidBody(s, 0.0f);
+                                                   ^
+In file included from ../../engine/constraints/constraint.hpp:3:0,
+                 from ../../engine/constraints/distance_constraint.hpp:3,
+                 from verify_constraint_chain.cpp:1:
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note: candidate: realis::RigidBody::RigidBody()
+   RigidBody();
+   ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:38:3: note:   candidate expects 0 arguments, 2 provided
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(const realis::RigidBody&)
+ class RigidBody {
+       ^~~~~~~~~
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   candidate expects 1 argument, 2 provided
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note: candidate: constexpr realis::RigidBody::RigidBody(realis::RigidBody&&)
+../../engine/constraints/../dynamics/rigid_body.hpp:16:7: note:   candidate expects 1 argument, 2 provided

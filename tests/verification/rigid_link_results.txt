@@ -1,0 +1,18 @@
+--- Rigid Link Motion Testing (dt=0.01) ---
+Initial Energy: 1 J
+Initial Distance: 2 m
+
+After 1000 steps:
+  E_total: 1.00103 J (Error: 0.00102592 J)
+  Final Distance: 1.999 m
+  Max Constraint Drift: 0.0010016 m
+
+--- Rigid Link Motion Testing (dt=0.005) ---
+Initial Energy: 1 J
+Initial Distance: 2 m
+
+After 2000 steps:
+  E_total: 1.00051 J (Error: 0.000506163 J)
+  Final Distance: 1.9995 m
+  Max Constraint Drift: 0.000500798 m
+
