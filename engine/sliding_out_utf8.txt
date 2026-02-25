@@ -1,0 +1,29 @@
+=== Phase 3 Verification: Sliding Block (Coulomb Friction) ===
+
+--- Sliding Block Test (dt=0.01, mu=0.3) ---
+Initial Velocity X: 5 m/s
+Expected Deceleration: -2.943 m/s^2
+Expected Stop Time: ~1.69895 s
+
+t=0.01s | PosX=0.05m | VelX=5.00m/s | E=34.82J
+t=0.21s | PosX=0.99m | VelX=4.38m/s | E=28.61J
+t=0.41s | PosX=1.81m | VelX=3.79m/s | E=23.41J
+t=0.61s | PosX=2.51m | VelX=3.20m/s | E=18.91J
+t=0.81s | PosX=3.10m | VelX=2.62m/s | E=15.10J
+t=1.01s | PosX=3.56m | VelX=2.03m/s | E=11.98J
+t=1.21s | PosX=3.91m | VelX=1.44m/s | E=9.55J
+t=1.41s | PosX=4.15m | VelX=0.85m/s | E=7.82J
+t=1.61s | PosX=4.26m | VelX=0.26m/s | E=6.78J
+t=1.81s | PosX=4.27m | VelX=0.00m/s | E=6.33J
+t=2.01s | PosX=4.27m | VelX=0.00m/s | E=5.94J
+t=2.21s | PosX=4.27m | VelX=0.00m/s | E=5.56J
+t=2.41s | PosX=4.27m | VelX=0.00m/s | E=5.17J
+t=2.61s | PosX=4.27m | VelX=0.00m/s | E=4.79J
+t=2.81s | PosX=4.27m | VelX=0.00m/s | E=4.40J
+
+Final Results:
+  Measured Avg Deceleration: -2.94 m/s^2 (Expected: -2.94)
+  Actual Stop Time: 1.70 s (Expected: ~1.70)
+  Final X Velocity (Stick Transition): 0.00 m/s (Expected: 0.0)
+  Energy Exploded: No
+

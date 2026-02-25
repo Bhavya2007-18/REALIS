@@ -24,14 +24,16 @@ set(REALIS_SOURCES
     dynamics/force_registry.cpp
     dynamics/inertia.cpp
     dynamics/contact_resolver.cpp
-    collision/collision_detector.cpp
+    collision/broadphase.cpp
+    collision/narrowphase.cpp
+    collision/solver.cpp
     constraints/contact_constraint.cpp
     constraints/constraint_solver.cpp
-    engine/cad/cad_importer.cpp
-    engine/cad/cad_validator.cpp
-    engine/geometry/contact_generator.cpp
-    engine/fem/fem_solver.hpp
-    engine/coupling/rigid_fem_coupler.cpp
+    cad/cad_importer.cpp
+    cad/cad_validator.cpp
+    geometry/contact_generator.cpp
+    fem/fem_solver.hpp
+    coupling/rigid_fem_coupler.cpp
     energy/energy_monitor.cpp
 )
 
@@ -55,6 +57,15 @@ target_link_libraries(phase3_rotation realis_core)
 
 add_executable(phase4_collision ../examples/phase4_collision.cpp)
 target_link_libraries(phase4_collision realis_core)
+
+add_executable(verify_resting_block ../tests/verification/verify_resting_block.cpp)
+target_link_libraries(verify_resting_block realis_core)
+
+add_executable(verify_sliding_block ../tests/verification/verify_sliding_block.cpp)
+target_link_libraries(verify_sliding_block realis_core)
+
+add_executable(verify_stacking ../tests/verification/verify_stacking.cpp)
+target_link_libraries(verify_stacking realis_core)
 
 # Install rules
 install(TARGETS realis_core DESTINATION lib)

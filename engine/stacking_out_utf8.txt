@@ -1,0 +1,15 @@
+=== Phase 3 Verification: Stacked Bodies ===
+
+--- Stacking Test (dt=0.01, 3 Blocks) ---
+t=0.01s | E=73.56J | Y1=1.00 Y2=2.50 Y3=4.00
+t=3.01s | E=34.36J | Y1=0.21 Y2=1.17 Y3=2.12
+t=6.01s | E=25.24J | Y1=-0.10 Y2=0.86 Y3=1.81
+t=9.01s | E=16.12J | Y1=-0.40 Y2=0.55 Y3=1.50
+t=12.01s | E=7.38J | Y1=-0.70 Y2=0.25 Y3=1.20
+
+Final Results:
+  Block 1 Y Position: -0.99 m (Expected: 0.5)
+  Block 2 Y Position: -0.04 m (Expected: 1.5)
+  Block 3 Y Position: 0.91 m (Expected: 2.5)
+  Energy Exploded/Increased: No
+

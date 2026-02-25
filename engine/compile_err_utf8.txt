@@ -1,0 +1,199 @@
+﻿g++ : ../tests/verific
+ation/verify_sliding_b
+lock.cpp: In function 
+'void verify_sliding_b
+lock(realis::Integrato
+r*, float)':
+At line:1 char:1
++ g++ -std=c++17 -O2 
+-I../engine ../tests/v
+erification/verify_sli
+ding_b ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (../tests/v   
+ erifi...ator*, fl    
+oat)'::String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+../tests/verification/
+verify_sliding_block.c
+pp:42:49: error: no 
+matching function for 
+call to 'realis::Unifo
+rmGravityField::Unifor
+mGravityField(realis::
+Vec3)'
+   
+UniformGravityField 
+gravity(Vec3(0, 
+-9.81f, 0));
+                      
+                      
+     ^
+In file included from 
+../tests/verification/
+verify_sliding_block.c
+pp:4:0:
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:9:
+3: note: candidate: re
+alis::UniformGravityFi
+eld::UniformGravityFie
+ld(float)
+   UniformGravityField
+(float g = 9.81f) : 
+g_accel(g) {}
+   ^~~~~~~~~~~~~~~~~~~
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:9:
+3: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 
+'float'
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note: candidate: 
+constexpr realis::Unif
+ormGravityField::Unifo
+rmGravityField(const r
+ealis::UniformGravityF
+ield&)
+ class 
+UniformGravityField : 
+public ForceField {
+       
+^~~~~~~~~~~~~~~~~~~
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 
+'const realis::Uniform
+GravityField&'
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note: candidate: 
+constexpr realis::Unif
+ormGravityField::Unifo
+rmGravityField(realis:
+:UniformGravityField&&
+)
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 'rea
+lis::UniformGravityFie
+ld&&'
+../tests/verification/
+verify_resting_block.c
+pp: In function 'void 
+verify_resting_block(r
+ealis::Integrator*, 
+float)':
+../tests/verification/
+verify_resting_block.c
+pp:42:49: error: no 
+matching function for 
+call to 'realis::Unifo
+rmGravityField::Unifor
+mGravityField(realis::
+Vec3)'
+   
+UniformGravityField 
+gravity(Vec3(0, 
+-9.81f, 0));
+                      
+                      
+     ^
+In file included from 
+../tests/verification/
+verify_resting_block.c
+pp:4:0:
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:9:
+3: note: candidate: re
+alis::UniformGravityFi
+eld::UniformGravityFie
+ld(float)
+   UniformGravityField
+(float g = 9.81f) : 
+g_accel(g) {}
+   ^~~~~~~~~~~~~~~~~~~
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:9:
+3: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 
+'float'
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note: candidate: 
+constexpr realis::Unif
+ormGravityField::Unifo
+rmGravityField(const r
+ealis::UniformGravityF
+ield&)
+ class 
+UniformGravityField : 
+public ForceField {
+       
+^~~~~~~~~~~~~~~~~~~
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 
+'const realis::Uniform
+GravityField&'
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note: candidate: 
+constexpr realis::Unif
+ormGravityField::Unifo
+rmGravityField(realis:
+:UniformGravityField&&
+)
+../tests/verification/
+../../engine/dynamics/
+uniform_gravity.hpp:7:
+7: note:   no known 
+conversion for 
+argument 1 from 
+'realis::Vec3' to 'rea
+lis::UniformGravityFie
+ld&&'
+../tests/verification/
+verify_resting_block.c
+pp:68:24: error: 
+'struct realis::Vec3' 
+has no member named 
+'length'
+         block.velocit
+y.length() < 1e-3f) {
+                      
+  ^~~~~~

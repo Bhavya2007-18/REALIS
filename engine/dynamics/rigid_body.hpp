@@ -17,6 +17,7 @@ class RigidBody {
 public:
   // Material
   float restitution = 1.0f; // Coefficient of restitution
+  float friction = 0.5f;    // Coefficient of Coulomb friction
 
   // State
   Vec3 position;

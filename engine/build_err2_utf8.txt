@@ -1,0 +1,95 @@
+﻿g++ : collision/broadp
+hase.cpp: In static 
+member function 
+'static std::vector<re
+alis::BroadPhasePair> 
+realis::BroadPhase::de
+tect(const std::vector
+<realis::RigidBody*>&)
+':
+At line:1 char:1
++ g++ -std=c++17 -O2 
+-I../engine ../tests/v
+erification/verify_res
+ting_b ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (collision/   
+ broad...RigidBody    
+*>&)'::String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+collision/broadphase.c
+pp:19:8: error: 
+'size_t' was not 
+declared in this scope
+   for (size_t i = 0; 
+i < bodies.size(); 
+++i) {
+        ^~~~~~
+collision/broadphase.c
+pp:19:8: note: 
+suggested 
+alternatives:
+In file included from 
+c:\mingw\lib\gcc\mingw
+32\6.3.0\include\c++\b
+its\stl_algobase.h:59:
+0,
+                 from 
+c:\mingw\lib\gcc\mingw
+32\6.3.0\include\c++\v
+ector:60,
+                 from 
+collision/broadphase.h
+pp:3,
+                 from 
+collision/broadphase.c
+pp:1:
+c:\mingw\lib\gcc\mingw
+32\6.3.0\include\c++\m
+ingw32\bits\c++config.
+h:201:26: note:   
+'std::size_t'
+   typedef 
+__SIZE_TYPE__  size_t;
+                      
+    ^~~~~~
+c:\mingw\lib\gcc\mingw
+32\6.3.0\include\c++\m
+ingw32\bits\c++config.
+h:201:26: note:   
+'std::size_t'
+collision/broadphase.c
+pp:19:22: error: 'i' 
+was not declared in 
+this scope
+   for (size_t i = 0; 
+i < bodies.size(); 
+++i) {
+                      
+^
+collision/broadphase.c
+pp:20:17: error: 
+expected ';' before 
+'j'
+     for (size_t j = 
+i + 1; j < 
+bodies.size(); ++j) {
+                 ^
+collision/broadphase.c
+pp:20:28: error: 'j' 
+was not declared in 
+this scope
+     for (size_t j = 
+i + 1; j < 
+bodies.size(); ++j) {
+                      
+      ^

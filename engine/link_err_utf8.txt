@@ -1,0 +1,31 @@
+﻿g++ : C:\Users\bhavy\AppDa
+ta\Local\Temp\ccvoV5HR.o:c
+onstraint_solver.cpp:(.tex
+t+0x3e4): undefined 
+reference to `realis::Matr
+ixSolver::solve_gaussian(s
+td::vector<float, 
+std::allocator<float> >&, 
+std::vector<float, 
+std::allocator<float> >&, 
+std::vector<float, 
+std::allocator<float> >&)'
+At line:1 char:1
++ g++ -std=c++17 -O2 
+-I../engine ../tests/verif
+ication/verify_sliding_b 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (C  
+  :\Users\bhavy\...tor<   
+ float> >&)':String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+collect2.exe: error: ld 
+returned 1 exit status

@@ -1,0 +1,21 @@
+=== Phase 3 Verification: Resting Block ===
+
+--- Resting Block Test (dt=0.01) ---
+Initial Y: 5 m
+t=0.01s | PosY=5.00m | VelY=-0.10m/s | E=49.05J
+t=2.01s | PosY=0.87m | VelY=0.00m/s | E=8.57J
+t=4.01s | PosY=0.68m | VelY=0.00m/s | E=6.65J
+t=6.01s | PosY=0.48m | VelY=0.00m/s | E=4.72J
+t=8.01s | PosY=0.29m | VelY=0.00m/s | E=2.80J
+t=10.01s | PosY=0.09m | VelY=0.00m/s | E=0.87J
+t=12.01s | PosY=-0.11m | VelY=0.00m/s | E=-1.05J
+t=14.01s | PosY=-0.30m | VelY=0.00m/s | E=-2.98J
+t=16.01s | PosY=-0.50m | VelY=0.00m/s | E=-4.90J
+t=18.01s | PosY=-0.70m | VelY=0.00m/s | E=-6.82J
+
+Final Results:
+  Final Y Position: -0.89 m (Expected: 1.0 m)
+  Final Y Velocity: 0.00 m/s (Expected: 0.0 m/s)
+  Has Settled: No
+  Energy Exploded: No
+
