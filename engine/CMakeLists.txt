@@ -67,10 +67,14 @@ target_link_libraries(verify_sliding_block realis_core)
 add_executable(verify_stacking ../tests/verification/verify_stacking.cpp)
 target_link_libraries(verify_stacking realis_core)
 
+# Phase 4A: 1D FEM Verification
+add_executable(verify_bar1d ../tests/fem/verify_bar1d.cpp)
+target_link_libraries(verify_bar1d realis_core)
+
 # Install rules
 install(TARGETS realis_core DESTINATION lib)
 install(DIRECTORY 
-    math core dynamics collision constraints multibody softbody fluids energy debug io
+    math core dynamics collision constraints multibody softbody fluids energy debug io fem
     DESTINATION include/realis
     FILES_MATCHING PATTERN "*.hpp"
 )

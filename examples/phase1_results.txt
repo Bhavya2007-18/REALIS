@@ -1,0 +1,67 @@
+======================================
+REALIS Physics Engine - Phase 1 Demo
+Point Mass Motion Under Gravity
+======================================
+
+=== Phase 1: Free Fall Test ===
+
+Initial position: (0, 10, 0) m
+Initial velocity: (0, 0, 0) m/s
+Timestep: 0.01 s
+Duration: 1 s
+Gravity: -9.81 m/s^2
+
+--- Simulation Log (every 10 steps) ---
+t=0.10  y=9.9460  vy=-0.9810  E=98.0519
+t=0.20  y=9.7940  vy=-1.9620  E=98.0038
+t=0.30  y=9.5438  vy=-2.9430  E=97.9556
+t=0.40  y=9.1956  vy=-3.9240  E=97.9075
+t=0.50  y=8.7492  vy=-4.9050  E=97.8594
+t=0.60  y=8.2048  vy=-5.8860  E=97.8113
+t=0.70  y=7.5622  vy=-6.8670  E=97.7632
+t=0.80  y=6.8216  vy=-7.8480  E=97.7151
+t=0.90  y=5.9828  vy=-8.8290  E=97.6669
+t=1.00  y=5.0459  vy=-9.8100  E=97.6188
+
+=== Results ===
+Final position: (0.0000, 5.0459, 0.0000) m
+Final velocity: (0.0000, -9.8100, 0.0000) m/s
+
+Analytical solution:
+  Expected y:  5.0950 m
+  Expected vy: -9.8100 m/s
+
+Error analysis:
+  Position error: 0.0491 m
+  Velocity error: 0.0000 m/s
+  Energy drift:   -0.4905%
+
+PASS: C++ free-fall matches analytical solution!
+
+======================================
+
+
+=== Phase 1: Projectile Motion Test ===
+
+Launch speed: 20.0000 m/s at 45.0000 deg
+vx0=14.1421 m/s  vy0=14.1421 m/s
+
+--- Simulating until y < 0 ---
+
+=== Results ===
+Maximum height: 10.12 m
+Range:          40.73 m
+Flight time:    2.88 s
+
+Analytical solution:
+  Max height:  10.19 m
+  Range:       40.77 m
+  Flight time: 2.88 s
+
+Energy drift: -0.6929%
+
+PASS: C++ projectile matches analytical solution!
+
+======================================
+Phase 1 Validation Complete
+======================================

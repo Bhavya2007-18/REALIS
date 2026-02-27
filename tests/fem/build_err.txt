@@ -1,0 +1,321 @@
+﻿C:\MinGW\bin\g++.exe 
+: In file included 
+from d:\GIT WORK AND S
+TUDY\REALIS\tests\fem\
+verify_bar1d.cpp:33:0:
+At line:1 char:1
++ 
+C:\MinGW\bin\g++.exe 
+-std=c++17 -I"d:\GIT 
+WORK AND 
+STUDY\REALIS\engin ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (In file in   
+ clude...bar1d.cpp    
+:33:0::String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp: In 
+member function 'reali
+s::fem::Bar1DResult re
+alis::fem::Bar1DSolver
+::solve() const':
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:22: 
+error: expected 
+unqualified-id before 
+'[' token
+     for (const auto 
+&[node_id, force] : 
+neumann_bcs) {
+                      
+^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:22: 
+error: expected ';' 
+before '[' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:23: 
+error: 'node_id' was 
+not declared in this 
+scope
+     for (const auto 
+&[node_id, force] : 
+neumann_bcs) {
+                      
+ ^~~~~~~
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:32: 
+error: 'force' was 
+not declared in this 
+scope
+     for (const auto 
+&[node_id, force] : 
+neumann_bcs) {
+                      
+          ^~~~~
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp: In 
+lambda function:
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:39: 
+error: expected '{' 
+before ':' token
+     for (const auto 
+&[node_id, force] : 
+neumann_bcs) {
+                      
+                 ^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp: In 
+member function 'reali
+s::fem::Bar1DResult re
+alis::fem::Bar1DSolver
+::solve() const':
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:39: 
+error: expected ';' 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:39: 
+error: expected 
+primary-expression 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:39: 
+error: expected ')' 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:143:39: 
+error: expected 
+primary-expression 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:22: 
+error: expected 
+unqualified-id before 
+'[' token
+     for (const auto 
+&[d, _] : 
+dirichlet_bcs) {
+                      
+^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:22: 
+error: expected ';' 
+before '[' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:23: 
+error: 'd' was not 
+declared in this scope
+     for (const auto 
+&[d, _] : 
+dirichlet_bcs) {
+                      
+ ^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:26: 
+error: '_' was not 
+declared in this scope
+     for (const auto 
+&[d, _] : 
+dirichlet_bcs) {
+                      
+    ^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp: In 
+lambda function:
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:29: 
+error: expected '{' 
+before ':' token
+     for (const auto 
+&[d, _] : 
+dirichlet_bcs) {
+                      
+       ^
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp: In 
+member function 'reali
+s::fem::Bar1DResult re
+alis::fem::Bar1DSolver
+::solve() const':
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:29: 
+error: expected ';' 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:29: 
+error: expected 
+primary-expression 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:29: 
+error: expected ')' 
+before ':' token
+d:\git work and study\
+realis\engine\fem\bar1
+d_solver.hpp:176:29: 
+error: expected 
+primary-expression 
+before ':' token
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp: At 
+global scope:
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:70:38: 
+error: 
+'std::function' has 
+not been declared
+                      
+           std::functi
+on<double(double)> 
+u_exact) {
+                      
+                
+^~~~~~~~
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:70:46: 
+error: expected ',' 
+or '...' before '<' 
+token
+                      
+           std::functi
+on<double(double)> 
+u_exact) {
+                      
+                      
+  ^
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp: In 
+function 'double l2_re
+lative_error(const 
+std::vector<double>&, 
+const 
+std::vector<double>&, 
+int)':
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:73:34: 
+error: 'u_exact' was 
+not declared in this 
+scope
+     double ue = 
+u_exact(node_x[i]);
+                      
+            ^
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp: In 
+function 'void test1_f
+ixed_free_end_load()':
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:138:75: 
+error: cannot convert 
+'test1_fixed_free_end_
+load()::<lambda(double
+)>' to 'int' for 
+argument '3' to 
+'double l2_relative_er
+ror(const 
+std::vector<double>&, 
+const 
+std::vector<double>&, 
+int)'
+   double l2_err = l2_
+relative_error(mesh.no
+de_positions, 
+result.u, u_exact);
+                      
+                      
+                      
+         ^
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp: In 
+function 'void test2_d
+istributed_load()':
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:197:75: 
+error: cannot convert 
+'test2_distributed_loa
+d()::<lambda(double)>'
+ to 'int' for 
+argument '3' to 
+'double l2_relative_er
+ror(const 
+std::vector<double>&, 
+const 
+std::vector<double>&, 
+int)'
+   double l2_err = l2_
+relative_error(mesh.no
+de_positions, 
+result.u, u_exact);
+                      
+                      
+                      
+         ^
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp: In 
+function 'void test3_m
+esh_refinement()':
+d:\GIT WORK AND STUDY\
+REALIS\tests\fem\verif
+y_bar1d.cpp:264:74: 
+error: cannot convert 
+'test3_mesh_refinement
+()::<lambda(double)>' 
+to 'int' for argument 
+'3' to 'double l2_rela
+tive_error(const 
+std::vector<double>&, 
+const 
+std::vector<double>&, 
+int)'
+     double err = l2_r
+elative_error(mesh.nod
+e_positions, 
+result.u, u_exact);
+                      
+                      
+                      
+        ^
