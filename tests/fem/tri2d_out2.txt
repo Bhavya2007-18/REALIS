@@ -1,0 +1,52 @@
+=============================================================
+  REALIS Phase 4.2 -- 2D CST FEM Solver Verification
+  Element:      Linear 3-node triangle (CST)
+  Formulation:  Plane stress, Galerkin FEM
+  B matrix:     Constant (exact, no quadrature)
+  D matrix:     Plane stress: E/(1-nu^2) * [1 nu 0; nu 1 0; 0 0 (1-nu)/2]
+  BC:           Dirichlet via row/column elimination
+  Solver:       Gaussian elimination (MatrixSolver::solve_gaussian)
+=============================================================
+
+-- Test 1: Patch Test (Mandatory Correctness Gate) -----------
+  Interior node 4: ux_fem=1.4881e-003  ux_exact=1.5000e-003
+  Interior node 4: uy_fem=2.8806e-004  uy_exact=1.1000e-003
+  Max abs error over all nodes: 8.1194e-004
+  Strain energy U = 2.0833e+000 J
+[FAIL] Patch test: interior node exact (|err| < 1e-8)  ->  max_err=0.000812
+[PASS] Patch test: strain energy positive (U > 0)  ->  U=2.083254
+
+-- Test 2: Stiffness Matrix Symmetry -------------------------
+  n_dof = 12
+  max|K - Ktranspose| = 0.0000e+000
+[PASS] Stiffness matrix symmetric (max|K-Kt| < 1e-10)  ->  asym=0.000000
+
+-- Test 3: Mesh Refinement Convergence (Cantilever) ----------
+  Euler-Bernoulli reference: delta_tip = 2.5600e-002 m
+  (CST will converge to this from above — stiffer due to shear locking)
+
+  nx   ny   n_nodes  tip_v (m)    delta_EB     ratio
+  ---  ---  -------  ----------   ----------   -----
+     2    1        6  4.0750e-003  2.5600e-002  0.1592
+     4    2       15  0.0102  0.0256  0.3968
+     8    4       45  0.0187  0.0256  0.7295
+[PASS] Cantilever: tip v-displacement monotone increasing with refinement  ->  monotone
+[PASS] Cantilever: finest mesh tip > 50% of Euler-Bernoulli (CST convergence)  ->  tip/delta_EB=0.729493
+
+-- Test 4: Energy Validation ---------------------------------
+  U(F=100)   = 2.080665e-001 J
+  U(F=200)   = 8.322661e-001 J
+  U2/U1      = 4.0000  (expected 4.0)
+  kappa_est  = 3.6250e+000
+[PASS] Energy positive definite (U > 0)  ->  U=0.208067
+[PASS] Energy scales as F^2 (U2/U1 ~ 4.0, tol 1%)  ->  ratio=4.000000
+
+=============================================================
+  Results: 6 passed, 1 failed (total 7)
+=============================================================
+
+FAILED TESTS:
+  [FAIL] Patch test: interior node exact (|err| < 1e-8)
+
+Phase 4.2-4.3 EXIT CRITERIA: NOT MET
+EXIT:1
