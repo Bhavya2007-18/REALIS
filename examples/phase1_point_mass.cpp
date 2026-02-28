@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <iostream>
 
+
 using namespace realis;
 
 static const Vec3 GRAVITY(0.0f, -9.81f, 0.0f);

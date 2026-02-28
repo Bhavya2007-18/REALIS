@@ -1,0 +1,31 @@
+C:\MinGW\bin\g++.exe 
+: C:\Users\bhavy\AppDa
+ta\Local\Temp\cctogvXX
+.o:quat.cpp:(.text+0x1
+54): undefined 
+reference to `realis::
+Vec3::normalized() 
+const'
+At line:1 char:1
++ 
+C:\MinGW\bin\g++.exe 
+-std=c++17 -O2 
+"d:\GIT WORK AND 
+STUDY\REALIS\exa ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (C:\Users\b   
+ havy\...alized()     
+const':String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+collect2.exe: error: 
+ld returned 1 exit 
+status

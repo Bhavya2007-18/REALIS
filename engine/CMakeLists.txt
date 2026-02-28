@@ -17,6 +17,7 @@ set(REALIS_SOURCES
     math/vec3.cpp
     math/quat.cpp
     math/mat3.cpp
+    math/matrix_solver.cpp
     core/timestep.cpp
     core/integrator.cpp
     core/world.cpp

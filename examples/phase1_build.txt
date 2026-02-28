@@ -1,0 +1,50 @@
+C:\MinGW\bin\g++.exe 
+: C:\Users\bhavy\AppDa
+ta\Local\Temp\cce29XX1
+.o:rigid_body.cpp:(.te
+xt+0x65): undefined 
+reference to 
+`realis::Mat3::Mat3()'
+At line:1 char:1
++ 
+C:\MinGW\bin\g++.exe 
+-std=c++17 -O2 
+"d:\GIT WORK AND 
+STUDY\REALIS\exa ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : 
+NotSpecified: 
+(C:\User    s\bhavy\..
+.::Mat3::Mat3(    
+)':String) [], 
+RemoteExc    eption
+    + 
+FullyQualifiedErrorId 
+    : 
+NativeCommandError
+ 
+C:\Users\bhavy\AppData
+\Local\Temp\cce29XX1.o
+:rigid_body.cpp:(.text
++0x70): undefined 
+reference to 
+`realis::Mat3::Mat3()'
+C:\Users\bhavy\AppData
+\Local\Temp\cce29XX1.o
+:rigid_body.cpp:(.text
++0x78): undefined 
+reference to `realis::
+Mat3::identity()'
+C:\Users\bhavy\AppData
+\Local\Temp\cce29XX1.o
+:rigid_body.cpp:(.text
++0xc2): undefined 
+reference to `realis::
+Mat3::identity()'
+collect2.exe: error: 
+ld returned 1 exit 
+status
