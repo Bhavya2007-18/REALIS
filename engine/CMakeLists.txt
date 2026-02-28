@@ -36,6 +36,7 @@ set(REALIS_SOURCES
     fem/fem_solver.hpp
     coupling/rigid_fem_coupler.cpp
     energy/energy_monitor.cpp
+    fluids/compressible_1d.cpp
 )
 
 # Header include directories
@@ -58,6 +59,9 @@ target_link_libraries(phase3_rotation realis_core)
 
 add_executable(phase4_collision ../examples/phase4_collision.cpp)
 target_link_libraries(phase4_collision realis_core)
+
+add_executable(phase5_compressible ../examples/phase5_compressible.cpp)
+target_link_libraries(phase5_compressible realis_core)
 
 add_executable(verify_resting_block ../tests/verification/verify_resting_block.cpp)
 target_link_libraries(verify_resting_block realis_core)
