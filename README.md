@@ -187,7 +187,8 @@ Before contributing:
 3. Follow the one-way flow - Python → C++ → Tests
 
 ## License
-GNU GENERAL PUBLIC LICENSE (GPL-3.0)
+
+[To be determined]
 
 ## Contact
 
