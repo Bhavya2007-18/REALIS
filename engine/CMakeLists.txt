@@ -73,6 +73,9 @@ target_link_libraries(phase6_multiphysics realis_core)
 add_executable(phase7_geometry ../examples/phase7_geometry.cpp)
 target_link_libraries(phase7_geometry realis_core)
 
+add_executable(phase8_verification ../examples/phase8_verification.cpp)
+target_link_libraries(phase8_verification realis_core)
+
 add_executable(verify_resting_block ../tests/verification/verify_resting_block.cpp)
 target_link_libraries(verify_resting_block realis_core)
 
