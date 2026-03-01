@@ -63,6 +63,9 @@ target_link_libraries(phase4_collision realis_core)
 add_executable(phase5_compressible ../examples/phase5_compressible.cpp)
 target_link_libraries(phase5_compressible realis_core)
 
+add_executable(phase6_multiphysics ../examples/phase6_multiphysics.cpp)
+target_link_libraries(phase6_multiphysics realis_core)
+
 add_executable(verify_resting_block ../tests/verification/verify_resting_block.cpp)
 target_link_libraries(verify_resting_block realis_core)
 
