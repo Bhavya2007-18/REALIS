@@ -33,7 +33,11 @@ set(REALIS_SOURCES
     cad/cad_importer.cpp
     cad/cad_validator.cpp
     geometry/contact_generator.cpp
-    fem/fem_solver.hpp
+    
+    # Phase 7: Geometry Layer
+    geometry/topology_validator.cpp
+    geometry/mesh_quality.cpp
+    
     coupling/rigid_fem_coupler.cpp
     energy/energy_monitor.cpp
     fluids/compressible_1d.cpp
@@ -65,6 +69,9 @@ target_link_libraries(phase5_compressible realis_core)
 
 add_executable(phase6_multiphysics ../examples/phase6_multiphysics.cpp)
 target_link_libraries(phase6_multiphysics realis_core)
+
+add_executable(phase7_geometry ../examples/phase7_geometry.cpp)
+target_link_libraries(phase7_geometry realis_core)
 
 add_executable(verify_resting_block ../tests/verification/verify_resting_block.cpp)
 target_link_libraries(verify_resting_block realis_core)
