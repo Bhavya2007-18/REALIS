@@ -1,0 +1,24 @@
+=================================================
+   REALIS - Rendering Foundation v0.1
+=================================================
+
+[Window] Created 1280×720 window: "REALIS"
+[GraphicsContext] Debug callback installed.
+[GraphicsContext] Initialised successfully.
+─────────────────────────────────────────────────
+  REALIS Renderer — OpenGL Context Info
+─────────────────────────────────────────────────
+  Vendor:   Intel
+  Renderer: Intel(R) Graphics
+  Version:  4.5.0 - Build 32.0.101.6629
+  GLAD:     4.5
+─────────────────────────────────────────────────
+[GraphicsContext] VSync ON.
+[GraphicsContext] Initial GL state applied. Viewport: 1280×720
+[main] Pre-loop GL state: CLEAN
+
+[main] Entering render loop.
+[main] Press Escape to exit, V to toggle VSync.
+
+[FPS] 237.8  (dt_avg: 4.20 ms)
+^C
