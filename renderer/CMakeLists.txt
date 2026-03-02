@@ -39,12 +39,23 @@ FetchContent_Declare(
     GIT_SHALLOW    TRUE
 )
 
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG        1.0.1
+    GIT_SHALLOW    TRUE
+)
+
 set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL        OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(glfw)
+# GLM: Disable installation and tests
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_INSTALL     OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(glfw glm)
 
 # ── GLAD (vendored, static library) ──────────────────────────────────────────
 add_library(glad STATIC vendor/glad/glad.c)
@@ -60,6 +71,11 @@ add_executable(realis_renderer
     Window.cpp
     GraphicsContext.cpp
     DebugCallback.cpp
+    Shader.cpp
+    VertexBuffer.cpp
+    IndexBuffer.cpp
+    VertexArray.cpp
+    Renderer.cpp
 )
 
 # Include own directory for "Window.hpp" etc.
@@ -67,15 +83,15 @@ target_include_directories(realis_renderer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# Link: glad (function loader) + glfw (windowing) + platform OpenGL
+# Link: glad (function loader) + glfw (windowing) + glm (math) + platform OpenGL
 if(WIN32)
-    target_link_libraries(realis_renderer PRIVATE glad glfw opengl32)
+    target_link_libraries(realis_renderer PRIVATE glad glfw glm::glm opengl32)
 elseif(APPLE)
     find_library(OpenGL_FRAMEWORK OpenGL REQUIRED)
-    target_link_libraries(realis_renderer PRIVATE glad glfw ${OpenGL_FRAMEWORK})
+    target_link_libraries(realis_renderer PRIVATE glad glfw glm::glm ${OpenGL_FRAMEWORK})
 else()
     find_package(OpenGL REQUIRED)
-    target_link_libraries(realis_renderer PRIVATE glad glfw OpenGL::GL)
+    target_link_libraries(realis_renderer PRIVATE glad glfw glm::glm OpenGL::GL)
 endif()
 
 # ── Compile definitions ───────────────────────────────────────────────────────

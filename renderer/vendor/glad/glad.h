@@ -463,6 +463,125 @@ GLAPI PFNGLPOLYGONMODEPROC glad_glPolygonMode;
 #define glGetIntegerv glad_glGetIntegerv
 #define glPolygonMode glad_glPolygonMode
 
+/* Missing OpenGL 4.5 Symbols and Functions */
+#define GL_ARRAY_BUFFER 0x8892
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#define GL_STATIC_DRAW 0x88E4
+#define GL_DYNAMIC_DRAW 0x88E8
+#define GL_FRAGMENT_SHADER 0x8B30
+#define GL_VERTEX_SHADER 0x8B31
+#define GL_COMPILE_STATUS 0x8B81
+#define GL_LINK_STATUS 0x8B82
+#define GL_INFO_LOG_LENGTH 0x8B84
+
+typedef void(APIENTRYP PFNGLGENBUFFERSPROC)(GLsizei n, GLuint *buffers);
+typedef void(APIENTRYP PFNGLBINDBUFFERPROC)(GLenum target, GLuint buffer);
+typedef void(APIENTRYP PFNGLBUFFERDATAPROC)(GLenum target, GLsizeiptr size,
+                                            const void *data, GLenum usage);
+typedef void(APIENTRYP PFNGLDELETEBUFFERSPROC)(GLsizei n, const GLuint *buffers);
+typedef void(APIENTRYP PFNGLGENVERTEXARRAYSPROC)(GLsizei n, GLuint *arrays);
+typedef void(APIENTRYP PFNGLBINDVERTEXARRAYPROC)(GLuint array);
+typedef void(APIENTRYP PFNGLDELETEVERTEXARRAYSPROC)(GLsizei n,
+                                                    const GLuint *arrays);
+typedef void(APIENTRYP PFNGLENABLEVERTEXATTRIBARRAYPROC)(GLuint index);
+typedef void(APIENTRYP PFNGLVERTEXATTRIBPOINTERPROC)(
+    GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride,
+    const void *pointer);
+typedef GLuint(APIENTRYP PFNGLCREATESHADERPROC)(GLenum type);
+typedef void(APIENTRYP PFNGLSHADERSOURCEPROC)(GLuint shader, GLsizei count,
+                                              const GLchar *const *string,
+                                              const GLint *length);
+typedef void(APIENTRYP PFNGLCOMPILESHADERPROC)(GLuint shader);
+typedef void(APIENTRYP PFNGLGETSHADERIVPROC)(GLuint shader, GLenum pname,
+                                             GLint *params);
+typedef void(APIENTRYP PFNGLGETSHADERINFOLOGPROC)(GLuint shader, GLsizei bufSize,
+                                                  GLsizei *length,
+                                                  GLchar *infoLog);
+typedef void(APIENTRYP PFNGLDELETESHADERPROC)(GLuint shader);
+typedef GLuint(APIENTRYP PFNGLCREATEPROGRAMPROC)(void);
+typedef void(APIENTRYP PFNGLATTACHSHADERPROC)(GLuint program, GLuint shader);
+typedef void(APIENTRYP PFNGLLINKPROGRAMPROC)(GLuint program);
+typedef void(APIENTRYP PFNGLVALIDATEPROGRAMPROC)(GLuint program);
+typedef void(APIENTRYP PFNGLGETPROGRAMIVPROC)(GLuint program, GLenum pname,
+                                              GLint *params);
+typedef void(APIENTRYP PFNGLGETPROGRAMINFOLOGPROC)(GLuint program,
+                                                   GLsizei bufSize,
+                                                   GLsizei *length,
+                                                   GLchar *infoLog);
+typedef void(APIENTRYP PFNGLUSEPROGRAMPROC)(GLuint program);
+typedef void(APIENTRYP PFNGLDELETEPROGRAMPROC)(GLuint program);
+typedef GLint(APIENTRYP PFNGLGETUNIFORMLOCATIONPROC)(GLuint program,
+                                                     const GLchar *name);
+typedef void(APIENTRYP PFNGLUNIFORM1IPROC)(GLint location, GLint v0);
+typedef void(APIENTRYP PFNGLUNIFORM1FPROC)(GLint location, GLfloat v0);
+typedef void(APIENTRYP PFNGLUNIFORM3FPROC)(GLint location, GLfloat v0,
+                                           GLfloat v1, GLfloat v2);
+typedef void(APIENTRYP PFNGLUNIFORMMATRIX4FVPROC)(GLint location, GLsizei count,
+                                                  GLboolean transpose,
+                                                  const GLfloat *value);
+typedef void(APIENTRYP PFNGLDRAWELEMENTSPROC)(GLenum mode, GLsizei count,
+                                              GLenum type, const void *indices);
+
+GLAPI PFNGLGENBUFFERSPROC glad_glGenBuffers;
+GLAPI PFNGLBINDBUFFERPROC glad_glBindBuffer;
+GLAPI PFNGLBUFFERDATAPROC glad_glBufferData;
+GLAPI PFNGLDELETEBUFFERSPROC glad_glDeleteBuffers;
+GLAPI PFNGLGENVERTEXARRAYSPROC glad_glGenVertexArrays;
+GLAPI PFNGLBINDVERTEXARRAYPROC glad_glBindVertexArray;
+GLAPI PFNGLDELETEVERTEXARRAYSPROC glad_glDeleteVertexArrays;
+GLAPI PFNGLENABLEVERTEXATTRIBARRAYPROC glad_glEnableVertexAttribArray;
+GLAPI PFNGLVERTEXATTRIBPOINTERPROC glad_glVertexAttribPointer;
+GLAPI PFNGLCREATESHADERPROC glad_glCreateShader;
+GLAPI PFNGLSHADERSOURCEPROC glad_glShaderSource;
+GLAPI PFNGLCOMPILESHADERPROC glad_glCompileShader;
+GLAPI PFNGLGETSHADERIVPROC glad_glGetShaderiv;
+GLAPI PFNGLGETSHADERINFOLOGPROC glad_glGetShaderInfoLog;
+GLAPI PFNGLDELETESHADERPROC glad_glDeleteShader;
+GLAPI PFNGLCREATEPROGRAMPROC glad_glCreateProgram;
+GLAPI PFNGLATTACHSHADERPROC glad_glAttachShader;
+GLAPI PFNGLLINKPROGRAMPROC glad_glLinkProgram;
+GLAPI PFNGLVALIDATEPROGRAMPROC glad_glValidateProgram;
+GLAPI PFNGLGETPROGRAMIVPROC glad_glGetProgramiv;
+GLAPI PFNGLGETPROGRAMINFOLOGPROC glad_glGetProgramInfoLog;
+GLAPI PFNGLUSEPROGRAMPROC glad_glUseProgram;
+GLAPI PFNGLDELETEPROGRAMPROC glad_glDeleteProgram;
+GLAPI PFNGLGETUNIFORMLOCATIONPROC glad_glGetUniformLocation;
+GLAPI PFNGLUNIFORM1IPROC glad_glUniform1i;
+GLAPI PFNGLUNIFORM1FPROC glad_glUniform1f;
+GLAPI PFNGLUNIFORM3FPROC glad_glUniform3f;
+GLAPI PFNGLUNIFORMMATRIX4FVPROC glad_glUniformMatrix4fv;
+GLAPI PFNGLDRAWELEMENTSPROC glad_glDrawElements;
+
+#define glGenBuffers glad_glGenBuffers
+#define glBindBuffer glad_glBindBuffer
+#define glBufferData glad_glBufferData
+#define glDeleteBuffers glad_glDeleteBuffers
+#define glGenVertexArrays glad_glGenVertexArrays
+#define glBindVertexArray glad_glBindVertexArray
+#define glDeleteVertexArrays glad_glDeleteVertexArrays
+#define glEnableVertexAttribArray glad_glEnableVertexAttribArray
+#define glVertexAttribPointer glad_glVertexAttribPointer
+#define glCreateShader glad_glCreateShader
+#define glShaderSource glad_glShaderSource
+#define glCompileShader glad_glCompileShader
+#define glGetShaderiv glad_glGetShaderiv
+#define glGetShaderInfoLog glad_glGetShaderInfoLog
+#define glDeleteShader glad_glDeleteShader
+#define glCreateProgram glad_glCreateProgram
+#define glAttachShader glad_glAttachShader
+#define glLinkProgram glad_glLinkProgram
+#define glValidateProgram glad_glValidateProgram
+#define glGetProgramiv glad_glGetProgramiv
+#define glGetProgramInfoLog glad_glGetProgramInfoLog
+#define glUseProgram glad_glUseProgram
+#define glDeleteProgram glad_glDeleteProgram
+#define glGetUniformLocation glad_glGetUniformLocation
+#define glUniform1i glad_glUniform1i
+#define glUniform1f glad_glUniform1f
+#define glUniform3f glad_glUniform3f
+#define glUniformMatrix4fv glad_glUniformMatrix4fv
+#define glDrawElements glad_glDrawElements
+
 #ifdef __cplusplus
 }
 #endif

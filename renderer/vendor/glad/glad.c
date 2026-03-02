@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 struct gladGLversionStruct GLVersion = {0, 0};
 
 /* =========================================================================
@@ -30,6 +29,36 @@ PFNGLGETERRORPROC glad_glGetError = NULL;
 PFNGLGETSTRINGPROC glad_glGetString = NULL;
 PFNGLGETINTEGERVPROC glad_glGetIntegerv = NULL;
 PFNGLPOLYGONMODEPROC glad_glPolygonMode = NULL;
+
+PFNGLGENBUFFERSPROC glad_glGenBuffers = NULL;
+PFNGLBINDBUFFERPROC glad_glBindBuffer = NULL;
+PFNGLBUFFERDATAPROC glad_glBufferData = NULL;
+PFNGLDELETEBUFFERSPROC glad_glDeleteBuffers = NULL;
+PFNGLGENVERTEXARRAYSPROC glad_glGenVertexArrays = NULL;
+PFNGLBINDVERTEXARRAYPROC glad_glBindVertexArray = NULL;
+PFNGLDELETEVERTEXARRAYSPROC glad_glDeleteVertexArrays = NULL;
+PFNGLENABLEVERTEXATTRIBARRAYPROC glad_glEnableVertexAttribArray = NULL;
+PFNGLVERTEXATTRIBPOINTERPROC glad_glVertexAttribPointer = NULL;
+PFNGLCREATESHADERPROC glad_glCreateShader = NULL;
+PFNGLSHADERSOURCEPROC glad_glShaderSource = NULL;
+PFNGLCOMPILESHADERPROC glad_glCompileShader = NULL;
+PFNGLGETSHADERIVPROC glad_glGetShaderiv = NULL;
+PFNGLGETSHADERINFOLOGPROC glad_glGetShaderInfoLog = NULL;
+PFNGLDELETESHADERPROC glad_glDeleteShader = NULL;
+PFNGLCREATEPROGRAMPROC glad_glCreateProgram = NULL;
+PFNGLATTACHSHADERPROC glad_glAttachShader = NULL;
+PFNGLLINKPROGRAMPROC glad_glLinkProgram = NULL;
+PFNGLVALIDATEPROGRAMPROC glad_glValidateProgram = NULL;
+PFNGLGETPROGRAMIVPROC glad_glGetProgramiv = NULL;
+PFNGLGETPROGRAMINFOLOGPROC glad_glGetProgramInfoLog = NULL;
+PFNGLUSEPROGRAMPROC glad_glUseProgram = NULL;
+PFNGLDELETEPROGRAMPROC glad_glDeleteProgram = NULL;
+PFNGLGETUNIFORMLOCATIONPROC glad_glGetUniformLocation = NULL;
+PFNGLUNIFORM1IPROC glad_glUniform1i = NULL;
+PFNGLUNIFORM1FPROC glad_glUniform1f = NULL;
+PFNGLUNIFORM3FPROC glad_glUniform3f = NULL;
+PFNGLUNIFORMMATRIX4FVPROC glad_glUniformMatrix4fv = NULL;
+PFNGLDRAWELEMENTSPROC glad_glDrawElements = NULL;
 
 /* =========================================================================
  * Version query helper
@@ -89,6 +118,44 @@ int gladLoadGLLoader(GLADloadproc load) {
   glad_glGetIntegerv = (PFNGLGETINTEGERVPROC)load("glGetIntegerv");
   glad_glPolygonMode = (PFNGLPOLYGONMODEPROC)load("glPolygonMode");
 
+  /* New functions */
+  glad_glGenBuffers = (PFNGLGENBUFFERSPROC)load("glGenBuffers");
+  glad_glBindBuffer = (PFNGLBINDBUFFERPROC)load("glBindBuffer");
+  glad_glBufferData = (PFNGLBUFFERDATAPROC)load("glBufferData");
+  glad_glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)load("glDeleteBuffers");
+  glad_glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)load("glGenVertexArrays");
+  glad_glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)load("glBindVertexArray");
+  glad_glDeleteVertexArrays =
+      (PFNGLDELETEVERTEXARRAYSPROC)load("glDeleteVertexArrays");
+  glad_glEnableVertexAttribArray =
+      (PFNGLENABLEVERTEXATTRIBARRAYPROC)load("glEnableVertexAttribArray");
+  glad_glVertexAttribPointer =
+      (PFNGLVERTEXATTRIBPOINTERPROC)load("glVertexAttribPointer");
+  glad_glCreateShader = (PFNGLCREATESHADERPROC)load("glCreateShader");
+  glad_glShaderSource = (PFNGLSHADERSOURCEPROC)load("glShaderSource");
+  glad_glCompileShader = (PFNGLCOMPILESHADERPROC)load("glCompileShader");
+  glad_glGetShaderiv = (PFNGLGETSHADERIVPROC)load("glGetShaderiv");
+  glad_glGetShaderInfoLog =
+      (PFNGLGETSHADERINFOLOGPROC)load("glGetShaderInfoLog");
+  glad_glDeleteShader = (PFNGLDELETESHADERPROC)load("glDeleteShader");
+  glad_glCreateProgram = (PFNGLCREATEPROGRAMPROC)load("glCreateProgram");
+  glad_glAttachShader = (PFNGLATTACHSHADERPROC)load("glAttachShader");
+  glad_glLinkProgram = (PFNGLLINKPROGRAMPROC)load("glLinkProgram");
+  glad_glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)load("glValidateProgram");
+  glad_glGetProgramiv = (PFNGLGETPROGRAMIVPROC)load("glGetProgramiv");
+  glad_glGetProgramInfoLog =
+      (PFNGLGETPROGRAMINFOLOGPROC)load("glGetProgramInfoLog");
+  glad_glUseProgram = (PFNGLUSEPROGRAMPROC)load("glUseProgram");
+  glad_glDeleteProgram = (PFNGLDELETEPROGRAMPROC)load("glDeleteProgram");
+  glad_glGetUniformLocation =
+      (PFNGLGETUNIFORMLOCATIONPROC)load("glGetUniformLocation");
+  glad_glUniform1i = (PFNGLUNIFORM1IPROC)load("glUniform1i");
+  glad_glUniform1f = (PFNGLUNIFORM1FPROC)load("glUniform1f");
+  glad_glUniform3f = (PFNGLUNIFORM3FPROC)load("glUniform3f");
+  glad_glUniformMatrix4fv =
+      (PFNGLUNIFORMMATRIX4FVPROC)load("glUniformMatrix4fv");
+  glad_glDrawElements = (PFNGLDRAWELEMENTSPROC)load("glDrawElements");
+
   /* Debug extension */
   glad_glDebugMessageCallback =
       (PFNGLDEBUGMESSAGECALLBACKPROC)load("glDebugMessageCallback");
@@ -96,7 +163,8 @@ int gladLoadGLLoader(GLADloadproc load) {
       (PFNGLDEBUGMESSAGECONTROLPROC)load("glDebugMessageControl");
 
   /* Verify critical functions loaded */
-  if (!glad_glClear || !glad_glEnable || !glad_glGetError) {
+  if (!glad_glClear || !glad_glEnable || !glad_glGetError ||
+      !glad_glGenBuffers) {
     return 0;
   }
 
