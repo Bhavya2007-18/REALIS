@@ -19,6 +19,13 @@ void Renderer::draw(const VertexArray &va, const IndexBuffer &ib,
   glDrawElements(GL_TRIANGLES, ib.getCount(), GL_UNSIGNED_INT, nullptr);
 }
 
+void Renderer::drawLines(const VertexArray &va, const IndexBuffer &ib, const Shader &shader) const {
+  shader.bind();
+  va.bind();
+  ib.bind();
+  glDrawElements(GL_LINES, ib.getCount(), GL_UNSIGNED_INT, nullptr);
+}
+
 void Renderer::setGLState() const {
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);

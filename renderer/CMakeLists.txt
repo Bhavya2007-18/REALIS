@@ -70,6 +70,7 @@ add_executable(realis_renderer
     main.cpp
     Window.cpp
     GraphicsContext.cpp
+    Camera.cpp
     DebugCallback.cpp
     Shader.cpp
     VertexBuffer.cpp
@@ -96,7 +97,11 @@ endif()
 
 # ── Compile definitions ───────────────────────────────────────────────────────
 if(REALIS_VSYNC)
-    target_compile_definitions(realis_renderer PRIVATE REALIS_VSYNC=1)
+    target_compile_definitions(realis_renderer PRIVATE
+        REALIS_VSYNC=1
+        REALIS_DEBUG
+        GLM_FORCE_CTOR_INIT
+    )
 else()
     target_compile_definitions(realis_renderer PRIVATE REALIS_VSYNC=0)
 endif()

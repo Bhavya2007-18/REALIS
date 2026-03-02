@@ -29,6 +29,7 @@ public:
    */
   void draw(const VertexArray &va, const IndexBuffer &ib,
             const Shader &shader) const;
+  void drawLines(const VertexArray &va, const IndexBuffer &ib, const Shader &shader) const;
 
   /**
    * @brief Configure global OpenGL state (Depth test, Culling, etc.)
