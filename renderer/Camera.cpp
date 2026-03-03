@@ -6,11 +6,13 @@
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
-
 namespace realis::renderer {
 
 Camera::Camera(glm::vec3 target, float distance)
-    : m_target(target), m_distance(distance), m_yaw(0.0f), m_pitch(0.0f) {}
+    : m_target(target), m_distance(distance), m_yaw(glm::radians(45.0f)),
+      m_pitch(glm::radians(30.0f)), m_fov(glm::radians(45.0f)),
+      m_aspectRatio(16.0f / 9.0f), m_nearPlane(0.1f), m_farPlane(1000.0f),
+      m_mode(ProjectionMode::Perspective) {}
 
 void Camera::rotate(float deltaYaw, float deltaPitch) {
   m_yaw += deltaYaw;

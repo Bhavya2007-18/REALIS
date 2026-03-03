@@ -18,6 +18,7 @@ struct gladGLversionStruct GLVersion = {0, 0};
 PFNGLDEBUGMESSAGECALLBACKPROC glad_glDebugMessageCallback = NULL;
 PFNGLDEBUGMESSAGECONTROLPROC glad_glDebugMessageControl = NULL;
 PFNGLCLEARPROC glad_glClear = NULL;
+PFNGLBLENDFUNCPROC glad_glBlendFunc = NULL;
 PFNGLCLEARCOLORPROC glad_glClearColor = NULL;
 PFNGLENABLEPROC glad_glEnable = NULL;
 PFNGLDISABLEPROC glad_glDisable = NULL;
@@ -106,6 +107,7 @@ int gladLoadGLLoader(GLADloadproc load) {
   }
 
   glad_glClear = (PFNGLCLEARPROC)load("glClear");
+  glad_glBlendFunc = (PFNGLBLENDFUNCPROC)load("glBlendFunc");
   glad_glClearColor = (PFNGLCLEARCOLORPROC)load("glClearColor");
   glad_glEnable = (PFNGLENABLEPROC)load("glEnable");
   glad_glDisable = (PFNGLDISABLEPROC)load("glDisable");

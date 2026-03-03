@@ -21,7 +21,6 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -139,8 +138,8 @@ void GraphicsContext::applyInitialState(int fbWidth, int fbHeight) const {
   glFrontFace(GL_CCW);
   requireNoGLError("face culling");
 
-  // Clear color — vibrant "Cornflower Blue" to confirm renderer active
-  glClearColor(0.1f, 0.4f, 0.8f, 1.0f);
+  // Clear color — professional "Dark Charcoal" for CAD-style UI
+  glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
   requireNoGLError("glClearColor");
 
   std::fprintf(stdout,

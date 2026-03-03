@@ -71,12 +71,17 @@ add_executable(realis_renderer
     Window.cpp
     GraphicsContext.cpp
     Camera.cpp
+    Grid.cpp
+    AxisRenderer.cpp
     DebugCallback.cpp
     Shader.cpp
     VertexBuffer.cpp
     IndexBuffer.cpp
     VertexArray.cpp
     Renderer.cpp
+    # Scene graph
+    scene/Transform.cpp
+    scene/SceneNode.cpp
 )
 
 # Include own directory for "Window.hpp" etc.
@@ -127,6 +132,23 @@ else()
         -Wno-unused-parameter   # GLFW callbacks have unused params by design
     )
     target_compile_options(glad PRIVATE -w)     # Suppress warnings in vendored C
+endif()
+
+# ── Scene Graph Test (standalone, no GPU required) ────────────────────────────
+add_executable(test_scene_graph
+    ../tests/scene/test_scene_graph.cpp
+    scene/Transform.cpp
+    scene/SceneNode.cpp
+)
+target_include_directories(test_scene_graph PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(test_scene_graph PRIVATE glm::glm)
+target_compile_definitions(test_scene_graph PRIVATE GLM_FORCE_CTOR_INIT)
+if(MSVC)
+    target_compile_options(test_scene_graph PRIVATE /W4 /WX- /permissive- /utf-8)
+else()
+    target_compile_options(test_scene_graph PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # ── Status messages ───────────────────────────────────────────────────────────

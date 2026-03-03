@@ -64,7 +64,6 @@ GLAPI int gladLoadGLLoader(GLADloadproc);
 #include "KHR/khrplatform.h"
 #include <stddef.h>
 
-
 typedef unsigned int GLenum;
 typedef unsigned char GLboolean;
 typedef unsigned int GLbitfield;
@@ -418,6 +417,7 @@ typedef void(APIENTRYP PFNGLDEBUGMESSAGECONTROLPROC)(GLenum source, GLenum type,
                                                      const GLuint *ids,
                                                      GLboolean enabled);
 typedef void(APIENTRYP PFNGLCLEARPROC)(GLbitfield mask);
+typedef void(APIENTRYP PFNGLBLENDFUNCPROC)(GLenum sfactor, GLenum dfactor);
 typedef void(APIENTRYP PFNGLCLEARCOLORPROC)(GLfloat red, GLfloat green,
                                             GLfloat blue, GLfloat alpha);
 typedef void(APIENTRYP PFNGLENABLEPROC)(GLenum cap);
@@ -436,6 +436,7 @@ typedef void(APIENTRYP PFNGLPOLYGONMODEPROC)(GLenum face, GLenum mode);
 GLAPI PFNGLDEBUGMESSAGECALLBACKPROC glad_glDebugMessageCallback;
 GLAPI PFNGLDEBUGMESSAGECONTROLPROC glad_glDebugMessageControl;
 GLAPI PFNGLCLEARPROC glad_glClear;
+GLAPI PFNGLBLENDFUNCPROC glad_glBlendFunc;
 GLAPI PFNGLCLEARCOLORPROC glad_glClearColor;
 GLAPI PFNGLENABLEPROC glad_glEnable;
 GLAPI PFNGLDISABLEPROC glad_glDisable;
@@ -451,6 +452,7 @@ GLAPI PFNGLPOLYGONMODEPROC glad_glPolygonMode;
 #define glDebugMessageCallback glad_glDebugMessageCallback
 #define glDebugMessageControl glad_glDebugMessageControl
 #define glClear glad_glClear
+#define glBlendFunc glad_glBlendFunc
 #define glClearColor glad_glClearColor
 #define glEnable glad_glEnable
 #define glDisable glad_glDisable
@@ -478,15 +480,18 @@ typedef void(APIENTRYP PFNGLGENBUFFERSPROC)(GLsizei n, GLuint *buffers);
 typedef void(APIENTRYP PFNGLBINDBUFFERPROC)(GLenum target, GLuint buffer);
 typedef void(APIENTRYP PFNGLBUFFERDATAPROC)(GLenum target, GLsizeiptr size,
                                             const void *data, GLenum usage);
-typedef void(APIENTRYP PFNGLDELETEBUFFERSPROC)(GLsizei n, const GLuint *buffers);
+typedef void(APIENTRYP PFNGLDELETEBUFFERSPROC)(GLsizei n,
+                                               const GLuint *buffers);
 typedef void(APIENTRYP PFNGLGENVERTEXARRAYSPROC)(GLsizei n, GLuint *arrays);
 typedef void(APIENTRYP PFNGLBINDVERTEXARRAYPROC)(GLuint array);
 typedef void(APIENTRYP PFNGLDELETEVERTEXARRAYSPROC)(GLsizei n,
                                                     const GLuint *arrays);
 typedef void(APIENTRYP PFNGLENABLEVERTEXATTRIBARRAYPROC)(GLuint index);
-typedef void(APIENTRYP PFNGLVERTEXATTRIBPOINTERPROC)(
-    GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride,
-    const void *pointer);
+typedef void(APIENTRYP PFNGLVERTEXATTRIBPOINTERPROC)(GLuint index, GLint size,
+                                                     GLenum type,
+                                                     GLboolean normalized,
+                                                     GLsizei stride,
+                                                     const void *pointer);
 typedef GLuint(APIENTRYP PFNGLCREATESHADERPROC)(GLenum type);
 typedef void(APIENTRYP PFNGLSHADERSOURCEPROC)(GLuint shader, GLsizei count,
                                               const GLchar *const *string,
@@ -494,7 +499,8 @@ typedef void(APIENTRYP PFNGLSHADERSOURCEPROC)(GLuint shader, GLsizei count,
 typedef void(APIENTRYP PFNGLCOMPILESHADERPROC)(GLuint shader);
 typedef void(APIENTRYP PFNGLGETSHADERIVPROC)(GLuint shader, GLenum pname,
                                              GLint *params);
-typedef void(APIENTRYP PFNGLGETSHADERINFOLOGPROC)(GLuint shader, GLsizei bufSize,
+typedef void(APIENTRYP PFNGLGETSHADERINFOLOGPROC)(GLuint shader,
+                                                  GLsizei bufSize,
                                                   GLsizei *length,
                                                   GLchar *infoLog);
 typedef void(APIENTRYP PFNGLDELETESHADERPROC)(GLuint shader);

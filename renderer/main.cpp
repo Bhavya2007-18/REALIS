@@ -1,26 +1,37 @@
 // IMPORTANT: glad.h MUST precede glfw3.h and other GL-dependent headers.
 #include <glad/glad.h>
 
-#include "Window.hpp"
-#include "GraphicsContext.hpp"
-#include "Shader.hpp"
-#include "VertexBuffer.hpp"
-#include "IndexBuffer.hpp"
-#include "VertexArray.hpp"
-#include "Renderer.hpp"
+#include "AxisRenderer.hpp"
 #include "Camera.hpp"
+#include "GraphicsContext.hpp"
+#include "Grid.hpp"
+#include "IndexBuffer.hpp"
+#include "Renderer.hpp"
+#include "Shader.hpp"
+#include "VertexArray.hpp"
+#include "VertexBuffer.hpp"
+#include "Window.hpp"
 
-// Define GLFW_INCLUDE_NONE to prevent glfw3.h from including any OpenGL headers.
+
+// Scene graph
+#include "scene/SceneNode.hpp"
+
+// Define GLFW_INCLUDE_NONE to prevent glfw3.h from including any OpenGL
+// headers.
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
 // -----------------------------------------------------------------------------
@@ -34,8 +45,10 @@ static float computeDeltaTime(TimePoint &lastTime) {
   const TimePoint now = HRClock::now();
   float dt = FloatSeconds(now - lastTime).count();
   lastTime = now;
-  if (dt > 0.1f) dt = 0.1f;
-  if (dt < 0.0f) dt = 0.0f;
+  if (dt > 0.1f)
+    dt = 0.1f;
+  if (dt < 0.0f)
+    dt = 0.0f;
   return dt;
 }
 
@@ -70,7 +83,7 @@ struct InputState {
   float scrollDelta = 0.0f;
 } g_input;
 
-static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset) {
   g_input.scrollDelta = static_cast<float>(yoffset);
 }
 
@@ -79,11 +92,11 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 // -----------------------------------------------------------------------------
 int main() {
   std::fprintf(stdout, "=================================================\n"
-                       "   REALIS - Camera System Verification\n"
+                       "   REALIS - Workspace Rendering Verification\n"
                        "=================================================\n\n");
 
   // 1. Setup Window & Context
-  realis::renderer::Window window(1280, 720, "REALIS Camera Test");
+  realis::renderer::Window window(1280, 720, "REALIS Workspace Test");
 
   realis::renderer::GraphicsContext ctx(window.handle());
   ctx.printInfo();
@@ -92,84 +105,131 @@ int main() {
 
   glfwSetScrollCallback(window.handle(), scrollCallback);
 
-  // 2. Initialize Renderer & Camera
+  // 2. Initialize Renderer, Camera, and Workspace
   realis::renderer::Renderer renderer;
   renderer.setGLState();
 
   realis::renderer::Camera camera(glm::vec3(0.0f), 5.0f);
   camera.setAspectRatio(1280.0f / 720.0f);
 
-  // 3. Create Geometry (Cube + Grid)
-  
-  // -- Cube (Pos[3], Color[3])
+  realis::renderer::Grid workspaceGrid(100.0f);
+  realis::renderer::AxisRenderer workspaceAxis(2.0f);
+
+  // 3. Create Test Geometry (Cube)
+  // [Pos3, Color3]
   float cubeVertices[] = {
-    // Front face
-    -0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
-    // Back face
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
+      // Front face (Red)
+      -0.5f,
+      -0.5f,
+      0.5f,
+      1.0f,
+      0.0f,
+      0.0f,
+      0.5f,
+      -0.5f,
+      0.5f,
+      1.0f,
+      0.0f,
+      0.0f,
+      0.5f,
+      0.5f,
+      0.5f,
+      1.0f,
+      0.0f,
+      0.0f,
+      -0.5f,
+      0.5f,
+      0.5f,
+      1.0f,
+      0.0f,
+      0.0f,
+      // Back face (Green)
+      -0.5f,
+      -0.5f,
+      -0.5f,
+      0.0f,
+      1.0f,
+      0.0f,
+      0.5f,
+      -0.5f,
+      -0.5f,
+      0.0f,
+      1.0f,
+      0.0f,
+      0.5f,
+      0.5f,
+      -0.5f,
+      0.0f,
+      1.0f,
+      0.0f,
+      -0.5f,
+      0.5f,
+      -0.5f,
+      0.0f,
+      1.0f,
+      0.0f,
   };
 
   unsigned int cubeIndices[] = {
-    0, 1, 2, 2, 3, 0, // front
-    1, 5, 6, 6, 2, 1, // right
-    7, 6, 5, 5, 4, 7, // back
-    4, 0, 3, 3, 7, 4, // left
-    4, 5, 1, 1, 0, 4, // bottom
-    3, 2, 6, 6, 7, 3  // top
+      0, 1, 2, 2, 3, 0, // front
+      1, 5, 6, 6, 2, 1, // right
+      7, 6, 5, 5, 4, 7, // back
+      4, 0, 3, 3, 7, 4, // left
+      4, 5, 1, 1, 0, 4, // bottom
+      3, 2, 6, 6, 7, 3  // top
   };
 
   realis::renderer::VertexArray cubeVA;
-  realis::renderer::VertexBuffer cubeVB(cubeVertices, sizeof(cubeVertices), GL_STATIC_DRAW);
+  realis::renderer::VertexBuffer cubeVB(cubeVertices, sizeof(cubeVertices),
+                                        GL_STATIC_DRAW);
   realis::renderer::VertexBufferLayout cubeLayout;
   cubeLayout.pushFloat(3); // position
   cubeLayout.pushFloat(3); // color
   cubeVA.addBuffer(cubeVB, cubeLayout);
   realis::renderer::IndexBuffer cubeIB(cubeIndices, 36, GL_STATIC_DRAW);
 
-  // -- Grid
-  std::vector<float> gridVertices;
-  std::vector<unsigned int> gridIndices;
-  int gridSize = 10;
-  for (int i = -gridSize; i <= gridSize; ++i) {
-      // X lines
-      gridVertices.push_back((float)i); gridVertices.push_back(0.0f); gridVertices.push_back((float)-gridSize);
-      gridVertices.push_back(0.5f); gridVertices.push_back(0.5f); gridVertices.push_back(0.5f);
-      gridVertices.push_back((float)i); gridVertices.push_back(0.0f); gridVertices.push_back((float)gridSize);
-      gridVertices.push_back(0.5f); gridVertices.push_back(0.5f); gridVertices.push_back(0.5f);
-      
-      // Z lines
-      gridVertices.push_back((float)-gridSize); gridVertices.push_back(0.0f); gridVertices.push_back((float)i);
-      gridVertices.push_back(0.5f); gridVertices.push_back(0.5f); gridVertices.push_back(0.5f);
-      gridVertices.push_back((float)gridSize); gridVertices.push_back(0.0f); gridVertices.push_back((float)i);
-      gridVertices.push_back(0.5f); gridVertices.push_back(0.5f); gridVertices.push_back(0.5f);
-  }
-  for (unsigned int i = 0; i < gridVertices.size() / 6; i++) {
-      gridIndices.push_back(i);
-  }
+  // ── Scene Graph Hierarchy ─────────────────────────────────────────────────
+  //
+  //  root   (identity position, animated Y-rotation each frame)
+  //    └─ child  (offset +2 on X, independent Z-rotation)
+  //         └─ grandchild  (offset +1.5 on X, scale 0.5)
+  //
+  // Each cube's world matrix is fetched from its SceneNode and uploaded as
+  // u_Model. The renderer never touches hierarchy math.
 
-  realis::renderer::VertexArray gridVA;
-  realis::renderer::VertexBuffer gridVB(gridVertices.data(), gridVertices.size() * sizeof(float), GL_STATIC_DRAW);
-  realis::renderer::VertexBufferLayout gridLayout;
-  gridLayout.pushFloat(3); // position
-  gridLayout.pushFloat(3); // color
-  gridVA.addBuffer(gridVB, gridLayout);
-  realis::renderer::IndexBuffer gridIB(gridIndices.data(), (unsigned int)gridIndices.size(), GL_STATIC_DRAW);
+  auto sceneRoot = std::make_unique<realis::scene::SceneNode>("Root");
 
-  // 4. Create Shader
+  auto nodeChild = std::make_unique<realis::scene::SceneNode>("Child");
+  nodeChild->localTransform.setPosition({2.0f, 0.0f, 0.0f});
+
+  auto nodeGrandchild =
+      std::make_unique<realis::scene::SceneNode>("Grandchild");
+  nodeGrandchild->localTransform.setPosition({1.5f, 0.0f, 0.0f});
+  nodeGrandchild->localTransform.setScale({0.5f, 0.5f, 0.5f});
+
+  // Build hierarchy (ownership transferred)
+  realis::scene::SceneNode *rawChild =
+      nodeChild->addChild(std::move(nodeGrandchild));
+  realis::scene::SceneNode *rawGrandchild =
+      rawChild; // re-use pointer, see below
+  // Transfer child into root
+  realis::scene::SceneNode *rawChildNode =
+      sceneRoot->addChild(std::move(nodeChild));
+  // Get grandchild pointer through the now-adopted hierarchy
+  realis::scene::SceneNode *rawGrandNode = rawChildNode->getChildren()[0].get();
+  (void)rawGrandchild; // suppress unused-variable in case compiler warns
+
+  // 4. Create Shader for Cube
+  // Vertex shader now accepts u_Model so each node can have its own transform.
   const std::string vertexSrc = R"(
     #version 450 core
     layout(location = 0) in vec3 position;
     layout(location = 1) in vec3 color;
     out vec3 v_Color;
     uniform mat4 u_VP;
+    uniform mat4 u_Model;
     void main() {
-        gl_Position = u_VP * vec4(position, 1.0);
+        gl_Position = u_VP * u_Model * vec4(position, 1.0);
         v_Color = color;
     }
   )";
@@ -183,7 +243,11 @@ int main() {
     }
   )";
 
-  realis::renderer::Shader shader(vertexSrc, fragmentSrc);
+  realis::renderer::Shader cubeShader(vertexSrc, fragmentSrc);
+
+  // Animate accumulators
+  float rootAngle = 0.0f;  // root Y-rotation (rad)
+  float childAngle = 0.0f; // child Z-rotation (rad)
 
   // 5. Render Loop
   auto lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -198,52 +262,81 @@ int main() {
     double mx, my;
     glfwGetCursorPos(window.handle(), &mx, &my);
     if (g_input.firstMouse) {
-        g_input.lastMouseX = mx;
-        g_input.lastMouseY = my;
-        g_input.firstMouse = false;
+      g_input.lastMouseX = mx;
+      g_input.lastMouseY = my;
+      g_input.firstMouse = false;
     }
     float dx = static_cast<float>(mx - g_input.lastMouseX);
     float dy = static_cast<float>(my - g_input.lastMouseY);
     g_input.lastMouseX = mx;
     g_input.lastMouseY = my;
 
-    if (glfwGetMouseButton(window.handle(), GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        camera.rotate(-dx * 0.005f, -dy * 0.005f);
+    if (glfwGetMouseButton(window.handle(), GLFW_MOUSE_BUTTON_RIGHT) ==
+        GLFW_PRESS) {
+      camera.rotate(-dx * 0.005f, -dy * 0.005f);
     }
-    if (glfwGetMouseButton(window.handle(), GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) {
-        camera.pan(-dx, dy);
+    if (glfwGetMouseButton(window.handle(), GLFW_MOUSE_BUTTON_MIDDLE) ==
+        GLFW_PRESS) {
+      camera.pan(-dx, dy);
     }
     if (g_input.scrollDelta != 0.0f) {
-        camera.zoom(g_input.scrollDelta);
-        g_input.scrollDelta = 0.0f;
+      camera.zoom(g_input.scrollDelta);
+      g_input.scrollDelta = 0.0f;
     }
 
     const bool pKeyIsDown = window.isKeyPressed(GLFW_KEY_P);
     if (pKeyIsDown && !pKeyWasDown) {
-        camera.toggleProjectionMode();
-        std::fprintf(stdout, "[Camera] Mode: %s\n", 
-                     camera.getProjectionMode() == realis::renderer::ProjectionMode::Perspective ? "Perspective" : "Orthographic");
+      camera.toggleProjectionMode();
+      std::fprintf(stdout, "[Camera] Mode: %s\n",
+                   camera.getProjectionMode() ==
+                           realis::renderer::ProjectionMode::Perspective
+                       ? "Perspective"
+                       : "Orthographic");
     }
     pKeyWasDown = pKeyIsDown;
 
-    if (window.isKeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window.handle(), true);
+    if (window.isKeyPressed(GLFW_KEY_ESCAPE))
+      glfwSetWindowShouldClose(window.handle(), true);
 
     // -- Rendering
     renderer.clear();
 
-    glm::mat4 vp = camera.getProjectionMatrix() * camera.getViewMatrix();
-    
-    shader.bind();
-    shader.setUniformMat4("u_VP", vp);
+    // 1. Grid (XZ plane)
+    workspaceGrid.draw(renderer, camera);
 
-    renderer.draw(cubeVA, cubeIB, shader);
-    
-    // Draw grid as lines if possible (Renderer abstraction needs line support? 
-    // For now we draw as triangles but gridIB is indexed for lines, so we use GL_LINES)
-    // We add a drawLines method to Renderer or just use GL_LINES if draw supports it.
-    // Actually our Renderer::draw uses GL_TRIANGLES. Let's add a drawLines.
-    renderer.drawLines(gridVA, gridIB, shader);
-    
+    // 2. Axis (Origin)
+    workspaceAxis.draw(renderer, camera);
+
+    // 3. Scene Graph — animate and update hierarchy
+    rootAngle += dt * 0.6f;  // root rotates ~34°/s around Y
+    childAngle += dt * 1.2f; // child spins ~69°/s around Z
+
+    sceneRoot->localTransform.setRotation(
+        glm::angleAxis(rootAngle, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+    rawChildNode->localTransform.setRotation(
+        glm::angleAxis(childAngle, glm::vec3(0.0f, 0.0f, 1.0f)));
+
+    // Full top-down world matrix propagation (Option A)
+    sceneRoot->updateWorldMatrix();
+
+    // 4. Draw each node using its world matrix
+    glm::mat4 vp = camera.getProjectionMatrix() * camera.getViewMatrix();
+    cubeShader.bind();
+    cubeShader.setUniformMat4("u_VP", vp);
+
+    // Root cube
+    cubeShader.setUniformMat4("u_Model", sceneRoot->getWorldMatrix());
+    renderer.draw(cubeVA, cubeIB, cubeShader);
+
+    // Child cube
+    cubeShader.setUniformMat4("u_Model", rawChildNode->getWorldMatrix());
+    renderer.draw(cubeVA, cubeIB, cubeShader);
+
+    // Grandchild cube
+    cubeShader.setUniformMat4("u_Model", rawGrandNode->getWorldMatrix());
+    renderer.draw(cubeVA, cubeIB, cubeShader);
+
     window.swapBuffers();
     window.pollEvents();
   }
