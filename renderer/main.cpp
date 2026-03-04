@@ -12,9 +12,10 @@
 #include "VertexBuffer.hpp"
 #include "Window.hpp"
 
-
 // Scene graph
+#include "scene/Ray.hpp"
 #include "scene/SceneNode.hpp"
+#include "scene/SelectionSystem.hpp"
 
 // Define GLFW_INCLUDE_NONE to prevent glfw3.h from including any OpenGL
 // headers.
@@ -81,10 +82,47 @@ struct InputState {
   bool rightMouseDown = false;
   bool middleMouseDown = false;
   float scrollDelta = 0.0f;
+
+  // Picking references
+  realis::renderer::Camera *camera = nullptr;
+  realis::scene::SceneNode *sceneRoot = nullptr;
+  realis::scene::SelectionSystem *selection = nullptr;
+  int windowWidth = 1280;
+  int windowHeight = 720;
 } g_input;
 
 static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset) {
   g_input.scrollDelta = static_cast<float>(yoffset);
+}
+
+static void mouseButtonCallback(GLFWwindow *window, int button, int action,
+                                int mods) {
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    if (g_input.camera && g_input.sceneRoot && g_input.selection) {
+      double mx, my;
+      glfwGetCursorPos(window, &mx, &my);
+
+      // Generate picking ray
+      realis::scene::Ray ray = g_input.camera->generateRayFromMouse(
+          static_cast<float>(mx), static_cast<float>(my),
+          static_cast<float>(g_input.windowWidth),
+          static_cast<float>(g_input.windowHeight));
+
+      // Pick object
+      float closestT = 0.0f;
+      realis::scene::SceneNode *hit =
+          g_input.sceneRoot->pickChild(ray, closestT);
+
+      if (hit) {
+        g_input.selection->setSelected(hit);
+        std::printf("[Selection] Picked: %s (t=%.3f)\n", hit->getName().c_str(),
+                    closestT);
+      } else {
+        g_input.selection->clearSelection();
+        std::printf("[Selection] Cleared\n");
+      }
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -92,11 +130,11 @@ static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset) {
 // -----------------------------------------------------------------------------
 int main() {
   std::fprintf(stdout, "=================================================\n"
-                       "   REALIS - Workspace Rendering Verification\n"
+                       "   REALIS - Object Selection Verification\n"
                        "=================================================\n\n");
 
   // 1. Setup Window & Context
-  realis::renderer::Window window(1280, 720, "REALIS Workspace Test");
+  realis::renderer::Window window(1280, 720, "REALIS Object Selection");
 
   realis::renderer::GraphicsContext ctx(window.handle());
   ctx.printInfo();
@@ -104,6 +142,7 @@ int main() {
   ctx.applyInitialState(window.width(), window.height());
 
   glfwSetScrollCallback(window.handle(), scrollCallback);
+  glfwSetMouseButtonCallback(window.handle(), mouseButtonCallback);
 
   // 2. Initialize Renderer, Camera, and Workspace
   realis::renderer::Renderer renderer;
@@ -114,6 +153,15 @@ int main() {
 
   realis::renderer::Grid workspaceGrid(100.0f);
   realis::renderer::AxisRenderer workspaceAxis(2.0f);
+
+  // Selection system
+  realis::scene::SelectionSystem selection;
+
+  // Hook up input state for picking
+  g_input.camera = &camera;
+  g_input.selection = &selection;
+  g_input.windowWidth = 1280;
+  g_input.windowHeight = 720;
 
   // 3. Create Test Geometry (Cube)
   // [Pos3, Color3]
@@ -219,6 +267,15 @@ int main() {
   realis::scene::SceneNode *rawGrandNode = rawChildNode->getChildren()[0].get();
   (void)rawGrandchild; // suppress unused-variable in case compiler warns
 
+  // Set local AABBs for picking (Unit cubes: -0.5 to 0.5)
+  realis::scene::AABB unitCube({-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f});
+  sceneRoot->localAABB = unitCube;
+  rawChildNode->localAABB = unitCube;
+  rawGrandNode->localAABB = unitCube;
+
+  // Set scene root for picking
+  g_input.sceneRoot = sceneRoot.get();
+
   // 4. Create Shader for Cube
   // Vertex shader now accepts u_Model so each node can have its own transform.
   const std::string vertexSrc = R"(
@@ -238,8 +295,15 @@ int main() {
     #version 450 core
     in vec3 v_Color;
     out vec4 outColor;
+    uniform bool u_Selected;
     void main() {
-        outColor = vec4(v_Color, 1.0);
+        vec3 color = v_Color;
+        if (u_Selected) {
+            // Emissive boost: mix with light yellow/white
+            color = mix(color, vec3(1.0, 1.0, 0.7), 0.4);
+            color += vec3(0.1, 0.1, 0.0); // additive glow
+        }
+        outColor = vec4(color, 1.0);
     }
   )";
 
@@ -327,14 +391,18 @@ int main() {
 
     // Root cube
     cubeShader.setUniformMat4("u_Model", sceneRoot->getWorldMatrix());
+    cubeShader.setUniformInt("u_Selected",
+                             selection.isSelected(sceneRoot.get()));
     renderer.draw(cubeVA, cubeIB, cubeShader);
 
     // Child cube
     cubeShader.setUniformMat4("u_Model", rawChildNode->getWorldMatrix());
+    cubeShader.setUniformInt("u_Selected", selection.isSelected(rawChildNode));
     renderer.draw(cubeVA, cubeIB, cubeShader);
 
     // Grandchild cube
     cubeShader.setUniformMat4("u_Model", rawGrandNode->getWorldMatrix());
+    cubeShader.setUniformInt("u_Selected", selection.isSelected(rawGrandNode));
     renderer.draw(cubeVA, cubeIB, cubeShader);
 
     window.swapBuffers();

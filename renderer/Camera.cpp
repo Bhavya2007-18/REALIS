@@ -3,6 +3,7 @@
  * @description Core camera mathematics.
  */
 #include "Camera.hpp"
+#include "scene/Ray.hpp"
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -84,6 +85,27 @@ void Camera::clampPitch() {
     m_pitch = limit;
   if (m_pitch < -limit)
     m_pitch = -limit;
+}
+
+realis::scene::Ray Camera::generateRayFromMouse(float mouseX, float mouseY,
+                                                float width,
+                                                float height) const {
+  // 1. Screen Space to NDC
+  float x_ndc = (2.0f * mouseX / width) - 1.0f;
+  float y_ndc = 1.0f - (2.0f * mouseY / height);
+
+  // 2. NDC to Homogeneous Clip Space
+  glm::vec4 rayClip = glm::vec4(x_ndc, y_ndc, -1.0f, 1.0f);
+
+  // 3. Clip Space to Eye Space
+  glm::vec4 rayEye = glm::inverse(getProjectionMatrix()) * rayClip;
+  rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+
+  // 4. Eye Space to World Space
+  glm::vec3 rayWorld = glm::vec3(glm::inverse(getViewMatrix()) * rayEye);
+  rayWorld = glm::normalize(rayWorld);
+
+  return realis::scene::Ray(getPosition(), rayWorld);
 }
 
 } // namespace realis::renderer

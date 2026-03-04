@@ -144,11 +144,26 @@ target_include_directories(test_scene_graph PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(test_scene_graph PRIVATE glm::glm)
-target_compile_definitions(test_scene_graph PRIVATE GLM_FORCE_CTOR_INIT)
+target_compile_definitions(test_scene_graph PRIVATE GLM_FORCE_CTOR_INIT GLM_ENABLE_EXPERIMENTAL)
+
+# ── Selection Selection Test (standalone, no GPU required) ───────────────────
+add_executable(test_selection
+    ../tests/scene/test_selection.cpp
+    scene/Transform.cpp
+    scene/SceneNode.cpp
+)
+target_include_directories(test_selection PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(test_selection PRIVATE glm::glm)
+target_compile_definitions(test_selection PRIVATE GLM_FORCE_CTOR_INIT GLM_ENABLE_EXPERIMENTAL)
+
 if(MSVC)
     target_compile_options(test_scene_graph PRIVATE /W4 /WX- /permissive- /utf-8)
+    target_compile_options(test_selection PRIVATE /W4 /WX- /permissive- /utf-8)
 else()
     target_compile_options(test_scene_graph PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(test_selection PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # ── Status messages ───────────────────────────────────────────────────────────

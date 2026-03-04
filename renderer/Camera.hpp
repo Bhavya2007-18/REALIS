@@ -6,6 +6,10 @@
 
 #include <glm/glm.hpp>
 
+namespace realis::scene {
+struct Ray;
+}
+
 namespace realis::renderer {
 
 enum class ProjectionMode { Perspective, Orthographic };
@@ -34,6 +38,12 @@ public:
   // ── Matrices ─────────────────────────────────────────────────────────────
   glm::mat4 getViewMatrix() const;
   glm::mat4 getProjectionMatrix() const;
+
+  /**
+   * @brief Convert mouse screen coordinates to a world-space ray.
+   */
+  realis::scene::Ray generateRayFromMouse(float mouseX, float mouseY,
+                                          float width, float height) const;
 
   // ── Accessors ────────────────────────────────────────────────────────────
   glm::vec3 getPosition() const;

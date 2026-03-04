@@ -3,6 +3,7 @@
  * @brief Implementation of the REALIS scene graph node.
  */
 #include "SceneNode.hpp"
+#include "RayIntersection.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -90,6 +91,11 @@ void SceneNode::updateWorldMatrix(const glm::mat4 &parentWorld) {
   // Combine with parent's world matrix
   m_worldMatrix = parentWorld * local;
 
+  // Update world-space AABB by transforming the local AABB
+  if (localAABB.isValid()) {
+    worldAABB = localAABB.transformed(m_worldMatrix);
+  }
+
   // Clear dirty flag for this node
   localTransform.clearDirty();
 
@@ -97,6 +103,32 @@ void SceneNode::updateWorldMatrix(const glm::mat4 &parentWorld) {
   for (auto &child : m_children) {
     child->updateWorldMatrix(m_worldMatrix);
   }
+}
+
+SceneNode *SceneNode::pickChild(const Ray &ray, float &closestT) {
+  SceneNode *closestNode = nullptr;
+  closestT = 1e30f;
+
+  // 1. Check self (only if enabled and visible)
+  if (m_enabled && m_visible && worldAABB.isValid()) {
+    float t = 0.0f;
+    if (intersectRayAABB(ray, worldAABB, t)) {
+      closestT = t;
+      closestNode = this;
+    }
+  }
+
+  // 2. Check children
+  for (auto &child : m_children) {
+    float childT = 0.0f;
+    SceneNode *hitNode = child->pickChild(ray, childT);
+    if (hitNode && childT < closestT) {
+      closestT = childT;
+      closestNode = hitNode;
+    }
+  }
+
+  return closestNode;
 }
 
 } // namespace realis::scene

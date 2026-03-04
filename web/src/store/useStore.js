@@ -1,44 +1,18 @@
 import { create } from 'zustand'
 
-const useStore = create((set, get) => ({
-    activeTab: 'Design',
+const useStore = create((set) => ({
     activeWorkspace: 'design',
-    simulationState: 'idle',
-    simTime: 0,
-    fps: 0,
-    energyHistory: [], // [{ t, k, p, tot }]
-
-    selectedObject: null,
-    sceneObjects: [],
-
-    setActiveTab: (tab) => set({ activeTab: tab }),
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
-    setSimulationState: (state) => set({ simulationState: state }),
-    setSelectedObject: (id) => set({ selectedObject: id }),
 
-    addObject: (obj) =>
-        set((s) => ({
-            sceneObjects: [...s.sceneObjects, obj],
-            selectedObject: obj.id,
-        })),
+    fps: 60,
+    simTime: 0,
+    setSimTime: (time) => set({ simTime: time }),
 
-    removeObject: (id) =>
-        set((s) => ({
-            sceneObjects: s.sceneObjects.filter((o) => o.id !== id),
-            selectedObject: s.selectedObject === id ? null : s.selectedObject,
-        })),
+    isSidebarOpen: true,
+    toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-    updateObject: (id, changes) =>
-        set((s) => ({
-            sceneObjects: s.sceneObjects.map((o) =>
-                o.id === id ? { ...o, ...changes } : o
-            ),
-        })),
-
-    getSelectedObject: () => {
-        const s = get()
-        return s.sceneObjects.find((o) => o.id === s.selectedObject) ?? null
-    },
+    isAIPanelOpen: true,
+    toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
 }))
 
 export default useStore

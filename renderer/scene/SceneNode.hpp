@@ -24,7 +24,10 @@
  */
 #pragma once
 
+#include "AABB.hpp"
+#include "Ray.hpp"
 #include "Transform.hpp"
+
 
 #include <glm/glm.hpp>
 
@@ -84,6 +87,20 @@ public:
    * Public by design — mirrors component-style access in modern scene graphs.
    */
   Transform localTransform;
+
+  // ── Bounding Box ──────────────────────────────────────────────────────────
+  AABB localAABB;
+  AABB worldAABB;
+
+  // ── Picking ───────────────────────────────────────────────────────────────
+
+  /**
+   * @brief Recursively find the closest node hit by a ray.
+   * @param ray The picking ray in world space
+   * @param closestT Output distance to closest hit
+   * @return Pointer to closest SceneNode hit, or nullptr
+   */
+  SceneNode* pickChild(const Ray& ray, float& closestT);
 
   // ── World matrix ──────────────────────────────────────────────────────────
 
