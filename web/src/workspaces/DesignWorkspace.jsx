@@ -1,8 +1,34 @@
+import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { MousePointer2, Move, RefreshCw, Square, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu } from 'lucide-react'
 
 export default function DesignWorkspace() {
+    const [zoomLevel, setZoomLevel] = useState(1.0)
+    const [showGrid, setShowGrid] = useState(true)
+    const [viewMode, setViewMode] = useState('perspective') // perspective, top, front, side
+
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3.0))
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))
+
+    const toggleGrid = () => setShowGrid(!showGrid)
+
+    const rotateView = () => {
+        const modes = ['perspective', 'top', 'front', 'side']
+        const nextIndex = (modes.indexOf(viewMode) + 1) % modes.length
+        setViewMode(modes[nextIndex])
+    }
+
+    const getRotation = () => {
+        switch (viewMode) {
+            case 'top': return { rotateX: 90, rotateY: 0, rotateZ: 0 }
+            case 'front': return { rotateX: 0, rotateY: 0, rotateZ: 0 }
+            case 'side': return { rotateX: 0, rotateY: 90, rotateZ: 0 }
+            default: return { rotateX: 45, rotateY: 0, rotateZ: 45 } // Perspective
+        }
+    }
+
     return (
-        <div className="w-full h-full relative grid-bg flex items-center justify-center overflow-hidden">
+        <div className={`w-full h-full relative flex items-center justify-center overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
             {/* Floating Toolbar */}
             <div className="absolute top-4 left-4 z-10 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
                 <button className="p-2 text-white bg-primary rounded-lg transition-colors">
@@ -29,19 +55,48 @@ export default function DesignWorkspace() {
             {/* Viewport Controls */}
             <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                 <div className="glass p-1.5 rounded-xl flex flex-col gap-1">
-                    <button className="p-2 text-slate-300 hover:text-white"><Video size={18} /></button>
-                    <button className="p-2 text-slate-300 hover:text-white"><Grid size={18} /></button>
+                    <button
+                        onClick={rotateView}
+                        className={`p-2 transition-colors cursor-pointer rounded-lg ${viewMode !== 'perspective' ? 'text-primary bg-primary/10' : 'text-slate-300 hover:text-white'}`}
+                        title={`View: ${viewMode}`}
+                    >
+                        <Video size={18} />
+                    </button>
+                    <button
+                        onClick={toggleGrid}
+                        className={`p-2 transition-colors cursor-pointer rounded-lg ${showGrid ? 'text-primary bg-primary/10' : 'text-slate-500 hover:text-white'}`}
+                        title="Toggle Grid"
+                    >
+                        <Grid size={18} />
+                    </button>
                 </div>
                 <div className="glass p-1.5 rounded-xl flex flex-col gap-1">
-                    <button className="p-2 text-slate-300 hover:text-white"><Plus size={18} /></button>
-                    <button className="p-2 text-slate-300 hover:text-white"><Minus size={18} /></button>
+                    <button
+                        onClick={handleZoomIn}
+                        className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    >
+                        <Plus size={18} />
+                    </button>
+                    <button
+                        onClick={handleZoomOut}
+                        className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    >
+                        <Minus size={18} />
+                    </button>
                 </div>
             </div>
 
             {/* Center 3D Representation */}
-            <div className="relative w-96 h-96 flex items-center justify-center">
+            <motion.div
+                animate={{
+                    scale: zoomLevel,
+                    ...getRotation()
+                }}
+                transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                className="relative w-96 h-96 flex items-center justify-center transform-gpu"
+            >
                 <div className="absolute inset-0 border-2 border-primary/20 rounded-full animate-pulse" />
-                <div className="w-64 h-64 border border-primary/40 rotate-45 flex items-center justify-center">
+                <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
                     <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
                         <Cpu size={64} className="text-primary" />
                     </div>
@@ -53,7 +108,7 @@ export default function DesignWorkspace() {
                     <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-green-500"></span> Y-AXIS</div>
                     <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-primary"></span> Z-AXIS</div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Bottom Simulation Controls */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl">
