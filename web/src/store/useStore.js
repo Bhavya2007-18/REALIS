@@ -4,6 +4,9 @@ const useStore = create((set) => ({
     activeWorkspace: 'design',
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
 
+    activeTool: 'select', // 'select', 'move', 'rotate', 'rect', 'ruler', 'pencil'
+    setActiveTool: (tool) => set({ activeTool: tool }),
+
     // Sidebar/Activity Bar state
     sidebarView: 'explorer', // 'explorer', 'search', 'git', 'debug'
     setSidebarView: (view) => set({ sidebarView: view }),
