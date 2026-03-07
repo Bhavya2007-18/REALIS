@@ -1,28 +1,36 @@
 import { useState, useEffect } from 'react'
-import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity } from 'lucide-react'
+import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers } from 'lucide-react'
 import useStore from '../store/useStore'
 
 export default function PropertiesPanel() {
-    // We repurpose the AIChatBot panel area for the Properties Panel when AI is hidden,
-    // or we can just render it conditionally. For this CAD focus, we'll build the component first.
-
     const objects = useStore(s => s.objects)
     const setObjects = useStore(s => s.setObjects)
     const activeFileId = useStore(s => s.activeFileId)
     const selectedIds = useStore(s => s.selectedIds)
     const groupObjects = useStore(s => s.groupObjects)
     const ungroupObjects = useStore(s => s.ungroupObjects)
+    const constraints = useStore(s => s.constraints)
+    const setConstraints = useStore(s => s.setConstraints)
 
     const [selectedObject, setSelectedObject] = useState(null)
+
+    // Joint form state
+    const [jointType, setJointType] = useState('distance')
+    const [jointTargetA, setJointTargetA] = useState('')
+    const [jointTargetB, setJointTargetB] = useState('')
+    const [jointDistance, setJointDistance] = useState(100)
 
     useEffect(() => {
         if (activeFileId) {
             const obj = objects.find(o => o.id === activeFileId)
             setSelectedObject(obj || null)
+            if (obj) setJointTargetA(obj.id)
         } else {
             setSelectedObject(null)
         }
     }, [activeFileId, objects])
+
+    const Layers = Maximize // placeholder for missing icon
 
     if (!selectedObject) {
         return (
@@ -34,6 +42,26 @@ export default function PropertiesPanel() {
                 <div className="flex-1 flex items-center justify-center p-8 text-center text-slate-500">
                     <p className="text-xs">Select an object to view its properties.</p>
                 </div>
+
+                {/* Global Joints List */}
+                {constraints.length > 0 && (
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-2">
+                            <Link size={12} /> Joints ({constraints.length})
+                        </h4>
+                        <div className="space-y-1">
+                            {constraints.map(c => (
+                                <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1 rounded text-[10px] font-mono">
+                                    <span className="text-primary">{c.type}</span>
+                                    <span className="text-slate-400 truncate mx-1">{c.targetA} ↔ {c.targetB || '⚓'}</span>
+                                    <button onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))} className="text-red-400 hover:text-red-300 transition-colors shrink-0">
+                                        <Trash2 size={10} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </aside>
         )
     }
@@ -49,6 +77,20 @@ export default function PropertiesPanel() {
     const handleDelete = () => {
         setObjects(prev => prev.filter(o => o.id !== selectedObject.id))
     }
+
+    const handleAddJoint = () => {
+        if (!jointTargetA) return;
+        if (jointType === 'distance' && !jointTargetB) return;
+
+        const newConstraint = {
+            id: `joint_${Math.random().toString(36).substring(2, 7)}`,
+            type: jointType,
+            targetA: jointTargetA,
+            targetB: jointTargetB || null,
+            distance: parseFloat(jointDistance),
+        };
+        setConstraints(prev => [...prev, newConstraint]);
+    };
 
     return (
         <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark flex flex-col shrink-0">
@@ -394,7 +436,103 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
+                {/* Joints & Constraints */}
+                <div className="space-y-3">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <Link size={12} /> Joints & Constraints
+                    </h4>
+
+                    <div className="space-y-2 pt-1 p-3 bg-slate-800/30 rounded-xl border border-slate-700/40">
+                        {/* Joint Type */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 pl-1">Constraint Type</label>
+                            <select
+                                value={jointType}
+                                onChange={e => setJointType(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
+                            >
+                                <option value="distance">Distance Joint (Rod)</option>
+                                <option value="fixed">Fixed Anchor (Pin to World)</option>
+                            </select>
+                        </div>
+
+                        {/* Body A */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 pl-1">Body A</label>
+                            <select
+                                value={jointTargetA}
+                                onChange={e => setJointTargetA(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
+                            >
+                                <option value="">-- Select Object --</option>
+                                {objects.map(o => (
+                                    <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Body B (only for distance joint) */}
+                        {jointType === 'distance' && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400 pl-1">Body B</label>
+                                <select
+                                    value={jointTargetB}
+                                    onChange={e => setJointTargetB(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
+                                >
+                                    <option value="">-- Select Object --</option>
+                                    {objects.filter(o => o.id !== jointTargetA).map(o => (
+                                        <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Distance parameter */}
+                        {jointType === 'distance' && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-400 pl-1">Target Distance</label>
+                                <input
+                                    type="number"
+                                    value={jointDistance}
+                                    onChange={e => setJointDistance(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs"
+                                />
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleAddJoint}
+                            disabled={!jointTargetA || (jointType === 'distance' && !jointTargetB)}
+                            className="w-full flex items-center justify-center gap-2 bg-primary/20 hover:bg-primary/40 text-primary text-xs font-bold py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                            <Plus size={12} /> Add Constraint
+                        </button>
+                    </div>
+
+                    {/* Existing Joints */}
+                    {constraints.length > 0 && (
+                        <div className="space-y-1">
+                            {constraints.map(c => (
+                                <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700/30">
+                                    <div className="flex flex-col">
+                                        <span className="text-primary font-bold">{c.type}</span>
+                                        <span className="text-slate-400">{c.targetA?.substring(0, 6)} ↔ {c.targetB?.substring(0, 6) || '⚓ world'}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))}
+                                        className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                    >
+                                        <Trash2 size={10} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </div>
         </aside>
     )
 }
+

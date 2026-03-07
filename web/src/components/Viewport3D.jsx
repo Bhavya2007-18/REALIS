@@ -24,18 +24,17 @@ export default function Viewport3D({ objects, isSimulating }) {
 
             {/* Map over draft objects and extrude them */}
             {objects.map((obj) => {
+                const depth = obj.depth !== undefined ? obj.depth : 20;
+                const yPos = obj.y_override !== undefined ? obj.y_override : depth / 2;
+
                 if (obj.type === 'rect') {
-                    // SVG coordinates: (0,0) is top-left, x goes right, y goes down.
-                    // 3D coordinates: x goes right, y goes up, z goes forward.
-                    // Let's map SVG x -> 3D x, SVG y -> 3D z
-                    const depth = obj.depth !== undefined ? obj.depth : 20; // Dynamic extrusion depth
                     const cx = obj.x + obj.width / 2;
                     const cz = obj.y + obj.height / 2;
 
                     return (
                         <mesh
                             key={obj.id}
-                            position={[cx, obj.y_override !== undefined ? obj.y_override : depth / 2, cz]}
+                            position={[cx, yPos, cz]}
                             rotation={[0, obj.rotation ? -obj.rotation * Math.PI / 180 : 0, 0]}
                             castShadow
                         >
@@ -46,11 +45,10 @@ export default function Viewport3D({ objects, isSimulating }) {
                 }
 
                 if (obj.type === 'circle') {
-                    const depth = obj.depth !== undefined ? obj.depth : 20; // Dynamic extrusion depth
                     return (
                         <mesh
                             key={obj.id}
-                            position={[obj.cx, obj.y_override !== undefined ? obj.y_override : depth / 2, obj.cy]}
+                            position={[obj.cx, yPos, obj.cy]}
                             castShadow
                         >
                             <cylinderGeometry args={[obj.r, obj.r, depth, 32]} />
@@ -59,8 +57,7 @@ export default function Viewport3D({ objects, isSimulating }) {
                     );
                 }
 
-                if (obj.type === 'path' && obj.points && obj.points.length > 1) {
-                    const depth = obj.depth !== undefined ? obj.depth : 20;
+                if ((obj.type === 'path' || obj.type === 'extrusion') && obj.points && obj.points.length > 1) {
                     const shape = new THREE.Shape();
                     shape.moveTo(obj.points[0].x, obj.points[0].y);
                     for (let i = 1; i < obj.points.length; i++) {
@@ -71,7 +68,7 @@ export default function Viewport3D({ objects, isSimulating }) {
                         <mesh
                             key={obj.id}
                             rotation={[-Math.PI / 2, 0, 0]}
-                            position={[0, depth, 0]}
+                            position={[0, yPos + depth / 2, 0]} // Center based on depth
                             castShadow
                         >
                             <extrudeGeometry args={[shape, { depth: depth, bevelEnabled: false }]} />

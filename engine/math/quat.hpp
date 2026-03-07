@@ -17,6 +17,7 @@ struct Quat {
   Quat conjugate() const { return Quat(w, -x, -y, -z); }
 
   static Quat from_axis_angle(const Vec3 &axis, float angle);
+  static Quat from_euler(float x, float y, float z);
   Mat3 to_mat3() const;
 };
 

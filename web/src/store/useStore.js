@@ -19,6 +19,9 @@ const useStore = create((set) => ({
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
     addCADObject: (obj) => set((state) => ({ objects: [...state.objects, obj] })),
 
+    constraints: [],
+    setConstraints: (cons) => set({ constraints: typeof cons === 'function' ? cons(useStore.getState().constraints) : cons }),
+
     // Right Panel state
     rightPanelView: 'properties', // 'ai' or 'properties'
     setRightPanelView: (view) => set({ rightPanelView: view }),
