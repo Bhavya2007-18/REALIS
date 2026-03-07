@@ -1,7 +1,7 @@
 import { ChevronDown, MoreHorizontal, Maximize2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import useResizable from '../hooks/useResizable'
-import FileTree from './FileTree'
+import ObjectHierarchy from './ObjectHierarchy'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -44,10 +44,10 @@ export default function Sidebar() {
                         <div className="flex-1 flex flex-col overflow-hidden">
                             <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group">
                                 <ChevronDown size={14} className="text-slate-400" />
-                                <span className="text-[11px] font-bold uppercase text-slate-500">REALIS Project</span>
+                                <span className="text-[11px] font-bold uppercase text-slate-500">Object Hierarchy</span>
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <FileTree />
+                                <ObjectHierarchy />
                             </div>
                         </div>
                     </>

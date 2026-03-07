@@ -1,0 +1,50 @@
+﻿[ 92%] Built target realis_core
+[ 96%] Building CXX object CMakeFiles/py_realis.dir/D_/GIT_WORK_AND_STUDY/REALIS/tools/python_bindings/py_realis.cpp.obj
+[100%] Linking CXX shared module py_realis.cp313-win_amd64.pyd
+cmake : c:/mingw/bin/../
+lib/gcc/mingw32/6.3.0/..
+/../../../mingw32/bin/ld
+.exe: D:/anaconda/an/lib
+s/python313.lib(python31
+3.dll): Recognised but 
+unhandled machine type 
+(0x8664) in Import 
+Library Format archive
+At line:1 char:1
++ cmake --build build 
+--target py_realis > 
+build_log.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo      
+        : NotSpecified: 
+(c:/mi    ngw/bin/..... 
+Format ar    
+chive:String) [], Remot 
+   eException
+    + 
+FullyQualifiedErrorId   
+  : NativeCommandError
+ 
+D:/anaconda/an/libs/pyth
+on313.lib: error adding 
+symbols: File format 
+not recognized
+collect2.exe: error: ld 
+returned 1 exit status
+CMakeFiles\py_realis.dir\build.make:103: recipe for target 'py_realis.cp313-win_amd64.pyd' failed
+mingw32-make.exe[3]: 
+*** [py_realis.cp313-win
+_amd64.pyd] Error 1
+CMakeFiles\Makefile2:562: recipe for target 'CMakeFiles/py_realis.dir/all' failed
+mingw32-make.exe[2]: 
+*** [CMakeFiles/py_reali
+s.dir/all] Error 2
+CMakeFiles\Makefile2:569: recipe for target 'CMakeFiles/py_realis.dir/rule' failed
+mingw32-make.exe[1]: 
+*** [CMakeFiles/py_reali
+s.dir/rule] Error 2
+Makefile:337: recipe for target 'py_realis' failed
+mingw32-make.exe: *** 
+[py_realis] Error 2

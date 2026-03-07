@@ -1,6 +1,22 @@
-import { Search, Bell, Settings, User, Box } from 'lucide-react'
-
+import { Search, Bell, Settings, User, Box, SlidersHorizontal, Sparkles } from 'lucide-react'
+import useStore from '../store/useStore'
 export default function Navbar() {
+    const isRightPanelOpen = useStore(s => s.isRightPanelOpen)
+    const toggleRightPanel = useStore(s => s.toggleRightPanel)
+    const rightPanelView = useStore(s => s.rightPanelView)
+    const setRightPanelView = useStore(s => s.setRightPanelView)
+
+    const handleTogglePanel = (view) => {
+        if (!isRightPanelOpen) {
+            setRightPanelView(view)
+            toggleRightPanel()
+        } else if (rightPanelView === view) {
+            toggleRightPanel()
+        } else {
+            setRightPanelView(view)
+        }
+    }
+
     return (
         <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-6 py-3 z-50 shrink-0">
             <div className="flex items-center gap-8">
@@ -30,6 +46,25 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-4">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                    <button
+                        onClick={() => handleTogglePanel('properties')}
+                        className={`p-1.5 rounded-md transition-colors ${isRightPanelOpen && rightPanelView === 'properties' ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                        title="Properties Inspector"
+                    >
+                        <SlidersHorizontal size={18} />
+                    </button>
+                    <button
+                        onClick={() => handleTogglePanel('ai')}
+                        className={`p-1.5 rounded-md transition-colors ${isRightPanelOpen && rightPanelView === 'ai' ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                        title="AI Copilot"
+                    >
+                        <Sparkles size={18} />
+                    </button>
+                </div>
+
+                <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
                 <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                     <Bell size={20} />
                 </button>

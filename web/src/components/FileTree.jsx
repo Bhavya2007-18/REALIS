@@ -1,26 +1,31 @@
 import { useState } from 'react'
-import { Folder, FolderOpen, FileText, ChevronRight, ChevronDown } from 'lucide-react'
+import { Square, Circle, Ruler, PencilRuler, ChevronRight, ChevronDown, Layers, Target } from 'lucide-react'
 import useStore from '../store/useStore'
 
-function FileIcon({ name }) {
-    const extension = name.split('.').pop().toLowerCase()
-    if (['cpp', 'hpp', 'c', 'h'].includes(extension)) return <span className="text-blue-400 font-bold mr-1.5 text-[10px]">C++</span>
-    if (extension === 'md') return <FileText size={14} className="text-blue-300 mr-1.5" />
-    if (extension === 'txt') return <FileText size={14} className="text-slate-400 mr-1.5" />
-    return <FileText size={14} className="text-slate-400 mr-1.5" />
+function ObjectIcon({ type, color }) {
+    const iconProps = { size: 14, color: color || '#94a3b8', className: "mr-1.5" };
+    switch (type) {
+        case 'rect': return <Square {...iconProps} />;
+        case 'circle': return <Circle {...iconProps} />;
+        case 'ruler': return <Ruler {...iconProps} />;
+        case 'path': return <PencilRuler {...iconProps} />;
+        case 'group': return <Layers {...iconProps} />;
+        default: return <Target {...iconProps} />;
+    }
 }
 
-function FileTreeNode({ item, depth = 0 }) {
-    const [isOpen, setIsOpen] = useState(item.isOpen || false)
+function ObjectTreeNode({ item, depth = 0 }) {
+    const [isOpen, setIsOpen] = useState(true)
+    // Using activeFileId as selected object id for simplicity in this MVP
     const activeFileId = useStore((s) => s.activeFileId)
     const setActiveFileId = useStore((s) => s.setActiveFileId)
 
     const isSelected = activeFileId === item.id
-    const isFolder = item.type === 'folder'
+    const isGroup = item.type === 'group'
 
     const handleClick = (e) => {
         e.stopPropagation()
-        if (isFolder) {
+        if (isGroup) {
             setIsOpen(!isOpen)
         } else {
             setActiveFileId(item.id)
@@ -31,30 +36,26 @@ function FileTreeNode({ item, depth = 0 }) {
         <div className="select-none">
             <div
                 onClick={handleClick}
-                className={`flex items-center py-0.5 px-2 cursor-pointer transition-colors group ${isSelected
-                        ? 'bg-primary/20 text-white'
-                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                className={`flex items-center py-1 px-2 cursor-pointer transition-colors group ${isSelected
+                    ? 'bg-primary/20 text-white'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                     }`}
                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
             >
                 <span className="w-4 flex items-center justify-center mr-1">
-                    {isFolder && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+                    {isGroup && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
                 </span>
 
                 <span className="flex items-center">
-                    {isFolder ? (
-                        isOpen ? <FolderOpen size={16} className="text-blue-400 mr-1.5" /> : <Folder size={16} className="text-blue-400 mr-1.5" />
-                    ) : (
-                        <FileIcon name={item.name} />
-                    )}
-                    <span className="text-xs truncate">{item.name}</span>
+                    <ObjectIcon type={item.type} color={item.stroke} />
+                    <span className="text-xs truncate">{item.name || `${item.type}_${item.id.substring(0, 4)}`}</span>
                 </span>
             </div>
 
-            {isFolder && isOpen && item.children && (
+            {isGroup && isOpen && item.children && (
                 <div>
                     {item.children.map((child) => (
-                        <FileTreeNode key={child.id} item={child} depth={depth + 1} />
+                        <ObjectTreeNode key={child.id} item={child} depth={depth + 1} />
                     ))}
                 </div>
             )}
@@ -63,12 +64,16 @@ function FileTreeNode({ item, depth = 0 }) {
 }
 
 export default function FileTree() {
-    const fileTree = useStore((s) => s.fileTree)
+    const objects = useStore((s) => s.objects)
+
+    if (!objects || objects.length === 0) {
+        return <div className="p-4 text-xs text-slate-500 italic">No objects in scene</div>
+    }
 
     return (
         <div className="flex flex-col h-full overflow-y-auto py-1">
-            {fileTree.map((item) => (
-                <FileTreeNode key={item.id} item={item} />
+            {objects.map((item) => (
+                <ObjectTreeNode key={item.id} item={item} />
             ))}
         </div>
     )

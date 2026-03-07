@@ -89,6 +89,12 @@ target_link_libraries(verify_stacking realis_core)
 add_executable(verify_bar1d ../tests/fem/verify_bar1d.cpp)
 target_link_libraries(verify_bar1d realis_core)
 
+# Python Bindings (PyBind11)
+# Pybind11 is located in tools/pybind11
+add_subdirectory(../tools/pybind11 pybind11)
+pybind11_add_module(py_realis ../tools/python_bindings/py_realis.cpp)
+target_link_libraries(py_realis PUBLIC realis_core)
+
 # Install rules
 install(TARGETS realis_core DESTINATION lib)
 install(DIRECTORY 
