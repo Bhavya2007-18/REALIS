@@ -213,45 +213,104 @@ def run_simulation(req: SimulationRequest):
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(req: ChatRequest):
     """
-    Mock LLM endpoint. In a full implementation, this calls OpenAI/Anthropic.
-    We detect keywords in the last user message to trigger CAD actions.
+    Extended command parser. Detects CAD creation, physics config,
+    and joint creation intents from natural language.
     """
     if not req.messages:
         raise HTTPException(status_code=400, detail="Empty messages")
-        
+
     last_msg = req.messages[-1].content.lower()
-    
     actions = []
-    reply = "I understand."
-    
-    # Mocking a command parser
-    if "cube" in last_msg or "box" in last_msg:
-        reply = "I've created a box for you at the origin."
-        actions.append({
-            "type": "CREATE_CAD",
-            "payload": {
-                "type": "rect",
-                "x": 300,
-                "y": 200,
-                "width": 100,
-                "height": 100
-            }
-        })
-    elif "circle" in last_msg or "sphere" in last_msg:
-        reply = "I've drafted a circle for your extrusion."
-        actions.append({
-            "type": "CREATE_CAD",
-            "payload": {
-                "type": "circle",
-                "cx": 400,
-                "cy": 300,
-                "r": 50
-            }
-        })
+    reply = ""
+
+    # ── Physics: Make Static ──────────────────────────────────────────────────
+    if any(k in last_msg for k in ["make it static", "make static", "make it a floor", "ground", "fix it in place", "don't move", "make it solid"]):
+        reply = "Done! I've marked the selected object as static — it will act as an immovable surface (floor, wall, etc.) during simulation."
+        actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": True}})
+
+    # ── Physics: Make Dynamic ─────────────────────────────────────────────────
+    elif any(k in last_msg for k in ["make it dynamic", "make dynamic", "unfix", "let it move"]):
+        reply = "The selected object is now dynamic — it will respond to gravity and collisions."
+        actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": False}})
+
+    # ── Physics: Set Mass ─────────────────────────────────────────────────────
+    elif "mass" in last_msg and any(c.isdigit() for c in last_msg):
+        import re
+        nums = re.findall(r'\d+\.?\d*', last_msg)
+        if nums:
+            mass_val = float(nums[0])
+            reply = f"I've set the mass of the selected object to **{mass_val} kg**."
+            actions.append({"type": "SET_PHYSICS", "payload": {"field": "mass", "value": mass_val}})
+        else:
+            reply = "Could you specify the mass value? For example: 'set mass to 5'."
+
+    # ── Physics: Set Friction ─────────────────────────────────────────────────
+    elif "friction" in last_msg and any(c.isdigit() for c in last_msg):
+        import re
+        nums = re.findall(r'\d+\.?\d*', last_msg)
+        if nums:
+            val = min(1.0, float(nums[0]))
+            reply = f"Friction set to **{val}** on the selected object (range 0–1)."
+            actions.append({"type": "SET_PHYSICS", "payload": {"field": "friction", "value": val}})
+        else:
+            reply = "Please specify a friction value between 0 and 1."
+
+    # ── Physics: Set Restitution/Bounciness ───────────────────────────────────
+    elif any(k in last_msg for k in ["restitution", "bounciness", "bounce", "elastic"]) and any(c.isdigit() for c in last_msg):
+        import re
+        nums = re.findall(r'\d+\.?\d*', last_msg)
+        if nums:
+            val = min(1.0, float(nums[0]))
+            reply = f"Bounciness (restitution) set to **{val}** on the selected object."
+            actions.append({"type": "SET_PHYSICS", "payload": {"field": "restitution", "value": val}})
+        else:
+            reply = "Specify a bounciness value between 0 (no bounce) and 1 (fully elastic)."
+
+    # ── Joints: Pin to World (Fixed Anchor) ───────────────────────────────────
+    elif any(k in last_msg for k in ["pin it", "anchor", "pin to world", "pin to ground", "fixed joint", "fix to world"]):
+        reply = "I've added a **Fixed Anchor** constraint — the selected object is pinned to the world. It'll stay in place but can still be affected by joints with other objects."
+        actions.append({"type": "ADD_JOINT", "payload": {"type": "fixed"}})
+
+    # ── Joints: Distance Joint ────────────────────────────────────────────────
+    elif any(k in last_msg for k in ["link", "distance joint", "rod", "connect objects", "joint between"]):
+        reply = "I'll create a **Distance Joint** between the two selected objects. Select your objects and define the target distance in the Properties panel's Joints section."
+        actions.append({"type": "ADD_JOINT", "payload": {"type": "distance"}})
+
+    # ── CAD: Draw a box/cube ──────────────────────────────────────────────────
+    elif any(k in last_msg for k in ["cube", "box", "rectangle", "rect"]):
+        import re
+        nums = re.findall(r'\d+\.?\d*', last_msg)
+        w = float(nums[0]) if len(nums) > 0 else 100
+        h = float(nums[1]) if len(nums) > 1 else w
+        reply = f"I've created a **{int(w)}×{int(h)} rectangle** for you. Select it and set physics properties in the panel."
+        actions.append({"type": "CREATE_CAD", "payload": {"type": "rect", "x": 300, "y": 200, "width": w, "height": h}})
+
+    # ── CAD: Draw a circle/sphere ─────────────────────────────────────────────
+    elif any(k in last_msg for k in ["circle", "sphere", "disc", "ball", "cylinder"]):
+        import re
+        nums = re.findall(r'\d+\.?\d*', last_msg)
+        r = float(nums[0]) if nums else 50
+        reply = f"I've drafted a **circle with radius {int(r)}** for extrusion into a cylinder."
+        actions.append({"type": "CREATE_CAD", "payload": {"type": "circle", "cx": 400, "cy": 300, "r": r}})
+
+    # ── Simulation: Run ───────────────────────────────────────────────────────
+    elif any(k in last_msg for k in ["simulate", "run simulation", "play", "start simulation"]):
+        reply = "Click the **Play button** at the bottom of the viewport to run the physics simulation. All your objects and joints are already configured!"
+
+    # ── Help / Fallback ───────────────────────────────────────────────────────
     else:
-        reply = "I am ready to assist with your engineering tasks. You can ask me to draw basic shapes or analyze structural points."
-        
-    return ChatResponse(reply=reply, actions=actions)
+        reply = (
+            "I can help you configure your scene. Try commands like:\n"
+            "• **'make it static'** — fix an object in place\n"
+            "• **'set mass to 5'** — set object mass in kg\n"
+            "• **'set friction to 0.8'** — configure surface friction\n"
+            "• **'set bounciness to 0.3'** — adjust restitution\n"
+            "• **'pin it to world'** — add a fixed anchor joint\n"
+            "• **'draw a 100x50 box'** — create a rectangle\n"
+            "• **'draw a circle of radius 40'** — create a circle"
+        )
+
+    return ChatResponse(reply=reply, actions=actions if actions else None)
 
 if __name__ == "__main__":
     import uvicorn

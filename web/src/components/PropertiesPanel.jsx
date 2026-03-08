@@ -12,6 +12,9 @@ export default function PropertiesPanel() {
     const constraints = useStore(s => s.constraints)
     const setConstraints = useStore(s => s.setConstraints)
 
+    const shapes3D = useStore(s => s.shapes3D)
+    const setShapes3D = useStore(s => s.setShapes3D)
+
     const [selectedObject, setSelectedObject] = useState(null)
 
     // Joint form state
@@ -22,13 +25,18 @@ export default function PropertiesPanel() {
 
     useEffect(() => {
         if (activeFileId) {
-            const obj = objects.find(o => o.id === activeFileId)
-            setSelectedObject(obj || null)
+            let obj = objects.find(o => o.id === activeFileId)
+            let is3D = false;
+            if (!obj) {
+                obj = shapes3D.find(o => o.id === activeFileId);
+                is3D = !!obj;
+            }
+            setSelectedObject(obj ? { ...obj, is3D } : null)
             if (obj) setJointTargetA(obj.id)
         } else {
             setSelectedObject(null)
         }
-    }, [activeFileId, objects])
+    }, [activeFileId, objects, shapes3D])
 
     const Layers = Maximize // placeholder for missing icon
 
@@ -66,16 +74,46 @@ export default function PropertiesPanel() {
         )
     }
 
-    const handleChange = (field, value) => {
-        const parsedValue =
-            (field === 'stroke' || field === 'name' || field === 'points') ? value
-                : field === 'isStatic' ? value
-                    : parseFloat(value) || 0;
-        setObjects(prev => prev.map(o => o.id === selectedObject.id ? { ...o, [field]: parsedValue } : o))
+    const handleChange = (field, value, subfield = null) => {
+        if (selectedObject.is3D) {
+            setShapes3D(prev => prev.map(o => {
+                if (o.id === selectedObject.id) {
+                    if (subfield) {
+                        const val = value === '' ? 0 : parseFloat(value);
+                        return { ...o, [field]: { ...o[field], [subfield]: isNaN(val) ? 0 : val } }
+                    }
+                    if (field === 'params') {
+                        const newParams = { ...o.params };
+                        Object.entries(value).forEach(([k, v]) => {
+                            const val = v === '' ? 0 : parseFloat(v);
+                            newParams[k] = isNaN(val) ? 0 : val;
+                        });
+                        return { ...o, params: newParams }
+                    }
+                    if (field === 'color' || field === 'name') {
+                        return { ...o, [field]: value }
+                    }
+                    const val = value === '' ? 0 : parseFloat(value);
+                    return { ...o, [field]: isNaN(val) ? 0 : val }
+                }
+                return o;
+            }))
+        } else {
+            const parsedValue =
+                (field === 'stroke' || field === 'name' || field === 'points') ? value
+                    : field === 'isStatic' ? value
+                        : parseFloat(value) || 0;
+            setObjects(prev => prev.map(o => o.id === selectedObject.id ? { ...o, [field]: parsedValue } : o))
+        }
     }
 
     const handleDelete = () => {
-        setObjects(prev => prev.filter(o => o.id !== selectedObject.id))
+        if (selectedObject.is3D) {
+            setShapes3D(prev => prev.filter(o => o.id !== selectedObject.id))
+        } else {
+            setObjects(prev => prev.filter(o => o.id !== selectedObject.id))
+        }
+        useStore.setState({ activeFileId: null })
     }
 
     const handleAddJoint = () => {
@@ -143,165 +181,184 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* Transform */}
-                <div className="space-y-3">
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                        <Maximize size={12} /> Transform
-                    </h4>
+                {/* 3D Transform */}
+                {selectedObject.is3D && (
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            <Maximize size={12} /> 3D Transform
+                        </h4>
 
-                    {selectedObject.type === 'rect' && (
-                        <>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">X Pos</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.x)}
-                                        onChange={e => handleChange('x', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Y Pos</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.y)}
-                                        onChange={e => handleChange('y', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Width</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.width)}
-                                        onChange={e => handleChange('width', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Height</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.height)}
-                                        onChange={e => handleChange('height', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Rotation (deg)</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.rotation || 0)}
-                                        onChange={e => handleChange('rotation', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.depth || 20)}
-                                        onChange={e => handleChange('depth', e.target.value)}
-                                        className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {selectedObject.type === 'path' && (
-                        <div className="space-y-2">
-                            <label className="text-[10px] text-slate-400 pl-1">Vertices ({selectedObject.points?.length || 0})</label>
-                            <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                                {selectedObject.points?.map((pt, i) => (
-                                    <div key={i} className="flex gap-1 items-center bg-slate-100 dark:bg-slate-800/50 p-1 rounded">
-                                        <span className="text-[9px] text-slate-500 w-3">{i}</span>
-                                        <div className="flex-1 grid grid-cols-2 gap-1">
-                                            <input
-                                                type="number"
-                                                value={Math.round(pt.x)}
-                                                onChange={e => {
-                                                    const newPoints = [...selectedObject.points];
-                                                    newPoints[i] = { ...newPoints[i], x: parseFloat(e.target.value) || 0 };
-                                                    handleChange('points', newPoints)
-                                                }}
-                                                className="w-full bg-slate-200 dark:bg-slate-900 border-none rounded px-1 py-0.5 text-[10px]"
-                                            />
-                                            <input
-                                                type="number"
-                                                value={Math.round(pt.y)}
-                                                onChange={e => {
-                                                    const newPoints = [...selectedObject.points];
-                                                    newPoints[i] = { ...newPoints[i], y: parseFloat(e.target.value) || 0 };
-                                                    handleChange('points', newPoints)
-                                                }}
-                                                className="w-full bg-slate-200 dark:bg-slate-900 border-none rounded px-1 py-0.5 text-[10px]"
-                                            />
-                                        </div>
-                                        {selectedObject.points.length > 2 && (
-                                            <button
-                                                onClick={() => {
-                                                    const newPoints = selectedObject.points.filter((_, index) => index !== i);
-                                                    handleChange('points', newPoints)
-                                                }}
-                                                className="text-slate-400 hover:text-red-400 transition-colors"
-                                            >
-                                                <Trash2 size={10} />
-                                            </button>
-                                        )}
+                        <div className="space-y-3">
+                            <label className="text-[10px] text-slate-400 pl-1 uppercase tracking-tight font-bold">Position</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['x', 'y', 'z'].map(axis => (
+                                    <div key={axis} className="space-y-1">
+                                        <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
+                                        <input
+                                            type="number"
+                                            value={selectedObject.position[axis]}
+                                            onChange={e => handleChange('position', e.target.value, axis)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
+                                        />
                                     </div>
                                 ))}
                             </div>
-                            <div className="space-y-1 mt-2">
-                                <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
-                                <input
-                                    type="number"
-                                    value={Math.round(selectedObject.depth || 20)}
-                                    onChange={e => handleChange('depth', e.target.value)}
-                                    className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
-                                />
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[10px] text-slate-400 pl-1 uppercase tracking-tight font-bold">Rotation (rad)</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['x', 'y', 'z'].map(axis => (
+                                    <div key={axis} className="space-y-1">
+                                        <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={selectedObject.rotation[axis]}
+                                            onChange={e => handleChange('rotation', e.target.value, axis)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
 
-                    {selectedObject.type === 'circle' && (
-                        <>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Center X</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.cx)}
-                                        onChange={e => handleChange('cx', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Center Y</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.cy)}
-                                        onChange={e => handleChange('cy', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
+                        <div className="space-y-3">
+                            <label className="text-[10px] text-slate-400 pl-1 uppercase tracking-tight font-bold">Scale</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['x', 'y', 'z'].map(axis => (
+                                    <div key={axis} className="space-y-1">
+                                        <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={selectedObject.scale[axis]}
+                                            onChange={e => handleChange('scale', e.target.value, axis)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Radius</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.r)}
-                                        onChange={e => handleChange('r', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
+                        </div>
+                    </div>
+                )}
+
+                {/* 2D Transform */}
+                {!selectedObject.is3D && (
+                    <div className="space-y-3">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            <Maximize size={12} /> Transform
+                        </h4>
+
+                        {selectedObject.type === 'rect' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">X Pos</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.x)}
+                                            onChange={e => handleChange('x', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Y Pos</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.y)}
+                                            onChange={e => handleChange('y', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Width</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.width)}
+                                            onChange={e => handleChange('width', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Height</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.height)}
+                                            onChange={e => handleChange('height', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Rotation (deg)</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.rotation || 0)}
+                                            onChange={e => handleChange('rotation', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.depth || 20)}
+                                            onChange={e => handleChange('depth', e.target.value)}
+                                            className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {selectedObject.type === 'path' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] text-slate-400 pl-1">Vertices ({selectedObject.points?.length || 0})</label>
+                                <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                                    {selectedObject.points?.map((pt, i) => (
+                                        <div key={i} className="flex gap-1 items-center bg-slate-100 dark:bg-slate-800/50 p-1 rounded">
+                                            <span className="text-[9px] text-slate-500 w-3">{i}</span>
+                                            <div className="flex-1 grid grid-cols-2 gap-1">
+                                                <input
+                                                    type="number"
+                                                    value={Math.round(pt.x)}
+                                                    onChange={e => {
+                                                        const newPoints = [...selectedObject.points];
+                                                        newPoints[i] = { ...newPoints[i], x: parseFloat(e.target.value) || 0 };
+                                                        handleChange('points', newPoints)
+                                                    }}
+                                                    className="w-full bg-slate-200 dark:bg-slate-900 border-none rounded px-1 py-0.5 text-[10px]"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    value={Math.round(pt.y)}
+                                                    onChange={e => {
+                                                        const newPoints = [...selectedObject.points];
+                                                        newPoints[i] = { ...newPoints[i], y: parseFloat(e.target.value) || 0 };
+                                                        handleChange('points', newPoints)
+                                                    }}
+                                                    className="w-full bg-slate-200 dark:bg-slate-900 border-none rounded px-1 py-0.5 text-[10px]"
+                                                />
+                                            </div>
+                                            {selectedObject.points.length > 2 && (
+                                                <button
+                                                    onClick={() => {
+                                                        const newPoints = selectedObject.points.filter((_, index) => index !== i);
+                                                        handleChange('points', newPoints)
+                                                    }}
+                                                    className="text-slate-400 hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 size={10} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="space-y-1 mt-2">
                                     <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
                                     <input
                                         type="number"
@@ -311,55 +368,123 @@ export default function PropertiesPanel() {
                                     />
                                 </div>
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    {selectedObject.type === 'ruler' && (
-                        <>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">X1</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.x1)}
-                                        onChange={e => handleChange('x1', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
+                        {selectedObject.type === 'circle' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Center X</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.cx)}
+                                            onChange={e => handleChange('cx', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Center Y</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.cy)}
+                                            onChange={e => handleChange('cy', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Y1</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.y1)}
-                                        onChange={e => handleChange('y1', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Radius</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.r)}
+                                            onChange={e => handleChange('r', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.depth || 20)}
+                                            onChange={e => handleChange('depth', e.target.value)}
+                                            className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">X2</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.x2)}
-                                        onChange={e => handleChange('x2', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-slate-400 pl-1">Y2</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(selectedObject.y2)}
-                                        onChange={e => handleChange('y2', e.target.value)}
-                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    )}
+                            </>
+                        )}
 
-                </div>
+                        {selectedObject.type === 'ruler' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">X1</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.x1)}
+                                            onChange={e => handleChange('x1', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Y1</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.y1)}
+                                            onChange={e => handleChange('y1', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">X2</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.x2)}
+                                            onChange={e => handleChange('x2', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Y2</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.y2)}
+                                            onChange={e => handleChange('y2', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                    </div>
+                )}
+
+                {/* 3D Parameters */}
+                {selectedObject.is3D && (
+                    <div className="space-y-3">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                            <Settings size={12} /> Parameters
+                        </h4>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            {Object.entries(selectedObject.params || {}).map(([key, val]) => (
+                                <div key={key} className="space-y-1">
+                                    <label className="text-[10px] text-slate-400 pl-1 capitalize">{key}</label>
+                                    <input
+                                        type="number"
+                                        value={val}
+                                        onChange={e => handleChange('params', { [key]: parseFloat(e.target.value) || 0 })}
+                                        className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-mono"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Appearance */}
                 <div className="space-y-3">
@@ -367,16 +492,39 @@ export default function PropertiesPanel() {
                         <Palette size={12} /> Appearance
                     </h4>
 
-                    <div className="space-y-1 pt-1">
+                    <div className="space-y-3 pt-1">
                         <div className="flex items-center gap-2">
                             <input
                                 type="color"
-                                value={selectedObject.stroke || '#ffffff'}
-                                onChange={e => handleChange('stroke', e.target.value)}
+                                value={selectedObject.is3D ? (selectedObject.color || '#ffffff') : (selectedObject.stroke || '#ffffff')}
+                                onChange={e => handleChange(selectedObject.is3D ? 'color' : 'stroke', e.target.value)}
                                 className="size-6 p-0 border-0 rounded overflow-hidden cursor-pointer"
                             />
-                            <label className="text-xs text-slate-300">Stroke Color</label>
+                            <label className="text-xs text-slate-300">{selectedObject.is3D ? 'Base Color' : 'Stroke Color'}</label>
                         </div>
+
+                        {selectedObject.is3D && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] text-slate-500 pl-1">Roughness</label>
+                                    <input
+                                        type="range" min="0" max="1" step="0.01"
+                                        value={selectedObject.roughness || 0.5}
+                                        onChange={e => handleChange('roughness', e.target.value)}
+                                        className="w-full accent-primary h-1 bg-slate-700 rounded-full appearance-none"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] text-slate-500 pl-1">Metalness</label>
+                                    <input
+                                        type="range" min="0" max="1" step="0.01"
+                                        value={selectedObject.metalness || 0.1}
+                                        onChange={e => handleChange('metalness', e.target.value)}
+                                        className="w-full accent-primary h-1 bg-slate-700 rounded-full appearance-none"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

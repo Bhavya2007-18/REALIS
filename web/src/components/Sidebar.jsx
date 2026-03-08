@@ -2,6 +2,7 @@ import { ChevronDown, MoreHorizontal, Maximize2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import useResizable from '../hooks/useResizable'
 import ObjectHierarchy from './ObjectHierarchy'
+import LayerPanel from './LayerPanel'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -48,6 +49,17 @@ export default function Sidebar() {
                             </div>
                             <div className="flex-1 overflow-hidden">
                                 <ObjectHierarchy />
+                            </div>
+                        </div>
+
+                        {/* Layers Section */}
+                        <div className="flex flex-col overflow-hidden border-t border-slate-800" style={{ minHeight: '140px', maxHeight: '200px' }}>
+                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30">
+                                <ChevronDown size={14} className="text-slate-400" />
+                                <span className="text-[11px] font-bold uppercase text-slate-500">Layers</span>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <LayerPanel />
                             </div>
                         </div>
                     </>

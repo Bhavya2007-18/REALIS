@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers } from 'lucide-react'
+import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling } from 'lucide-react'
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
+import CommandLine from '../components/CommandLine'
 
 export default function DesignWorkspace() {
     const activeTool = useStore((s) => s.activeTool)
     const setActiveTool = useStore((s) => s.setActiveTool)
+    const active3DTool = useStore((s) => s.active3DTool)
+    const setActive3DTool = useStore((s) => s.setActive3DTool)
+    const addShape3D = useStore((s) => s.addShape3D)
 
     // --- Settings ---
     const [snappingEnabled, setSnappingEnabled] = useState(true)
@@ -17,6 +21,13 @@ export default function DesignWorkspace() {
     const selectedIds = useStore((s) => s.selectedIds)
     const setSelectedIds = useStore((s) => s.setSelectedIds)
     const setActiveFileId = useStore((s) => s.setActiveFileId)
+    const layers = useStore(s => s.layers)
+    const duplicateObjects = useStore(s => s.duplicateObjects)
+    const deleteObjects = useStore(s => s.deleteObjects)
+    const mirrorObjects = useStore(s => s.mirrorObjects)
+    const undo = useStore(s => s.undo)
+    const redo = useStore(s => s.redo)
+    const saveHistorySnapshot = useStore(s => s.saveHistorySnapshot)
     const [isDrawing, setIsDrawing] = useState(false)
     const [currentAction, setCurrentAction] = useState(null)
     const [isSimulating, setIsSimulating] = useState(false)
@@ -113,9 +124,12 @@ export default function DesignWorkspace() {
         });
     };
 
-    const renderedObjects = isPlaying || (simulationFrames.length > 0 && currentFrameIndex > 0)
+    // Filter by layer visibility
+    const visibleLayerIds = new Set(layers.filter(l => l.visible).map(l => l.id))
+    const allObjects = isPlaying || (simulationFrames.length > 0 && currentFrameIndex > 0)
         ? getRenderObjects()
-        : objects;
+        : objects
+    const renderedObjects = allObjects.filter(o => !o.layerId || visibleLayerIds.has(o.layerId))
 
 
     // --- Pointer Interaction Logic ---
@@ -140,6 +154,28 @@ export default function DesignWorkspace() {
         if (!snappingEnabled) return { x: px, y: py, snapped: false };
         let closestDist = SNAP_THRESHOLD;
         let snapPoint = { x: px, y: py, snapped: false };
+
+        const getClosestPointOnSegment = (p, p1, p2) => {
+            const l2 = (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+            if (l2 === 0) return { ...p1, dist: Math.sqrt((p.x - p1.x) ** 2 + (p.y - p1.y) ** 2) };
+            let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const proj = { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+            return { ...proj, dist: Math.sqrt((p.x - proj.x) ** 2 + (p.y - proj.y) ** 2) };
+        };
+
+        const getLineIntersection = (p0, p1, p2, p3) => {
+            const s1_x = p1.x - p0.x, s1_y = p1.y - p0.y;
+            const s2_x = p3.x - p2.x, s2_y = p3.y - p2.y;
+            const denom = -s2_x * s1_y + s1_x * s2_y;
+            if (denom === 0) return null; // Collinear or parallel
+            const s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) / denom;
+            const t = (s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) / denom;
+            if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
+                return { x: p0.x + (t * s1_x), y: p0.y + (t * s1_y) };
+            }
+            return null;
+        };
 
         // Grid snapping
         if (showGrid) {
@@ -186,6 +222,10 @@ export default function DesignWorkspace() {
                 pts.push({ x: obj.x1, y: obj.y1, type: 'endpoint' });
                 pts.push({ x: obj.x2, y: obj.y2, type: 'endpoint' });
                 pts.push({ x: (obj.x1 + obj.x2) / 2, y: (obj.y1 + obj.y2) / 2, type: 'midpoint' });
+
+                // Nearest snap
+                const nearest = getClosestPointOnSegment({ x: px, y: py }, { x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 });
+                if (nearest.dist < closestDist) pts.push({ x: nearest.x, y: nearest.y, type: 'nearest' });
             }
 
             pts.forEach(p => {
@@ -195,7 +235,59 @@ export default function DesignWorkspace() {
                     snapPoint = { x: p.x, y: p.y, snapped: true, type: p.type || 'endpoint' };
                 }
             });
+
+            // Generate nearest points for rect and path dynamically to avoid huge arrays
+            if (obj.type === 'rect') {
+                const corners = [
+                    { x: obj.x, y: obj.y }, { x: obj.x + obj.width, y: obj.y },
+                    { x: obj.x + obj.width, y: obj.y + obj.height }, { x: obj.x, y: obj.y + obj.height }
+                ];
+                for (let i = 0; i < 4; i++) {
+                    const nearest = getClosestPointOnSegment({ x: px, y: py }, corners[i], corners[(i + 1) % 4]);
+                    if (nearest.dist < closestDist) {
+                        closestDist = nearest.dist;
+                        snapPoint = { x: nearest.x, y: nearest.y, snapped: true, type: 'nearest' };
+                    }
+                }
+            } else if (obj.type === 'path' && obj.points) {
+                for (let i = 0; i < obj.points.length - 1; i++) {
+                    const nearest = getClosestPointOnSegment({ x: px, y: py }, obj.points[i], obj.points[i + 1]);
+                    if (nearest.dist < closestDist) {
+                        closestDist = nearest.dist;
+                        snapPoint = { x: nearest.x, y: nearest.y, snapped: true, type: 'nearest' };
+                    }
+                }
+            }
         });
+
+        // Intersection Snapping
+        const allSegments = [];
+        objects.forEach(obj => {
+            if (obj.id === excludeId) return;
+            if (obj.type === 'ruler') allSegments.push([{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]);
+            else if (obj.type === 'rect') {
+                allSegments.push([{ x: obj.x, y: obj.y }, { x: obj.x + obj.width, y: obj.y }]);
+                allSegments.push([{ x: obj.x + obj.width, y: obj.y }, { x: obj.x + obj.width, y: obj.y + obj.height }]);
+                allSegments.push([{ x: obj.x + obj.width, y: obj.y + obj.height }, { x: obj.x, y: obj.y + obj.height }]);
+                allSegments.push([{ x: obj.x, y: obj.y + obj.height }, { x: obj.x, y: obj.y }]);
+            } else if (obj.type === 'path' && obj.points) {
+                for (let i = 0; i < obj.points.length - 1; i++) allSegments.push([obj.points[i], obj.points[i + 1]]);
+            }
+        });
+
+        for (let i = 0; i < allSegments.length; i++) {
+            for (let j = i + 1; j < allSegments.length; j++) {
+                const isect = getLineIntersection(allSegments[i][0], allSegments[i][1], allSegments[j][0], allSegments[j][1]);
+                if (isect) {
+                    const d = Math.sqrt((px - isect.x) ** 2 + (py - isect.y) ** 2);
+                    if (d < closestDist) {
+                        closestDist = d;
+                        snapPoint = { x: isect.x, y: isect.y, snapped: true, type: 'intersection' };
+                    }
+                }
+            }
+        }
+
         return snapPoint;
     }
 
@@ -211,20 +303,46 @@ export default function DesignWorkspace() {
         setIsDrawing(true)
 
         if (activeTool === 'select') {
-            // Deselect and start selection window if clicking on empty canvas.
-            if (e.target.tagName === 'svg') {
-                setSelectedIds([])
-                setCurrentAction({ type: 'select_window', startX: x, startY: y, currentX: x, currentY: y })
+            // Check if clicking on an actual object via event target
+            const isSvgElement = e.target.tagName === 'svg';
+            if (!isSvgElement) {
+                // We rely on the onClick handler on the shape SVG nodes for actual object selection.
+                // However, we want to start a selection window if clicking on empty space.
+                return;
             }
+
+            // Deselect and start selection window if clicking on empty canvas.
+            if (!e.shiftKey) setSelectedIds([])
+            setCurrentAction({ type: 'select_window', startX: x, startY: y, currentX: x, currentY: y })
+
             return
         }
 
         if (activeTool === 'move' && selectedIds.length > 0) {
+            saveHistorySnapshot()
             setCurrentAction({ type: 'move', startX: x, startY: y, originalObjects: [...objects] })
             return
         }
 
+        if (activeTool === 'scale' && selectedIds.length > 0) {
+            saveHistorySnapshot()
+            // Get the first selected object center for MVP scaling origin
+            const objToScale = objects.find(o => o.id === selectedIds[0])
+            if (objToScale) {
+                let cx = 0, cy = 0;
+                if (objToScale.type === 'rect') { cx = objToScale.x + objToScale.width / 2; cy = objToScale.y + objToScale.height / 2; }
+                else if (objToScale.type === 'circle' || objToScale.type === 'polygon' || objToScale.type === 'arc') { cx = objToScale.cx; cy = objToScale.cy; }
+                else if (objToScale.type === 'ruler') { cx = (objToScale.x1 + objToScale.x2) / 2; cy = (objToScale.y1 + objToScale.y2) / 2; }
+                else { cx = x; cy = y; }
+
+                const initialDist = Math.max(1, Math.sqrt((x - cx) ** 2 + (y - cy) ** 2))
+                setCurrentAction({ type: 'scale', cx, cy, startX: x, startY: y, initialDist, originalObjects: [...objects] })
+            }
+            return
+        }
+
         if (activeTool === 'rotate' && selectedIds.length > 0) {
+            saveHistorySnapshot()
             // Get the first selected object to rotate around its center for MVP
             const objToRotate = objects.find(o => o.id === selectedIds[0])
             if (objToRotate) {
@@ -240,6 +358,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'rect') {
+            saveHistorySnapshot()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0 }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
@@ -247,13 +366,31 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'circle') {
+            saveHistorySnapshot()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0 }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
             return
         }
 
+        if (activeTool === 'polygon') {
+            saveHistorySnapshot()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0 }
+            setObjects(prev => [...prev, newObj])
+            setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
+            return
+        }
+
+        if (activeTool === 'arc') {
+            saveHistorySnapshot()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0 }
+            setObjects(prev => [...prev, newObj])
+            setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
+            return
+        }
+
         if (activeTool === 'ruler') {
+            saveHistorySnapshot()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0 }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_ruler', id: newObj.id, startX: x, startY: y })
@@ -261,6 +398,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'pencil') {
+            saveHistorySnapshot()
             const newObj = {
                 id: Math.random().toString(36).substring(2, 9),
                 type: 'path',
@@ -271,6 +409,14 @@ export default function DesignWorkspace() {
             }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polyline', id: newObj.id })
+            return
+        }
+
+        if (activeTool === 'dimension') {
+            saveHistorySnapshot()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y }
+            setObjects(prev => [...prev, newObj])
+            setCurrentAction({ type: 'create_dimension', id: newObj.id, startX: x, startY: y })
             return
         }
     }
@@ -331,7 +477,16 @@ export default function DesignWorkspace() {
                 return { ...obj, r }
             }
 
+            if ((currentAction.type === 'create_polygon' || currentAction.type === 'create_arc') && obj.id === currentAction.id) {
+                const r = Math.sqrt((x - currentAction.startX) ** 2 + (y - currentAction.startY) ** 2)
+                return { ...obj, r }
+            }
+
             if (currentAction.type === 'create_ruler' && obj.id === currentAction.id) {
+                return { ...obj, x2: x, y2: y }
+            }
+
+            if (currentAction.type === 'create_dimension' && obj.id === currentAction.id) {
                 return { ...obj, x2: x, y2: y }
             }
 
@@ -346,19 +501,53 @@ export default function DesignWorkspace() {
                 const originalObj = currentAction.originalObjects.find(o => o.id === obj.id)
                 if (!originalObj) return obj;
 
-                if (obj.type === 'rect') {
+                if (originalObj.type === 'rect') {
                     return { ...obj, x: originalObj.x + dx, y: originalObj.y + dy }
                 }
-                if (obj.type === 'circle') {
+                if (originalObj.type === 'circle' || originalObj.type === 'polygon' || originalObj.type === 'arc') {
                     return { ...obj, cx: originalObj.cx + dx, cy: originalObj.cy + dy }
                 }
-                if (obj.type === 'path') {
-                    // For MVP, use simple transform translation
+                if (originalObj.type === 'path') {
                     const currentTransform = originalObj.transform || '';
                     return { ...obj, transform: `translate(${dx}, ${dy}) ${currentTransform.replace(/translate\([^)]+\)/, '')} `.trim() }
                 }
-                if (obj.type === 'ruler') {
+                if (originalObj.type === 'ruler') {
                     return { ...obj, x1: originalObj.x1 + dx, y1: originalObj.y1 + dy, x2: originalObj.x2 + dx, y2: originalObj.y2 + dy }
+                }
+            }
+
+            if (currentAction.type === 'scale' && selectedIds.includes(obj.id)) {
+                const currentDist = Math.max(1, Math.sqrt((x - currentAction.cx) ** 2 + (y - currentAction.cy) ** 2))
+                const scaleFactor = currentDist / currentAction.initialDist
+                const originalObj = currentAction.originalObjects.find(o => o.id === obj.id)
+                if (!originalObj) return obj;
+
+                if (originalObj.type === 'rect') {
+                    const newW = originalObj.width * scaleFactor;
+                    const newH = originalObj.height * scaleFactor;
+                    // Scale from center
+                    const newX = currentAction.cx - (currentAction.cx - originalObj.x) * scaleFactor;
+                    const newY = currentAction.cy - (currentAction.cy - originalObj.y) * scaleFactor;
+                    return { ...obj, x: newX, y: newY, width: newW, height: newH }
+                }
+                if (originalObj.type === 'circle' || originalObj.type === 'polygon' || originalObj.type === 'arc') {
+                    const newCx = currentAction.cx - (currentAction.cx - originalObj.cx) * scaleFactor;
+                    const newCy = currentAction.cy - (currentAction.cy - originalObj.cy) * scaleFactor;
+                    return { ...obj, cx: newCx, cy: newCy, r: originalObj.r * scaleFactor }
+                }
+                if (originalObj.type === 'path' && originalObj.points) {
+                    const newPoints = originalObj.points.map(p => ({
+                        x: currentAction.cx - (currentAction.cx - p.x) * scaleFactor,
+                        y: currentAction.cy - (currentAction.cy - p.y) * scaleFactor
+                    }));
+                    return { ...obj, points: newPoints }
+                }
+                if (originalObj.type === 'ruler') {
+                    const newX1 = currentAction.cx - (currentAction.cx - originalObj.x1) * scaleFactor;
+                    const newY1 = currentAction.cy - (currentAction.cy - originalObj.y1) * scaleFactor;
+                    const newX2 = currentAction.cx - (currentAction.cx - originalObj.x2) * scaleFactor;
+                    const newY2 = currentAction.cy - (currentAction.cy - originalObj.y2) * scaleFactor;
+                    return { ...obj, x1: newX1, y1: newY1, x2: newX2, y2: newY2 }
                 }
             }
 
@@ -366,6 +555,40 @@ export default function DesignWorkspace() {
                 const currentAngle = Math.atan2(y - currentAction.cy, x - currentAction.cx) * 180 / Math.PI
                 const deltaAngle = currentAngle - currentAction.startAngle
                 return { ...obj, rotation: currentAction.startRotation + deltaAngle }
+            }
+
+            if (currentAction.type === 'drag_handle' && obj.id === currentAction.id) {
+                const orig = currentAction.originalObj;
+                const ht = currentAction.handleType;
+
+                if (obj.type === 'rect') {
+                    let newX = orig.x, newY = orig.y, newW = orig.width, newH = orig.height;
+                    // For rotated rects, handle dragging is highly complex (needs un-rotating coords). For MVP we ignore rotation when dragging handles or assume axis-aligned.
+                    if (ht === 'tl') { newX = x; newY = y; newW = orig.width + (orig.x - x); newH = orig.height + (orig.y - y); }
+                    if (ht === 'tr') { newY = y; newW = x - orig.x; newH = orig.height + (orig.y - y); }
+                    if (ht === 'bl') { newX = x; newW = orig.width + (orig.x - x); newH = y - orig.y; }
+                    if (ht === 'br') { newW = x - orig.x; newH = y - orig.y; }
+
+                    if (newW < 0) { newX += newW; newW = Math.abs(newW); }
+                    if (newH < 0) { newY += newH; newH = Math.abs(newH); }
+                    return { ...obj, x: newX, y: newY, width: newW, height: newH };
+                }
+                if (obj.type === 'circle' || obj.type === 'polygon' || obj.type === 'arc') {
+                    if (ht === 'right') {
+                        const dist = Math.sqrt((x - orig.cx) ** 2 + (y - orig.cy) ** 2);
+                        return { ...obj, r: dist };
+                    }
+                }
+                if (obj.type === 'ruler' || obj.type === 'dimension') {
+                    if (ht === 'p1') return { ...obj, x1: x, y1: y };
+                    if (ht === 'p2') return { ...obj, x2: x, y2: y };
+                }
+                if (obj.type === 'path' && ht.startsWith('pt-')) {
+                    const idx = parseInt(ht.split('-')[1]);
+                    const newPoints = [...orig.points];
+                    newPoints[idx] = { x, y };
+                    return { ...obj, points: newPoints };
+                }
             }
 
             return obj
@@ -409,7 +632,8 @@ export default function DesignWorkspace() {
             const newlySelected = objects.filter(obj => {
                 let box = { x: 0, y: 0, w: 0, h: 0 }
                 if (obj.type === 'rect') box = { x: obj.x, y: obj.y, w: obj.width, h: obj.height }
-                else if (obj.type === 'circle') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 }
+                else if (obj.type === 'circle' || obj.type === 'arc') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 }
+                else if (obj.type === 'polygon') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 } // Approximation
                 else if (obj.type === 'ruler') box = { x: Math.min(obj.x1, obj.x2), y: Math.min(obj.y1, obj.y2), w: Math.abs(obj.x2 - obj.x1), h: Math.abs(obj.y2 - obj.y1) }
                 else if (obj.type === 'path' && obj.points) {
                     const xs = obj.points.map(p => p.x); const ys = obj.points.map(p => p.y);
@@ -425,7 +649,23 @@ export default function DesignWorkspace() {
                 }
             }).map(o => o.id)
 
-            setSelectedIds(newlySelected)
+            if (e.shiftKey) {
+                // Add to existing selection, toggle if already selected
+                setSelectedIds(prev => {
+                    const next = [...prev]
+                    newlySelected.forEach(id => {
+                        if (next.includes(id)) {
+                            next.splice(next.indexOf(id), 1)
+                        } else {
+                            next.push(id)
+                        }
+                    })
+                    return next
+                })
+            } else {
+                setSelectedIds(newlySelected)
+            }
+
             setCurrentAction(null)
         }
 
@@ -434,9 +674,17 @@ export default function DesignWorkspace() {
         }
     }
 
-    // Handle confirming the polyline completion (Right click or Escape)
+    // Handle confirming the polyline completion (Right click or Escape) and globals
     useEffect(() => {
         const handleKeyDown = (e) => {
+            // Undo / Redo
+            if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                if (e.shiftKey) redo()
+                else undo()
+                return
+            }
+
             if (e.key === 'Escape' || e.key === 'Enter') {
                 if (activeTool === 'pencil' && currentAction?.type === 'create_polyline') {
                     setCurrentAction(null)
@@ -446,10 +694,19 @@ export default function DesignWorkspace() {
                     setActiveTool('select')
                 }
             }
+
+            // Keyboard delete shortcut
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
+                // Ensure we aren't focused inside an input (likeCommandLine)
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                saveHistorySnapshot();
+                setObjects(prev => prev.filter(o => !selectedIds.includes(o.id)));
+                setSelectedIds([]);
+            }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [activeTool, currentAction, setActiveTool])
+    }, [activeTool, currentAction, setActiveTool, undo, redo, saveHistorySnapshot, selectedIds, setObjects, setSelectedIds])
     const constraints = useStore((s) => s.constraints)
     const handleSimulate = async () => {
         if (objects.length === 0) return;
@@ -518,74 +775,90 @@ export default function DesignWorkspace() {
         }
     };
 
+    // --- Hatch pattern IDs ---
+    const hatchPatterns = (
+        <defs>
+            <pattern id="hatch-crosshatch" width="8" height="8" patternUnits="userSpaceOnUse">
+                <path d="M0,0 L8,8 M8,0 L0,8" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+            </pattern>
+            <pattern id="hatch-lines" width="6" height="6" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="3" x2="6" y2="3" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+            </pattern>
+            <pattern id="hatch-dots" width="6" height="6" patternUnits="userSpaceOnUse">
+                <circle cx="3" cy="3" r="1" fill="currentColor" opacity="0.5" />
+            </pattern>
+        </defs>
+    )
+
     // --- Rendering Helpers ---
     const renderObject = (obj) => {
         const isSelected = selectedIds.includes(obj.id)
-        // Add a highlight filter or selection box if selected
         const filter = isSelected ? 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.8))' : 'none'
+        const hatchFill = obj.hatch ? `url(#hatch-${obj.hatch})` : obj.fill
+
+        // Dimension annotation object
+        if (obj.type === 'dimension') {
+            const dx = obj.x2 - obj.x1, dy = obj.y2 - obj.y1
+            const dist = Math.sqrt(dx * dx + dy * dy).toFixed(1)
+            const midX = (obj.x1 + obj.x2) / 2, midY = (obj.y1 + obj.y2) / 2
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI
+            const nx = -dy / Math.sqrt(dx * dx + dy * dy) * 20
+            const ny = dx / Math.sqrt(dx * dx + dy * dy) * 20
+            return (
+                <g key={obj.id} style={{ pointerEvents: 'none' }}>
+                    {/* Extension lines */}
+                    <line x1={obj.x1} y1={obj.y1} x2={obj.x1 + nx} y2={obj.y1 + ny} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
+                    <line x1={obj.x2} y1={obj.y2} x2={obj.x2 + nx} y2={obj.y2 + ny} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
+                    {/* Dimension line */}
+                    <line x1={obj.x1 + nx} y1={obj.y1 + ny} x2={obj.x2 + nx} y2={obj.y2 + ny} stroke="#f59e0b" strokeWidth="1.5"
+                        markerEnd="url(#dim-arrow)" markerStart="url(#dim-arrow)" />
+                    {/* Label */}
+                    <rect x={midX + nx - 22} y={midY + ny - 9} width="44" height="16" rx="3" fill="#1e293b" stroke="#f59e0b" strokeWidth="0.5" />
+                    <text x={midX + nx} y={midY + ny + 3} fill="#f59e0b" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">{dist}px</text>
+                </g>
+            )
+        }
 
         if (obj.type === 'rect') {
             const cx = obj.x + obj.width / 2;
             const cy = obj.y + obj.height / 2;
             const transform = obj.rotation ? `rotate(${obj.rotation} ${cx} ${cy})` : ''
-
+            const handleClick = (e) => {
+                e.stopPropagation()
+                if (activeTool === 'select') {
+                    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+                    if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                    else setSelectedIds([obj.id])
+                    setActiveFileId(obj.id)
+                }
+            }
             return (
-                <rect
-                    key={obj.id}
-                    x={obj.x}
-                    y={obj.y}
-                    width={obj.width}
-                    height={obj.height}
-                    fill={obj.fill}
-                    stroke={isSelected ? '#ffffff' : obj.stroke}
-                    strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth}
-                    filter={filter}
-                    style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
-                    transform={transform}
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        if (activeTool === 'select') {
-                            const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                            if (isMultiSelect) {
-                                setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                            } else {
-                                setSelectedIds([obj.id])
-                            }
-                            setActiveFileId(obj.id)
-                        }
-                    }}
-                />
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                    <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={obj.fill}
+                        stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
+                    {obj.hatch && <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={hatchFill} style={{ color: obj.stroke }} />}
+                    {isSelected && <rect x={obj.x - 3} y={obj.y - 3} width={obj.width + 6} height={obj.height + 6} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="4 3" rx="2" />}
+                </g>
             )
         }
 
         if (obj.type === 'circle') {
             const transform = obj.rotation ? `rotate(${obj.rotation} ${obj.cx} ${obj.cy})` : ''
-
+            const handleClick = (e) => {
+                e.stopPropagation()
+                if (activeTool === 'select') {
+                    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+                    if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                    else setSelectedIds([obj.id])
+                    setActiveFileId(obj.id)
+                }
+            }
             return (
-                <circle
-                    key={obj.id}
-                    cx={obj.cx}
-                    cy={obj.cy}
-                    r={obj.r}
-                    fill={obj.fill}
-                    stroke={isSelected ? '#ffffff' : obj.stroke}
-                    strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth}
-                    filter={filter}
-                    style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
-                    transform={transform}
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        if (activeTool === 'select') {
-                            const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                            if (isMultiSelect) {
-                                setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                            } else {
-                                setSelectedIds([obj.id])
-                            }
-                            setActiveFileId(obj.id)
-                        }
-                    }}
-                />
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                    <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={obj.fill}
+                        stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
+                    {obj.hatch && <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={hatchFill} style={{ color: obj.stroke }} />}
+                </g>
             )
         }
 
@@ -615,11 +888,8 @@ export default function DesignWorkspace() {
                             e.stopPropagation()
                             if (activeTool === 'select') {
                                 const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                                if (isMultiSelect) {
-                                    setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                                } else {
-                                    setSelectedIds([obj.id])
-                                }
+                                if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                                else setSelectedIds([obj.id])
                                 setActiveFileId(obj.id)
                             }
                         }}
@@ -654,7 +924,12 @@ export default function DesignWorkspace() {
                     key={obj.id}
                     onClick={(e) => {
                         e.stopPropagation()
-                        if (activeTool === 'select') setSelectedIds([obj.id])
+                        if (activeTool === 'select') {
+                            const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+                            if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                            else setSelectedIds([obj.id])
+                            setActiveFileId(obj.id)
+                        }
                     }}
                     style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
                     filter={filter}
@@ -672,75 +947,213 @@ export default function DesignWorkspace() {
                 </g>
             )
         }
+
+        if (obj.type === 'polygon') {
+            const transform = obj.rotation ? `rotate(${obj.rotation} ${obj.cx} ${obj.cy})` : ''
+            const points = [];
+            for (let i = 0; i < obj.sides; i++) {
+                const angle = (Math.PI * 2 * i) / obj.sides - Math.PI / 2;
+                points.push(`${obj.cx + obj.r * Math.cos(angle)},${obj.cy + obj.r * Math.sin(angle)}`);
+            }
+            const d = points.length > 0 ? `M ${points[0]} ` + points.slice(1).map(p => `L ${p}`).join(' ') + ' Z' : '';
+
+            return (
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                    e.stopPropagation()
+                    if (activeTool === 'select') {
+                        const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+                        if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                        else setSelectedIds([obj.id])
+                        setActiveFileId(obj.id)
+                    }
+                }}>
+                    {d && <path d={d} fill={obj.fill} stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} strokeLinejoin="round" />}
+                    {obj.hatch && d && <path d={d} fill={hatchFill} style={{ color: obj.stroke }} />}
+                    {isSelected && <rect x={obj.cx - obj.r - 3} y={obj.cy - obj.r - 3} width={obj.r * 2 + 6} height={obj.r * 2 + 6} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="4 3" rx="2" />}
+                </g>
+            )
+        }
+
+        if (obj.type === 'arc') {
+            const transform = obj.rotation ? `rotate(${obj.rotation} ${obj.cx} ${obj.cy})` : ''
+            const startRad = (obj.startAngle - 90) * Math.PI / 180;
+            const endRad = (obj.endAngle - 90) * Math.PI / 180;
+            const x1 = obj.cx + obj.r * Math.cos(startRad);
+            const y1 = obj.cy + obj.r * Math.sin(startRad);
+            const x2 = obj.cx + obj.r * Math.cos(endRad);
+            const y2 = obj.cy + obj.r * Math.sin(endRad);
+
+            let sweepAngle = obj.endAngle - obj.startAngle;
+            if (sweepAngle < 0) sweepAngle += 360;
+            let largeArcFlag = sweepAngle > 180 ? 1 : 0;
+            const d = obj.r > 0 ? `M ${x1} ${y1} A ${obj.r} ${obj.r} 0 ${largeArcFlag} 1 ${x2} ${y2}` : '';
+
+            return (
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                    e.stopPropagation()
+                    if (activeTool === 'select') {
+                        const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+                        if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
+                        else setSelectedIds([obj.id])
+                        setActiveFileId(obj.id)
+                    }
+                }}>
+                    {d && <path d={d} fill={obj.fill} stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} strokeLinecap="round" />}
+                    {isSelected && <rect x={obj.cx - obj.r - 3} y={obj.cy - obj.r - 3} width={obj.r * 2 + 6} height={obj.r * 2 + 6} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="4 3" rx="2" />}
+                </g>
+            )
+        }
+
         return null
     }
 
+    const renderHandles = (obj) => {
+        if (!selectedIds.includes(obj.id)) return null;
+
+        const handleProps = (handleType, x, y) => ({
+            cx: x, cy: y, r: 4, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 1.5,
+            className: "cursor-pointer hover:r-6 transition-all",
+            onPointerDown: (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                saveHistorySnapshot();
+                setIsDrawing(true);
+                setCurrentAction({ type: 'drag_handle', id: obj.id, handleType, originalObj: { ...obj } });
+            }
+        });
+
+        // For transformed objects (rotated), handles should ideally be transformed too.
+        // For MVP, we wrap handles in the same transform.
+        const cx = obj.cx || (obj.x + obj.width / 2) || ((obj.x1 + obj.x2) / 2);
+        const cy = obj.cy || (obj.y + obj.height / 2) || ((obj.y1 + obj.y2) / 2);
+        const transform = obj.rotation ? `rotate(${obj.rotation} ${cx} ${cy})` : '';
+
+        if (obj.type === 'rect') {
+            return (
+                <g key={`handles-${obj.id}`} transform={transform}>
+                    <circle {...handleProps('tl', obj.x, obj.y)} />
+                    <circle {...handleProps('tr', obj.x + obj.width, obj.y)} />
+                    <circle {...handleProps('bl', obj.x, obj.y + obj.height)} />
+                    <circle {...handleProps('br', obj.x + obj.width, obj.y + obj.height)} />
+                </g>
+            )
+        }
+        if (obj.type === 'circle') {
+            return (
+                <g key={`handles-${obj.id}`} transform={transform}>
+                    <circle {...handleProps('right', obj.cx + obj.r, obj.cy)} />
+                </g>
+            )
+        }
+        if (obj.type === 'ruler' || obj.type === 'dimension') {
+            return (
+                <g key={`handles-${obj.id}`} transform={transform}>
+                    <circle {...handleProps('p1', obj.x1, obj.y1)} />
+                    <circle {...handleProps('p2', obj.x2, obj.y2)} />
+                </g>
+            )
+        }
+        if (obj.type === 'path' && obj.points) {
+            return (
+                <g key={`handles-${obj.id}`} transform={obj.transform || ''}>
+                    {obj.points.map((p, i) => <circle key={`pt-${i}`} {...handleProps(`pt-${i}`, p.x, p.y)} />)}
+                </g>
+            )
+        }
+        return null;
+    }
+
+    const renderedObjectNodes = renderedObjects.map(renderObject)
+    const renderedHandleNodes = renderedObjects.filter(o => selectedIds.includes(o.id)).map(renderHandles)
+
     return (
-        <div className={`w-full h-full relative flex items-center justify-center overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'} `}>
+        <div className={`w-full h-full relative flex flex-col overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
             {/* Floating Toolbar */}
-            <div className="absolute top-4 left-4 z-10 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
-                <button
-                    onClick={() => setActiveTool('select')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'select' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Select Tool"
-                >
-                    <MousePointer2 size={18} />
-                </button>
-                <button
-                    onClick={() => setActiveTool('move')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'move' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Move Tool"
-                >
-                    <Move size={18} />
-                </button>
-                <button
-                    onClick={() => setActiveTool('rotate')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'rotate' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Rotate Tool"
-                >
-                    <RefreshCw size={18} />
-                </button>
-                <div className="w-[1px] bg-slate-700/50 mx-1"></div>
-                <button
-                    onClick={() => setActiveTool('rect')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'rect' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Rectangle Tool"
-                >
-                    <Square size={18} />
-                </button>
-                <button
-                    onClick={() => setActiveTool('circle')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'circle' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Circle Tool"
-                >
-                    <Circle size={18} />
-                </button>
-                <button
-                    onClick={() => setActiveTool('ruler')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'ruler' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Ruler Tool"
-                >
-                    <Ruler size={18} />
-                </button>
-                <button
-                    onClick={() => setActiveTool('pencil')}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${activeTool === 'pencil' ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title="Pencil Tool"
-                >
-                    <PencilRuler size={18} />
-                </button>
-                <div className="w-[1px] bg-slate-700/50 mx-1"></div>
+            <div className="absolute top-4 left-4 z-30 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
+                {!is3DMode ? (
+                    <>
+                        {/* 2D Tools */}
+                        {[
+                            { tool: 'select', icon: <MousePointer2 size={16} />, title: 'Select (V)' },
+                            { tool: 'move', icon: <Move size={16} />, title: 'Move (M)' },
+                            { tool: 'rotate', icon: <RefreshCw size={16} />, title: 'Rotate (R)' },
+                            { tool: 'scale', icon: <Scaling size={16} />, title: 'Scale (S)' },
+                        ].map(({ tool, icon, title }) => (
+                            <button key={tool} onClick={() => setActiveTool(tool)}
+                                className={`p-2 rounded-lg transition-all cursor-pointer text-[11px] flex items-center gap-1 ${activeTool === tool ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                                title={title}>{icon}</button>
+                        ))}
+                        <div className="w-[1px] bg-slate-700/50 mx-1" />
+                        {[
+                            { tool: 'rect', icon: <Square size={16} />, title: 'Rectangle (Re)' },
+                            { tool: 'circle', icon: <Circle size={16} />, title: 'Circle (C)' },
+                            { tool: 'polygon', icon: <Hexagon size={16} />, title: 'Polygon' },
+                            { tool: 'arc', icon: <CircleDashed size={16} />, title: 'Arc' },
+                            { tool: 'ruler', icon: <Ruler size={16} />, title: 'Measure / Line' },
+                            { tool: 'pencil', icon: <PencilRuler size={16} />, title: 'Polyline (P)' },
+                            { tool: 'dimension', icon: <DimIcon size={16} />, title: 'Dimension (DIM)' },
+                        ].map(({ tool, icon, title }) => (
+                            <button key={tool} onClick={() => setActiveTool(tool)}
+                                className={`p-2 rounded-lg transition-all cursor-pointer ${activeTool === tool ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                                title={title}>{icon}</button>
+                        ))}
+                        <div className="w-[1px] bg-slate-700/50 mx-1" />
+                        <button onClick={() => { if (selectedIds.length > 0) duplicateObjects() }}
+                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all cursor-pointer"
+                            title="Duplicate selected (Ctrl+D)">
+                            <Copy size={16} />
+                        </button>
+                        <button onClick={() => { if (selectedIds.length > 0) mirrorObjects('y') }}
+                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all cursor-pointer"
+                            title="Mirror selected (X axis)">
+                            <FlipHorizontal size={16} />
+                        </button>
+                        <button onClick={() => { if (selectedIds.length > 0) deleteObjects() }}
+                            className="p-2 rounded-lg text-red-500 hover:text-red-400 hover:bg-slate-700/60 transition-all cursor-pointer"
+                            title="Delete selected (Del)">
+                            <Trash2 size={16} />
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        {/* 3D Tools */}
+                        {[
+                            { tool: 'select', icon: <MousePointer2 size={16} />, title: 'Select' },
+                            { tool: 'translate', icon: <Move size={16} />, title: 'Translate' },
+                            { tool: 'rotate', icon: <RefreshCw size={16} />, title: 'Rotate' },
+                            { tool: 'scale', icon: <Maximize size={16} />, title: 'Scale' },
+                        ].map(({ tool, icon, title }) => (
+                            <button key={tool} onClick={() => setActive3DTool(tool)}
+                                className={`p-2 rounded-lg transition-all cursor-pointer text-[11px] flex items-center gap-1 ${active3DTool === tool ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                                title={title}>{icon}</button>
+                        ))}
+                        <div className="w-[1px] bg-slate-700/50 mx-1" />
+                        {[
+                            { tool: 'cube', icon: <Box size={16} />, title: 'Add Cube' },
+                            { tool: 'sphere', icon: <Globe size={16} />, title: 'Add Sphere' },
+                            { tool: 'cylinder', icon: <Cylinder size={16} />, title: 'Add Cylinder' },
+                            { tool: 'cone', icon: <Cone size={16} />, title: 'Add Cone' },
+                            { tool: 'torus', icon: <CircleDashed size={16} />, title: 'Add Torus' },
+                            { tool: 'plane', icon: <Square size={16} />, title: 'Add Plane' },
+                            { tool: 'capsule', icon: <Activity size={16} />, title: 'Add Capsule' },
+                        ].map(({ tool, icon, title }) => (
+                            <button key={tool} onClick={() => setActive3DTool(tool)}
+                                className={`p-2 rounded-lg transition-all cursor-pointer ${active3DTool === tool ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                                title={title}>{icon}</button>
+                        ))}
+                    </>
+                )}
+                <div className="w-[1px] bg-slate-700/50 mx-1" />
                 <button
                     onClick={() => setIs3DMode(!is3DMode)}
-                    className={`p-2 rounded-lg transition-colors cursor-pointer ${is3DMode ? 'text-white bg-primary' : 'text-slate-300 hover:bg-primary/40'} `}
-                    title={is3DMode ? "Switch to 2D Plan" : "Extrude to 3D"}
-                >
-                    {is3DMode ? <Layers size={18} /> : <Box size={18} />}
+                    className={`p-2 rounded-lg transition-all cursor-pointer ${is3DMode ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                    title={is3DMode ? 'Switch to 2D' : 'Enter 3D Modeling'}>
+                    {is3DMode ? <Layers size={16} /> : <Box size={16} />}
                 </button>
             </div>
 
             {/* Viewport Controls */}
-            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
                 <div className="glass p-1.5 rounded-xl flex flex-col gap-1">
                     <button
                         onClick={rotateView}
@@ -781,107 +1194,121 @@ export default function DesignWorkspace() {
             </div>
 
             {/* Center Viewport */}
-            {is3DMode ? (
-                <div className="absolute inset-0 w-full h-full z-20">
-                    <Viewport3D objects={renderedObjects} isSimulating={isSimulating} />
-                </div>
-            ) : (
-                <div
-                    style={{
-                        transform: `scale(${zoomLevel}) rotateX(${getRotation().rotateX}deg) rotateY(${getRotation().rotateY}deg) rotateZ(${getRotation().rotateZ}deg)`
-                    }}
-                    className="relative w-full h-full flex items-center justify-center transform-gpu touch-none min-w-[800px] min-h-[600px] transition-transform duration-300"
-                >
-                    {/* Visual anchor for the center point (the 'CPU') */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
-                            <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
-                                <Cpu size={64} className="text-primary" />
+            <div className="flex-1 relative">
+                {is3DMode ? (
+                    <div className="absolute inset-0 w-full h-full z-20">
+                        <Viewport3D objects={renderedObjects} isSimulating={isSimulating} />
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            transform: `scale(${zoomLevel}) rotateX(${getRotation().rotateX}deg) rotateY(${getRotation().rotateY}deg) rotateZ(${getRotation().rotateZ}deg)`
+                        }}
+                        className="relative w-full h-full flex items-center justify-center transform-gpu touch-none min-w-[800px] min-h-[600px] transition-transform duration-300"
+                    >
+                        {/* Visual anchor for the center point (the 'CPU') */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
+                                <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
+                                    <Cpu size={64} className="text-primary" />
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        {/* The SVG Canvas for tools */}
+                        <svg
+                            ref={svgRef}
+                            className="absolute inset-0 w-full h-full z-20"
+                            style={{
+                                cursor: activeTool === 'select' ? 'default' : activeTool === 'move' ? 'move' : 'crosshair'
+                            }}
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUpdate={handlePointerMove} // Ensure touch devices capture moves
+                            onPointerUp={handlePointerUp}
+                            // Handle case where pointer leaves the SVG area while drawing
+                            onPointerLeave={handlePointerUp}
+                        >
+                            {hatchPatterns}
+                            {renderedObjectNodes}
+                            {renderedHandleNodes}
 
-                    {/* The SVG Canvas for tools */}
-                    <svg
-                        ref={svgRef}
-                        className="absolute inset-0 w-full h-full z-20"
-                        style={{
-                            cursor: activeTool === 'select' ? 'default' : activeTool === 'move' ? 'move' : 'crosshair'
-                        }}
-                        onPointerDown={handlePointerDown}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
-                        // Handle case where pointer leaves the SVG area while drawing
-                        onPointerLeave={handlePointerUp}
-                    >
-                        {renderedObjects.map(renderObject)}
+                            {/* Arrow marker for dimension lines */}
+                            <defs>
+                                <marker id="dim-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                                    <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
+                                </marker>
+                            </defs>
 
-                        {/* Snapping Indicator */}
-                        {snapPoint && snapPoint.snapped && (
-                            <g transform={`translate(${snapPoint.x}, ${snapPoint.y})`}>
-                                {snapPoint.type === 'endpoint' && (
-                                    <rect x="-4" y="-4" width="8" height="8" fill="none" stroke="#22c55e" strokeWidth="1.5" />
-                                )}
-                                {snapPoint.type === 'midpoint' && (
-                                    <path d="M -5 4 L 5 4 L 0 -5 Z" fill="none" stroke="#3b82f6" strokeWidth="1.5" />
-                                )}
-                                {snapPoint.type === 'center' && (
-                                    <circle r="5" fill="none" stroke="#8b5cf6" strokeWidth="1.5" />
-                                )}
-                                {snapPoint.type === 'grid' && (
-                                    <rect x="-2" y="-2" width="4" height="4" fill="none" stroke="#fbbf24" strokeWidth="1" />
-                                )}
-                            </g>
-                        )}
+                            {/* Snapping Indicator */}
+                            {snapPoint && snapPoint.snapped && (
+                                <g transform={`translate(${snapPoint.x}, ${snapPoint.y})`}>
+                                    {snapPoint.type === 'endpoint' && (
+                                        <rect x="-4" y="-4" width="8" height="8" fill="none" stroke="#22c55e" strokeWidth="1.5" />
+                                    )}
+                                    {snapPoint.type === 'midpoint' && (
+                                        <path d="M -5 4 L 5 4 L 0 -5 Z" fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+                                    )}
+                                    {snapPoint.type === 'center' && (
+                                        <circle r="5" fill="none" stroke="#8b5cf6" strokeWidth="1.5" />
+                                    )}
+                                    {snapPoint.type === 'grid' && (
+                                        <rect x="-2" y="-2" width="4" height="4" fill="none" stroke="#fbbf24" strokeWidth="1" />
+                                    )}
+                                </g>
+                            )}
 
-                        {/* Selection Window */}
-                        {currentAction?.type === 'select_window' && (
-                            <rect
-                                x={Math.min(currentAction.startX, currentAction.currentX)}
-                                y={Math.min(currentAction.startY, currentAction.currentY)}
-                                width={Math.abs(currentAction.currentX - currentAction.startX)}
-                                height={Math.abs(currentAction.currentY - currentAction.startY)}
-                                fill={currentAction.currentX > currentAction.startX ? 'rgba(59, 130, 246, 0.2)' : 'rgba(34, 197, 94, 0.2)'}
-                                stroke={currentAction.currentX > currentAction.startX ? '#3b82f6' : '#22c55e'}
-                                strokeWidth="1"
-                                strokeDasharray={currentAction.currentX > currentAction.startX ? '' : '4 4'}
-                            />
-                        )}
-                        {/* Dynamic Input HUD */}
-                        {!is3DMode && (
-                            <g transform={`translate(${cursorPos.x + 15}, ${cursorPos.y - 15})`} style={{ pointerEvents: 'none' }}>
+                            {/* Selection Window */}
+                            {currentAction?.type === 'select_window' && (
                                 <rect
-                                    x="0" y="-12" width="70" height="28"
-                                    fill="rgba(15, 23, 42, 0.8)"
-                                    rx="4"
-                                    className="stroke-slate-700/50"
+                                    x={Math.min(currentAction.startX, currentAction.currentX)}
+                                    y={Math.min(currentAction.startY, currentAction.currentY)}
+                                    width={Math.abs(currentAction.currentX - currentAction.startX)}
+                                    height={Math.abs(currentAction.currentY - currentAction.startY)}
+                                    fill={currentAction.currentX > currentAction.startX ? 'rgba(59, 130, 246, 0.2)' : 'rgba(34, 197, 94, 0.2)'}
+                                    stroke={currentAction.currentX > currentAction.startX ? '#3b82f6' : '#22c55e'}
+                                    strokeWidth="1"
+                                    strokeDasharray={currentAction.currentX > currentAction.startX ? '' : '4 4'}
                                 />
-                                <text x="6" y="2" fill="#94a3b8" fontSize="9" fontFamily="monospace">
-                                    X: {cursorPos.x.toFixed(1)}
-                                </text>
-                                <text x="6" y="12" fill="#94a3b8" fontSize="9" fontFamily="monospace">
-                                    Y: {cursorPos.y.toFixed(1)}
-                                </text>
-                                {currentAction && (currentAction.startX !== undefined) && (
-                                    <text x="6" y="-6" fill="#fbbf24" fontSize="10" fontWeight="bold" fontFamily="monospace">
-                                        L: {Math.sqrt((cursorPos.x - currentAction.startX) ** 2 + (cursorPos.y - currentAction.startY) ** 2).toFixed(1)}
+                            )}
+                            {/* Dynamic Input HUD */}
+                            {!is3DMode && (
+                                <g transform={`translate(${cursorPos.x + 15}, ${cursorPos.y - 15})`} style={{ pointerEvents: 'none' }}>
+                                    <rect
+                                        x="0" y="-12" width="70" height="28"
+                                        fill="rgba(15, 23, 42, 0.8)"
+                                        rx="4"
+                                        className="stroke-slate-700/50"
+                                    />
+                                    <text x="6" y="2" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                        X: {cursorPos.x.toFixed(1)}
                                     </text>
-                                )}
-                            </g>
-                        )}
-                    </svg>
+                                    <text x="6" y="12" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                        Y: {cursorPos.y.toFixed(1)}
+                                    </text>
+                                    {currentAction && (currentAction.startX !== undefined) && (
+                                        <text x="6" y="-6" fill="#fbbf24" fontSize="10" fontWeight="bold" fontFamily="monospace">
+                                            L: {Math.sqrt((cursorPos.x - currentAction.startX) ** 2 + (cursorPos.y - currentAction.startY) ** 2).toFixed(1)}
+                                        </text>
+                                    )}
+                                </g>
+                            )}
+                        </svg>
 
-                    {/* Axis Indicator */}
-                    <div className="absolute bottom-10 left-10 flex flex-col text-[10px] font-mono text-slate-500 gap-1 pointer-events-none">
-                        <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-red-500"></span> X-AXIS</div>
-                        <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-green-500"></span> Y-AXIS</div>
-                        <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-primary"></span> Z-AXIS</div>
+                        {/* Axis Indicator */}
+                        <div className="absolute bottom-10 left-10 flex flex-col text-[10px] font-mono text-slate-500 gap-1 pointer-events-none">
+                            <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-red-500"></span> X-AXIS</div>
+                            <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-green-500"></span> Y-AXIS</div>
+                            <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-primary"></span> Z-AXIS</div>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
+
+            {/* Command Line */}
+            <CommandLine />
 
             {/* Bottom Simulation Controls */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl z-30">
+            <div className="glass px-6 py-3 flex items-center gap-6 shadow-2xl z-30 border-t border-slate-800">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => { resetPlayback(); setCurrentFrameIndex(0); }}
