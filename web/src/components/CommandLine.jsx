@@ -45,11 +45,14 @@ export default function CommandLine() {
     const selectedIds = useStore(s => s.selectedIds)
     const layers = useStore(s => s.layers)
     const addLayer = useStore(s => s.addLayer)
+    const activeLayerId = useStore(s => s.activeLayerId)
     const setActiveLayerId = useStore(s => s.setActiveLayerId)
     const mirrorObjects = useStore(s => s.mirrorObjects)
     const offsetObject = useStore(s => s.offsetObject)
     const arrayObjects = useStore(s => s.arrayObjects)
     const saveHistorySnapshot = useStore(s => s.saveHistorySnapshot)
+    const activeTool = useStore(s => s.activeTool)
+    const setTypedCoordinates = useStore(s => s.setTypedCoordinates)
 
     useEffect(() => {
         historyRef.current?.scrollTo(0, historyRef.current.scrollHeight)
@@ -100,6 +103,19 @@ export default function CommandLine() {
 
         const parseNum = (i, def = 0) => parseFloat(args[i] ?? def)
 
+        // Check if user is typing raw coordinates (e.g., "100,50" or "100 50") while a drawing tool is active
+        const isDrawingTool = ['rect', 'circle', 'line', 'polygon', 'arc', 'pencil', 'ruler', 'dimension'].includes(activeTool);
+        if (isDrawingTool && /^[-+]?\d*\.?\d+(?:[,\s]+[-+]?\d*\.?\d+)?$/.test(raw)) {
+            const coordsSplit = raw.split(/[,\s]+/)
+            const px = parseFloat(coordsSplit[0]);
+            const py = parseFloat(coordsSplit[1] ?? coordsSplit[0]); // If only one number, use for both or assume Y=0 (standard CAD is usually X,Y)
+            if (!isNaN(px) && !isNaN(py)) {
+                setTypedCoordinates({ x: px, y: py });
+                log(`Input: ${px}, ${py}`, 'success');
+                return;
+            }
+        }
+
         switch (cmd) {
             case 'HELP':
                 log('Commands: ' + COMMANDS.join(', '), 'info')
@@ -108,35 +124,35 @@ export default function CommandLine() {
 
             case 'CIRCLE': {
                 const cx = parseNum(0, 400), cy = parseNum(1, 300), r = parseNum(2, 50)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'circle', cx, cy, r, stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.2)', strokeWidth: 2, rotation: 0 })
+                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'circle', cx, cy, r, stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created circle at (${cx}, ${cy}) r=${r}`, 'success')
                 break
             }
 
             case 'RECT': {
                 const w = parseNum(0, 100), h = parseNum(1, w)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'rect', x: 300, y: 200, width: w, height: h, stroke: '#3b82f6', fill: 'rgba(59,130,246,0.2)', strokeWidth: 2, rotation: 0 })
+                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'rect', x: 300, y: 200, width: w, height: h, stroke: '#3b82f6', fill: 'rgba(59,130,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created rect ${w}×${h}`, 'success')
                 break
             }
 
             case 'LINE': {
                 const x1 = parseNum(0, 0), y1 = parseNum(1, 0), x2 = parseNum(2, 100), y2 = parseNum(3, 100)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1, y1, x2, y2, stroke: '#ef4444', strokeWidth: 2, rotation: 0 })
+                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1, y1, x2, y2, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created line from (${x1},${y1}) to (${x2},${y2})`, 'success')
                 break
             }
 
             case 'POLYGON': {
                 const sides = parseInt(args[0] ?? 6), cx = parseNum(1, 400), cy = parseNum(2, 300), r = parseNum(3, 60)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides, cx, cy, r, stroke: '#ec4899', fill: 'rgba(236,72,153,0.2)', strokeWidth: 2, rotation: 0 })
+                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides, cx, cy, r, stroke: '#ec4899', fill: 'rgba(236,72,153,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created ${sides}-sided polygon at (${cx}, ${cy}) r=${r}`, 'success')
                 break
             }
 
             case 'ARC': {
                 const cx = parseNum(0, 400), cy = parseNum(1, 300), r = parseNum(2, 80), startA = parseNum(3, 0), endA = parseNum(4, 90)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'arc', cx, cy, r, startAngle: startA, endAngle: endA, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0 })
+                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'arc', cx, cy, r, startAngle: startA, endAngle: endA, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created arc at (${cx}, ${cy}) r=${r} from ${startA}° to ${endA}°`, 'success')
                 break
             }

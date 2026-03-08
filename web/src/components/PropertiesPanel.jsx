@@ -90,9 +90,16 @@ export default function PropertiesPanel() {
                         });
                         return { ...o, params: newParams }
                     }
+
+                    // Handle Boolean fields like isStatic
+                    if (field === 'isStatic') {
+                        return { ...o, [field]: !!value }
+                    }
+
                     if (field === 'color' || field === 'name') {
                         return { ...o, [field]: value }
                     }
+
                     const val = value === '' ? 0 : parseFloat(value);
                     return { ...o, [field]: isNaN(val) ? 0 : val }
                 }
@@ -101,7 +108,7 @@ export default function PropertiesPanel() {
         } else {
             const parsedValue =
                 (field === 'stroke' || field === 'name' || field === 'points') ? value
-                    : field === 'isStatic' ? value
+                    : field === 'isStatic' ? !!value
                         : parseFloat(value) || 0;
             setObjects(prev => prev.map(o => o.id === selectedObject.id ? { ...o, [field]: parsedValue } : o))
         }
@@ -460,6 +467,64 @@ export default function PropertiesPanel() {
                             </>
                         )}
 
+                        {selectedObject.type === 'polygon' && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Radius</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.r)}
+                                            onChange={e => handleChange('r', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Sides</label>
+                                        <input
+                                            type="number"
+                                            value={selectedObject.sides}
+                                            onChange={e => handleChange('sides', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
+                                    <input
+                                        type="number"
+                                        value={Math.round(selectedObject.depth || 0)}
+                                        onChange={e => handleChange('depth', e.target.value)}
+                                        className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedObject.type === 'arc' && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1">Radius</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.radius)}
+                                            onChange={e => handleChange('radius', e.target.value)}
+                                            className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-400 pl-1 font-bold text-primary">3D Depth</label>
+                                        <input
+                                            type="number"
+                                            value={Math.round(selectedObject.depth || 0)}
+                                            onChange={e => handleChange('depth', e.target.value)}
+                                            className="w-full bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-md px-2 py-1 text-xs text-primary font-bold"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

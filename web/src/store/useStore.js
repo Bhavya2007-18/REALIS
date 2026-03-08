@@ -14,6 +14,10 @@ const useStore = create((set) => ({
     isSidebarOpen: true,
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
+    // Typed coordinates from CommandLine (e.g. user typed "100,200")
+    typedCoordinates: null,
+    setTypedCoordinates: (coords) => set({ typedCoordinates: coords }),
+
     // Global CAD Objects state
     objects: [],
 
@@ -21,8 +25,14 @@ const useStore = create((set) => ({
     shapes3D: [],
     setShapes3D: (shapes) => set({ shapes3D: typeof shapes === 'function' ? shapes(useStore.getState().shapes3D) : shapes }),
     addShape3D: (shape) => set((state) => {
-        // We will likely want to hook this into history later, for now just append
-        return { shapes3D: [...state.shapes3D, shape] };
+        state.saveHistorySnapshot();
+        const physicsDefaults = {
+            mass: 1.0,
+            restitution: 0.5,
+            friction: 0.3,
+            isStatic: false
+        };
+        return { shapes3D: [...state.shapes3D, { ...physicsDefaults, ...shape }] };
     }),
     active3DTool: 'select', // 'select', 'translate', 'rotate', 'scale', 'cube', 'sphere', etc.
     setActive3DTool: (tool) => set({ active3DTool: tool }),
@@ -31,56 +41,113 @@ const useStore = create((set) => ({
     history: [],
     historyIndex: -1,
 
-    // Saves a snapshot. Should be called BEFORE modifying the objects array for an operation.
     saveHistorySnapshot: () => set((state) => {
+        // Prune any "redo" future if we are performing a new action
         const nextHistory = state.history.slice(0, state.historyIndex + 1);
-        // Only save if different from last state to avoid duplicate snapshots
-        if (nextHistory.length > 0 && JSON.stringify(nextHistory[nextHistory.length - 1].objects) === JSON.stringify(state.objects)) {
-            return state;
-        }
-        nextHistory.push({ objects: JSON.parse(JSON.stringify(state.objects)) });
-        // Cap history at 50 to prevent memory blowup
-        if (nextHistory.length > 50) nextHistory.shift();
-        return { history: nextHistory, historyIndex: nextHistory.length - 1 };
-    }),
 
-    undo: () => set((state) => {
-        if (state.historyIndex < 0) return state; // Nothing to undo
+        const snapshot = {
+            objects: JSON.parse(JSON.stringify(state.objects)),
+            layers: JSON.parse(JSON.stringify(state.layers)),
+            shapes3D: JSON.parse(JSON.stringify(state.shapes3D)),
+            constraints: JSON.parse(JSON.stringify(state.constraints || [])),
+            activeLayerId: state.activeLayerId
+        };
 
-        // If we are at the front of the queue, we need to save our current state as the "future" before stepping back
-        let currentHistory = state.history;
-        let cIdx = state.historyIndex;
-
-        if (cIdx === currentHistory.length - 1) {
-            const headState = JSON.parse(JSON.stringify(state.objects));
-            if (JSON.stringify(headState) !== JSON.stringify(currentHistory[cIdx].objects)) {
-                currentHistory = [...currentHistory, { objects: headState }];
+        // Don't save identical consecutive snapshots
+        if (nextHistory.length > 0) {
+            const last = nextHistory[nextHistory.length - 1];
+            if (JSON.stringify(last.objects) === JSON.stringify(snapshot.objects) &&
+                JSON.stringify(last.layers) === JSON.stringify(snapshot.layers) &&
+                JSON.stringify(last.shapes3D) === JSON.stringify(snapshot.shapes3D)) {
+                return state;
             }
         }
 
-        const newIndex = Math.max(0, cIdx);
-        // Need to restore state.history[newIndex] objects
+        nextHistory.push(snapshot);
+        if (nextHistory.length > 50) nextHistory.shift();
+
+        return {
+            history: nextHistory,
+            historyIndex: nextHistory.length - 1
+        };
+    }),
+
+    undo: () => set((state) => {
+        let { history, historyIndex, objects, layers, shapes3D, constraints, activeLayerId } = state;
+        if (historyIndex < 0 && history.length === 0) return state;
+
+        const currentState = {
+            objects: JSON.parse(JSON.stringify(objects)),
+            layers: JSON.parse(JSON.stringify(layers)),
+            shapes3D: JSON.parse(JSON.stringify(shapes3D)),
+            constraints: JSON.parse(JSON.stringify(constraints || [])),
+            activeLayerId
+        };
+
+        // If at current head, save current as "future" if not same as last snapshot
+        let currentHistory = [...history];
+        let cIdx = historyIndex;
+
+        if (cIdx === currentHistory.length - 1) {
+            if (JSON.stringify(currentState) !== JSON.stringify(currentHistory[cIdx])) {
+                currentHistory.push(currentState);
+                cIdx = currentHistory.length - 1;
+            }
+        }
+
+        if (cIdx <= 0) return state;
+
+        const targetIdx = cIdx - 1;
+        const target = currentHistory[targetIdx];
+
         return {
             history: currentHistory,
-            historyIndex: newIndex - 1,
-            objects: JSON.parse(JSON.stringify(currentHistory[newIndex].objects))
+            historyIndex: targetIdx,
+            objects: JSON.parse(JSON.stringify(target.objects)),
+            layers: JSON.parse(JSON.stringify(target.layers)),
+            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
+            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
+            activeLayerId: target.activeLayerId
         };
     }),
 
     redo: () => set((state) => {
-        if (state.historyIndex >= state.history.length - 1) return state; // Nothing to redo
-        const newIndex = state.historyIndex + 1;
+        if (state.historyIndex >= state.history.length - 1) return state;
+
+        const targetIdx = state.historyIndex + 1;
+        const target = state.history[targetIdx];
+
         return {
-            historyIndex: newIndex,
-            objects: JSON.parse(JSON.stringify(state.history[newIndex].objects))
+            historyIndex: targetIdx,
+            objects: JSON.parse(JSON.stringify(target.objects)),
+            layers: JSON.parse(JSON.stringify(target.layers)),
+            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
+            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
+            activeLayerId: target.activeLayerId
         };
+    }),
+
+    clearDesign: () => set({
+        objects: [],
+        shapes3D: [],
+        constraints: [],
+        history: [],
+        historyIndex: -1,
+        selectedIds: [],
+        selected3DIds: []
     }),
 
     // Override setObjects to automatically capture history if requested, or manual
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
     addCADObject: (obj) => set((state) => {
         state.saveHistorySnapshot();
-        return { objects: [...state.objects, obj] };
+        const physicsDefaults = {
+            mass: 1.0,
+            restitution: 0.5,
+            friction: 0.3,
+            isStatic: false
+        };
+        return { objects: [...state.objects, { ...physicsDefaults, ...obj }] };
     }),
 
     // Layer System
@@ -96,12 +163,14 @@ const useStore = create((set) => ({
 
     // Delete selected objects
     deleteObjects: () => set((state) => {
-        const { selectedIds, objects } = state;
-        if (selectedIds.length === 0) return state;
+        const { selectedIds, objects, selected3DIds, shapes3D } = state;
+        if (selectedIds.length === 0 && selected3DIds.length === 0) return state;
         state.saveHistorySnapshot();
         return {
             objects: objects.filter(o => !selectedIds.includes(o.id)),
-            selectedIds: []
+            shapes3D: shapes3D.filter(s => !selected3DIds.includes(s.id)),
+            selectedIds: [],
+            selected3DIds: []
         };
     }),
 
@@ -128,6 +197,8 @@ const useStore = create((set) => ({
     // Mirror selected objects over X or Y axis
     mirrorObjects: (axis) => set((state) => {
         const { selectedIds, objects } = state;
+        if (selectedIds.length === 0) return state;
+        state.saveHistorySnapshot();
         const clones = objects.filter(o => selectedIds.includes(o.id)).map(obj => {
             const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) };
             if (axis === 'x') {
@@ -149,6 +220,8 @@ const useStore = create((set) => ({
     // Offset (expand/shrink) selected rect or circle by amount
     offsetObject: (amount) => set((state) => {
         const { selectedIds, objects } = state;
+        if (selectedIds.length === 0) return state;
+        state.saveHistorySnapshot();
         return {
             objects: objects.map(obj => {
                 if (!selectedIds.includes(obj.id)) return obj;
@@ -166,6 +239,8 @@ const useStore = create((set) => ({
     // Rectangular array: duplicate selected objects in a grid
     arrayObjects: (rows, cols, spacingX, spacingY) => set((state) => {
         const { selectedIds, objects } = state;
+        if (selectedIds.length === 0) return state;
+        state.saveHistorySnapshot();
         const selected = objects.filter(o => selectedIds.includes(o.id));
         const clones = [];
         for (let r = 0; r < rows; r++) {

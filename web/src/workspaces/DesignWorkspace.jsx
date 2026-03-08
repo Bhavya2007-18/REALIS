@@ -22,6 +22,7 @@ export default function DesignWorkspace() {
     const setSelectedIds = useStore((s) => s.setSelectedIds)
     const setActiveFileId = useStore((s) => s.setActiveFileId)
     const layers = useStore(s => s.layers)
+    const activeLayerId = useStore(s => s.activeLayerId)
     const duplicateObjects = useStore(s => s.duplicateObjects)
     const deleteObjects = useStore(s => s.deleteObjects)
     const mirrorObjects = useStore(s => s.mirrorObjects)
@@ -71,6 +72,43 @@ export default function DesignWorkspace() {
             default: return { rotateX: 45, rotateY: 0, rotateZ: 45 } // Perspective
         }
     }
+
+    const typedCoordinates = useStore((s) => s.typedCoordinates)
+    const setTypedCoordinates = useStore((s) => s.setTypedCoordinates)
+
+    // Intercept Typed Coordinates from CommandLine
+    useEffect(() => {
+        if (typedCoordinates && !is3DMode) {
+            if (!isDrawing) {
+                // Synthesize a PointerDown start event
+                handlePointerDown({
+                    preventDefault: () => { }, target: { tagName: 'svg' },
+                    clientX: 0, clientY: 0, // Ignored because we override
+                    _typedOverride: typedCoordinates
+                });
+            } else {
+                // Synthesize a PointerMove to complete the shape, and then stop drawing
+                handlePointerMove({
+                    preventDefault: () => { },
+                    clientX: 0, clientY: 0,
+                    _typedOverride: typedCoordinates
+                });
+
+                // For polylines, clicking again adds a point, so we don't end drawing automatically
+                if (currentAction?.type !== 'create_polyline') {
+                    handlePointerUp();
+                } else {
+                    // Force a click to lay down the vertex
+                    handlePointerDown({
+                        preventDefault: () => { }, target: { tagName: 'svg' },
+                        clientX: 0, clientY: 0,
+                        _typedOverride: typedCoordinates
+                    });
+                }
+            }
+            setTypedCoordinates(null);
+        }
+    }, [typedCoordinates, isDrawing, is3DMode]);
 
     // --- Animation Loop ---
     useEffect(() => {
@@ -134,6 +172,8 @@ export default function DesignWorkspace() {
 
     // --- Pointer Interaction Logic ---
     const getRelativeCoordinates = (e) => {
+        if (e._typedOverride) return e._typedOverride;
+
         if (!svgRef.current) return { x: 0, y: 0 }
         const svg = svgRef.current
 
@@ -191,6 +231,13 @@ export default function DesignWorkspace() {
         // Object snapping (vertices and centers)
         objects.forEach(obj => {
             if (obj.id === excludeId) return;
+
+            // SKIP snapping to invisible layers
+            if (obj.layerId) {
+                const layer = layers.find(l => l.id === obj.layerId);
+                if (layer && !layer.visible) return;
+            }
+
             const pts = [];
             if (obj.type === 'rect') {
                 pts.push({ x: obj.x, y: obj.y, type: 'endpoint' }); // TL
@@ -218,14 +265,32 @@ export default function DesignWorkspace() {
                         type: 'midpoint'
                     });
                 }
-            } else if (obj.type === 'ruler') {
+            } else if (obj.type === 'ruler' || obj.type === 'dimension') {
                 pts.push({ x: obj.x1, y: obj.y1, type: 'endpoint' });
                 pts.push({ x: obj.x2, y: obj.y2, type: 'endpoint' });
                 pts.push({ x: (obj.x1 + obj.x2) / 2, y: (obj.y1 + obj.y2) / 2, type: 'midpoint' });
-
-                // Nearest snap
                 const nearest = getClosestPointOnSegment({ x: px, y: py }, { x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 });
                 if (nearest.dist < closestDist) pts.push({ x: nearest.x, y: nearest.y, type: 'nearest' });
+            } else if (obj.type === 'polygon') {
+                pts.push({ x: obj.cx, y: obj.cy, type: 'center' });
+                const polyPts = [];
+                for (let i = 0; i < obj.sides; i++) {
+                    const angle = (Math.PI * 2 * i) / obj.sides - Math.PI / 2 + (obj.rotation || 0) * Math.PI / 180;
+                    polyPts.push({ x: obj.cx + obj.r * Math.cos(angle), y: obj.cy + obj.r * Math.sin(angle) });
+                }
+                polyPts.forEach(p => pts.push({ ...p, type: 'endpoint' }));
+                for (let i = 0; i < polyPts.length; i++) {
+                    const nextP = polyPts[(i + 1) % polyPts.length];
+                    pts.push({ x: (polyPts[i].x + nextP.x) / 2, y: (polyPts[i].y + nextP.y) / 2, type: 'midpoint' });
+                }
+            } else if (obj.type === 'arc') {
+                pts.push({ x: obj.cx, y: obj.cy, type: 'center' });
+                const startRad = (obj.startAngle - 90 + (obj.rotation || 0)) * Math.PI / 180;
+                const endRad = (obj.endAngle - 90 + (obj.rotation || 0)) * Math.PI / 180;
+                pts.push({ x: obj.cx + obj.r * Math.cos(startRad), y: obj.cy + obj.r * Math.sin(startRad), type: 'endpoint' });
+                pts.push({ x: obj.cx + obj.r * Math.cos(endRad), y: obj.cy + obj.r * Math.sin(endRad), type: 'endpoint' });
+                const midRad = (startRad + endRad) / 2;
+                pts.push({ x: obj.cx + obj.r * Math.cos(midRad), y: obj.cy + obj.r * Math.sin(midRad), type: 'midpoint' });
             }
 
             pts.forEach(p => {
@@ -264,14 +329,25 @@ export default function DesignWorkspace() {
         const allSegments = [];
         objects.forEach(obj => {
             if (obj.id === excludeId) return;
-            if (obj.type === 'ruler') allSegments.push([{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]);
+            if (obj.type === 'ruler' || obj.type === 'dimension') allSegments.push([{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]);
             else if (obj.type === 'rect') {
-                allSegments.push([{ x: obj.x, y: obj.y }, { x: obj.x + obj.width, y: obj.y }]);
-                allSegments.push([{ x: obj.x + obj.width, y: obj.y }, { x: obj.x + obj.width, y: obj.y + obj.height }]);
-                allSegments.push([{ x: obj.x + obj.width, y: obj.y + obj.height }, { x: obj.x, y: obj.y + obj.height }]);
-                allSegments.push([{ x: obj.x, y: obj.y + obj.height }, { x: obj.x, y: obj.y }]);
+                const w = obj.width, h = obj.height;
+                // Approximate unrotated intersection for MVP, rotated requires more complex matrix math
+                if (!obj.rotation) {
+                    allSegments.push([{ x: obj.x, y: obj.y }, { x: obj.x + w, y: obj.y }]);
+                    allSegments.push([{ x: obj.x + w, y: obj.y }, { x: obj.x + w, y: obj.y + h }]);
+                    allSegments.push([{ x: obj.x + w, y: obj.y + h }, { x: obj.x, y: obj.y + h }]);
+                    allSegments.push([{ x: obj.x, y: obj.y + h }, { x: obj.x, y: obj.y }]);
+                }
             } else if (obj.type === 'path' && obj.points) {
                 for (let i = 0; i < obj.points.length - 1; i++) allSegments.push([obj.points[i], obj.points[i + 1]]);
+            } else if (obj.type === 'polygon') {
+                const polyPts = [];
+                for (let i = 0; i < obj.sides; i++) {
+                    const angle = (Math.PI * 2 * i) / obj.sides - Math.PI / 2 + (obj.rotation || 0) * Math.PI / 180;
+                    polyPts.push({ x: obj.cx + obj.r * Math.cos(angle), y: obj.cy + obj.r * Math.sin(angle) });
+                }
+                for (let i = 0; i < polyPts.length; i++) allSegments.push([polyPts[i], polyPts[(i + 1) % polyPts.length]]);
             }
         });
 
@@ -359,7 +435,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'rect') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0 }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
             return
@@ -367,7 +443,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'circle') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0 }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
             return
@@ -375,7 +451,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'polygon') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0 }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
             return
@@ -383,7 +459,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'arc') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0 }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
             return
@@ -391,7 +467,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'ruler') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0 }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_ruler', id: newObj.id, startX: x, startY: y })
             return
@@ -405,7 +481,8 @@ export default function DesignWorkspace() {
                 points: [{ x, y }], // Store as array of points for polyline
                 stroke: '#10b981',
                 fill: 'none',
-                strokeWidth: 3
+                strokeWidth: 3,
+                layerId: activeLayerId
             }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polyline', id: newObj.id })
@@ -414,7 +491,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'dimension') {
             saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_dimension', id: newObj.id, startX: x, startY: y })
             return
@@ -630,6 +707,12 @@ export default function DesignWorkspace() {
             const isWindow = currentAction.currentX > currentAction.startX
 
             const newlySelected = objects.filter(obj => {
+                // Ignore locked layers
+                if (obj.layerId) {
+                    const layer = layers.find(l => l.id === obj.layerId);
+                    if (layer && layer.locked) return false;
+                }
+
                 let box = { x: 0, y: 0, w: 0, h: 0 }
                 if (obj.type === 'rect') box = { x: obj.x, y: obj.y, w: obj.width, h: obj.height }
                 else if (obj.type === 'circle' || obj.type === 'arc') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 }
@@ -709,25 +792,34 @@ export default function DesignWorkspace() {
     }, [activeTool, currentAction, setActiveTool, undo, redo, saveHistorySnapshot, selectedIds, setObjects, setSelectedIds])
     const constraints = useStore((s) => s.constraints)
     const handleSimulate = async () => {
-        if (objects.length === 0) return;
+        if (objects.length === 0 && shapes3D.length === 0) return;
 
         setIsSimulating(true);
         resetPlayback();
 
         try {
-            // Marshall CAD entities into Python domain
-            const payload = {
-                objects: objects.map(o => {
+            // Marshall CAD entities (both 2D and Native 3D) into Physics domain
+            const combinedObjects = [
+                // 1. Marshall 2D Drafting Objects (Extrusions)
+                ...objects.map(o => {
+                    const depth = o.depth || 20;
                     const geometry = {
                         id: o.id,
-                        type: o.type === 'path' ? 'extrusion' : o.type,
-                        position: { x: o.x || o.cx || 0, y: o.y || o.cy || 0, z: 0 },
-                        rotation: { x: 0, y: 0, z: o.rotation || 0 },
-                        dimensions: { x: o.width || o.r || 0, y: o.height || o.r || 0, z: 0 },
-                        depth: o.depth || 20
+                        type: 'extrusion',
+                        position: { x: o.x || o.cx || 0, y: (o.y_override || depth / 2), z: o.y || o.cy || 0 },
+                        rotation: { x: 0, y: o.rotation ? -o.rotation * Math.PI / 180 : 0, z: 0 },
+                        dimensions: { x: o.width || o.r || 0, y: depth, z: o.height || o.r || 0 },
+                        depth: depth
                     };
 
-                    if (o.type === 'path' && o.points) {
+                    // For circles, we can simplify or use circular path
+                    if (o.type === 'circle') {
+                        geometry.type = 'sphere'; // Approximate cylinder as sphere for now or refine bridge
+                        geometry.dimensions = { x: o.r, y: o.r, z: o.r };
+                    } else if (o.type === 'rect') {
+                        geometry.type = 'box';
+                        geometry.dimensions = { x: o.width, y: depth, z: o.height };
+                    } else if ((o.type === 'path' || o.type === 'polygon' || o.type === 'arc') && o.points) {
                         geometry.path = o.points.map(p => ({ x: p.x, y: p.y }));
                     }
 
@@ -742,6 +834,34 @@ export default function DesignWorkspace() {
                         }
                     };
                 }),
+                // 2. Marshall Native 3D Objects
+                ...shapes3D.map(s => {
+                    const geoType = s.type === 'cube' ? 'box' : s.type;
+                    return {
+                        id: s.id,
+                        geometry: {
+                            id: s.id,
+                            type: geoType,
+                            position: { x: s.position.x, y: s.position.y, z: s.position.z },
+                            rotation: { x: s.rotation.x, y: s.rotation.y, z: s.rotation.z },
+                            dimensions: {
+                                x: s.params.width || s.params.radius || 1,
+                                y: s.params.height || s.params.radius || 1,
+                                z: s.params.depth || s.params.radius || 1
+                            }
+                        },
+                        physics: {
+                            mass: s.mass !== undefined ? parseFloat(s.mass) : 1.0,
+                            restitution: s.restitution !== undefined ? parseFloat(s.restitution) : 0.5,
+                            friction: s.friction !== undefined ? parseFloat(s.friction) : 0.3,
+                            is_static: s.isStatic || false
+                        }
+                    };
+                })
+            ];
+
+            const payload = {
+                objects: combinedObjects,
                 constraints: constraints.map(c => ({
                     id: c.id,
                     type: c.type,
@@ -846,6 +966,12 @@ export default function DesignWorkspace() {
             const transform = obj.rotation ? `rotate(${obj.rotation} ${obj.cx} ${obj.cy})` : ''
             const handleClick = (e) => {
                 e.stopPropagation()
+                // Layer lock check
+                if (obj.layerId) {
+                    const layer = layers.find(l => l.id === obj.layerId);
+                    if (layer && layer.locked) return;
+                }
+
                 if (activeTool === 'select') {
                     const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
                     if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
@@ -886,6 +1012,12 @@ export default function DesignWorkspace() {
                         style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
                         onClick={(e) => {
                             e.stopPropagation()
+                            // Layer lock check
+                            if (obj.layerId) {
+                                const layer = layers.find(l => l.id === obj.layerId);
+                                if (layer && layer.locked) return;
+                            }
+
                             if (activeTool === 'select') {
                                 const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
                                 if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
@@ -924,6 +1056,12 @@ export default function DesignWorkspace() {
                     key={obj.id}
                     onClick={(e) => {
                         e.stopPropagation()
+                        // Layer lock check
+                        if (obj.layerId) {
+                            const layer = layers.find(l => l.id === obj.layerId);
+                            if (layer && layer.locked) return;
+                        }
+
                         if (activeTool === 'select') {
                             const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
                             if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
@@ -960,6 +1098,12 @@ export default function DesignWorkspace() {
             return (
                 <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
                     e.stopPropagation()
+                    // Layer lock check
+                    if (obj.layerId) {
+                        const layer = layers.find(l => l.id === obj.layerId);
+                        if (layer && layer.locked) return;
+                    }
+
                     if (activeTool === 'select') {
                         const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
                         if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
@@ -991,6 +1135,12 @@ export default function DesignWorkspace() {
             return (
                 <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
                     e.stopPropagation()
+                    // Layer lock check
+                    if (obj.layerId) {
+                        const layer = layers.find(l => l.id === obj.layerId);
+                        if (layer && layer.locked) return;
+                    }
+
                     if (activeTool === 'select') {
                         const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
                         if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
