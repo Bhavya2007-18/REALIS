@@ -18,6 +18,7 @@ struct Quat {
 
   static Quat from_axis_angle(const Vec3 &axis, float angle);
   static Quat from_euler(float x, float y, float z);
+  Vec3 rotate(const Vec3 &v) const;
   Mat3 to_mat3() const;
 };
 

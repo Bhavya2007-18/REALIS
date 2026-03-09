@@ -46,6 +46,7 @@ public:
   std::vector<RigidBody *> bodies;
   std::vector<Constraint *> constraints;
   std::vector<ForceField *> force_fields;
+  std::vector<Contact> last_contacts;
 
 private:
   Timestep timestep;

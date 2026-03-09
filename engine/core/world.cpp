@@ -15,6 +15,7 @@ World::~World() {}
 
 void World::step() {
   float dt = timestep.get_dt();
+  last_contacts.clear();
 
   // 1. Clear forces
   for (auto *b : bodies) {
@@ -49,10 +50,10 @@ void World::step() {
   for (const auto &pair : potential_pairs) {
     Contact contact = NarrowPhase::generate_contact(pair.a, pair.b);
     if (contact.colliding) {
-      contacts.push_back(contact);
+      last_contacts.push_back(contact);
     }
   }
-  contact_solver.solve_contacts(contacts);
+  contact_solver.solve_contacts(last_contacts);
 
   timestep.advance();
 }

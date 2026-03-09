@@ -10,6 +10,7 @@ export default function DesignWorkspace() {
     const active3DTool = useStore((s) => s.active3DTool)
     const setActive3DTool = useStore((s) => s.setActive3DTool)
     const addShape3D = useStore((s) => s.addShape3D)
+    const shapes3D = useStore((s) => s.shapes3D)
 
     // --- Settings ---
     const [snappingEnabled, setSnappingEnabled] = useState(true)
@@ -42,6 +43,7 @@ export default function DesignWorkspace() {
     const currentFrameIndex = useStore(s => s.currentFrameIndex)
     const setCurrentFrameIndex = useStore(s => s.setCurrentFrameIndex)
     const setSimTime = useStore(s => s.setSimTime)
+    const simulationSettings = useStore(s => s.simulationSettings)
 
     // Reference to the SVG container to calculate relative coordinates
     const svgRef = useRef(null)
@@ -867,13 +869,20 @@ export default function DesignWorkspace() {
                     type: c.type,
                     target_a: c.targetA,
                     target_b: c.targetB,
+                    pivot_a: c.pivotA || { x: 0, y: 0, z: 0 },
+                    pivot_b: c.pivotB || { x: 0, y: 0, z: 0 },
+                    axis: c.axis || { x: 0, y: 1, z: 0 },
                     distance: c.distance,
-                    anchor: c.anchor,
-                    axis: c.axis
+                    angle_limit: c.angleLimit
                 })),
-                time_step: 0.016, // ~60fps
+                gravity: simulationSettings.gravity,
+                time_step: simulationSettings.timeStep,
+                sub_steps: simulationSettings.subSteps,
                 duration: 2.0
             };
+
+            // Switch to simulation workspace automatically
+            useStore.getState().setActiveWorkspace('simulate');
 
             const req = await fetch('http://localhost:8000/simulate', {
                 method: 'POST',

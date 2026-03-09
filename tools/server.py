@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import subprocess
 import os
 
@@ -49,18 +49,22 @@ class SceneObject(BaseModel):
 
 class PhysicsConstraint(BaseModel):
     id: str
-    type: str # "distance", "fixed"
-    target_a: str # id of body A
-    target_b: Optional[str] = None # id of body B
+    type: str # "distance", "fixed", "hinge", "slider"
+    target_a: str
+    target_b: Optional[str] = None
     distance: Optional[float] = 0.0
-    anchor: Optional[Vector3] = None
+    pivot_a: Optional[Vector3] = None
+    pivot_b: Optional[Vector3] = None
     axis: Optional[Vector3] = None
+    angle_limit: Optional[float] = None
 
 class SimulationRequest(BaseModel):
     objects: List[SceneObject]
     constraints: List[PhysicsConstraint] = []
     time_step: float = 0.01
     duration: float = 2.0
+    gravity: Vector3 = Vector3(x=0, y=-9.81, z=0)
+    sub_steps: int = 1
 
 class ObjectState(BaseModel):
     id: str
@@ -69,9 +73,15 @@ class ObjectState(BaseModel):
     linear_velocity: Vector3
     angular_velocity: Vector3
 
+class ContactPoint(BaseModel):
+    id_a: str
+    id_b: str
+    point: Dict[str, float]
+
 class SimulationFrame(BaseModel):
     time: float
     states: List[ObjectState]
+    contacts: List[ContactPoint] = []
 
 class SimulationResponse(BaseModel):
     frames: List[SimulationFrame]
@@ -113,10 +123,11 @@ def run_simulation(req: SimulationRequest):
     if not os.path.exists(sim_path):
         raise HTTPException(status_code=500, detail=f"Simulator not found at {sim_path}")
 
-    # Build the input for the CLI
     input_lines = [
         f"SET_DT {req.time_step}",
-        f"SET_DURATION {req.duration}"
+        f"SET_DURATION {req.duration}",
+        f"SET_SUBSTEPS {req.sub_steps}",
+        f"SET_GRAVITY {req.gravity.x} {req.gravity.y} {req.gravity.z}"
     ]
     
     for obj in req.objects:
@@ -126,33 +137,25 @@ def run_simulation(req: SimulationRequest):
         is_static = 1 if phys.is_static else 0
         
         if obj.geometry.type == "box":
-            hx = obj.geometry.dimensions.x * 0.5
-            hy = obj.geometry.dimensions.y * 0.5
-            hz = obj.geometry.dimensions.z * 0.5
+            hx, hy, hz = obj.geometry.dimensions.x * 0.5, obj.geometry.dimensions.y * 0.5, obj.geometry.dimensions.z * 0.5
             input_lines.append(f"ADD_BOX {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {hx} {hy} {hz} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
         elif obj.geometry.type == "sphere":
             radius = obj.geometry.dimensions.x
             input_lines.append(f"ADD_SPHERE {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {radius} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
-        elif obj.geometry.type == "extrusion" and obj.geometry.path:
-            # Create a 3D Convex Hull from the 2D path and depth
-            verts = []
-            depth = obj.geometry.depth if obj.geometry.depth > 0 else 1.0
-            for p in obj.geometry.path:
-                # Top vertex
-                verts.append(f"{p.x} {p.y} {depth * 0.5}")
-                # Bottom vertex
-                verts.append(f"{p.x} {p.y} {-depth * 0.5}")
-            
-            num_verts = len(verts)
-            verts_str = " ".join(verts)
-            input_lines.append(f"ADD_HULL {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {phys.mass} {phys.restitution} {phys.friction} {is_static} {num_verts} {verts_str}")
     
     for con in req.constraints:
         if con.type == "distance":
             input_lines.append(f"ADD_DISTANCE {con.target_a} {con.target_b} {con.distance}")
-        elif con.type == "fixed" and con.anchor and con.axis:
-            input_lines.append(f"ADD_FIXED {con.target_a} {con.anchor.x} {con.anchor.y} {con.anchor.z} {con.axis.x} {con.axis.y} {con.axis.z}")
-    
+        elif con.type == "hinge" and con.pivot_a and con.pivot_b and con.axis:
+            input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
+            v_per1 = Vector3(x=1, y=0, z=0) if abs(con.axis.x) < 0.9 else Vector3(x=0, y=1, z=0)
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {v_per1.x} {v_per1.y} {v_per1.z}")
+        elif con.type == "fixed" and con.pivot_a and con.pivot_b:
+            input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 1 0 0")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 1 0")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 0 1")
+
     input_lines.append("RUN")
     input_str = "\n".join(input_lines) + "\n"
 
@@ -173,19 +176,28 @@ def run_simulation(req: SimulationRequest):
         frames = []
         current_frame = None
         
-        for line in stdout.splitlines():
+        lines = stdout.splitlines()
+        line_idx = 0
+
+        while line_idx < len(lines):
+            line = lines[line_idx]
             parts = line.split()
-            if not parts: continue
+            if not parts:
+                line_idx += 1
+                continue
             
             if parts[0] == "FRAME":
-                if current_frame:
-                    frames.append(current_frame)
-                current_frame = SimulationFrame(time=float(parts[1]), states=[])
-            elif parts[0] == "OBJ":
-                if current_frame:
+                t = float(parts[1])
+                states = []
+                contacts = []
+                line_idx += 1 # Move past the FRAME line
+
+                # Parse OBJ lines for the current frame
+                while line_idx < len(lines) and lines[line_idx].startswith("OBJ "):
+                    obj_parts = lines[line_idx].split()
                     # OBJ [id] [px] [py] [pz] [qw] [qx] [qy] [qz] [vx] [vy] [vz] [wx] [wy] [wz]
-                    obj_id = parts[1]
-                    px, py, pz = float(parts[2]), float(parts[3]), float(parts[4])
+                    obj_id = obj_parts[1]
+                    px, py, pz = float(obj_parts[2]), float(obj_parts[3]), float(obj_parts[4])
                     # (Quaternions are parsed but we currently return 0 for rotation to frontend for Phase 2)
                     vx, vy, vz = float(parts[9]), float(parts[10]), float(parts[11])
                     wx, wy, wz = float(parts[12]), float(parts[13]), float(parts[14])

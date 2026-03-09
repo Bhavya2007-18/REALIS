@@ -30,16 +30,20 @@ void ConstraintSolver::solve(std::vector<Constraint *> &constraints, float dt) {
 
     if (c_i->bodyA && c_i->bodyA->inv_mass > 0) {
       j_m_f += c_i->linearA.dot(c_i->bodyA->force * c_i->bodyA->inv_mass);
+      j_m_f += c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor *
+                                 c_i->bodyA->torque);
       j_v += c_i->linearA.dot(c_i->bodyA->velocity);
+      j_v += c_i->angularA.dot(c_i->bodyA->angular_velocity);
     }
     if (c_i->bodyB && c_i->bodyB->inv_mass > 0) {
       j_m_f += c_i->linearB.dot(c_i->bodyB->force * c_i->bodyB->inv_mass);
+      j_m_f += c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor *
+                                 c_i->bodyB->torque);
       j_v += c_i->linearB.dot(c_i->bodyB->velocity);
+      j_v += c_i->angularB.dot(c_i->bodyB->angular_velocity);
     }
 
-    // Baumgarte stabilization: a = - kp * C - kd * \dot{C}
-    // For dt = 0.01, kp around 400, kd around 40 provides good critical
-    // damping.
+    // Baumgarte stabilization
     float kp = 400.0f;
     float kd = 40.0f;
     float stabilization = kp * c_i->C_val + kd * j_v;
@@ -49,21 +53,27 @@ void ConstraintSolver::solve(std::vector<Constraint *> &constraints, float dt) {
 
     for (int j = 0; j < n; ++j) {
       Constraint *c_j = constraints[j];
-
       float val = 0.0f;
 
-      // Check interaction if constraints share a body
       if (c_i->bodyA == c_j->bodyA && c_i->bodyA && c_i->bodyA->inv_mass > 0) {
         val += c_i->linearA.dot(c_j->linearA) * c_i->bodyA->inv_mass;
+        val +=
+            c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor * c_j->angularA);
       }
       if (c_i->bodyA == c_j->bodyB && c_i->bodyA && c_i->bodyA->inv_mass > 0) {
         val += c_i->linearA.dot(c_j->linearB) * c_i->bodyA->inv_mass;
+        val +=
+            c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor * c_j->angularB);
       }
       if (c_i->bodyB == c_j->bodyA && c_i->bodyB && c_i->bodyB->inv_mass > 0) {
         val += c_i->linearB.dot(c_j->linearA) * c_i->bodyB->inv_mass;
+        val +=
+            c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor * c_j->angularA);
       }
       if (c_i->bodyB == c_j->bodyB && c_i->bodyB && c_i->bodyB->inv_mass > 0) {
         val += c_i->linearB.dot(c_j->linearB) * c_i->bodyB->inv_mass;
+        val +=
+            c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor * c_j->angularB);
       }
 
       A[i * n + j] = val;

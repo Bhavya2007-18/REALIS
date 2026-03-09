@@ -109,6 +109,76 @@ const Shape3DNode = ({ shape }) => {
     return node;
 };
 
+const JointMarker = ({ constraint }) => {
+    const shapes3D = useStore(state => state.shapes3D);
+    const objects = useStore(state => state.objects);
+
+    // Find targets to position the marker
+    const allEntities = [...shapes3D, ...objects];
+    const targetA = allEntities.find(e => e.id === constraint.targetA);
+    const targetB = allEntities.find(e => e.id === constraint.targetB);
+
+    if (!targetA) return null;
+
+    const posA = targetA.position ? (Array.isArray(targetA.position) ? targetA.position : [targetA.position.x, targetA.position.y, targetA.position.z]) : [targetA.x + (targetA.width || 0) / 2, targetA.y_override || 0, targetA.y + (targetA.height || 0) / 2];
+
+    // Marker position is usually at the pivot, for now just at targetA + pivotA
+    const markerPos = [
+        posA[0] + (constraint.pivotA?.x || 0),
+        posA[1] + (constraint.pivotA?.y || 0),
+        posA[2] + (constraint.pivotA?.z || 0)
+    ];
+
+    if (constraint.type === 'hinge') {
+        // Render a cylinder along the axis
+        const axis = constraint.axis || { x: 0, y: 1, z: 0 };
+        return (
+            <group position={markerPos}>
+                <mesh rotation={[axis.x * Math.PI / 2, axis.y * Math.PI / 2, axis.z * Math.PI / 2]}>
+                    <cylinderGeometry args={[0.5, 0.5, 4, 8]} />
+                    <meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
+                </mesh>
+                <mesh rotation={[axis.x * Math.PI / 2, axis.y * Math.PI / 2, axis.z * Math.PI / 2]}>
+                    <cylinderGeometry args={[0.2, 0.2, 8, 8]} />
+                    <meshBasicMaterial color="#fbbf24" />
+                </mesh>
+            </group>
+        );
+    }
+
+    if (constraint.type === 'slider') {
+        const axis = constraint.axis || { x: 1, y: 0, z: 0 };
+        return (
+            <group position={markerPos}>
+                <mesh rotation={[axis.x * Math.PI / 2, axis.y * Math.PI / 2, axis.z * Math.PI / 2]}>
+                    <boxGeometry args={[10, 0.2, 0.2]} />
+                    <meshBasicMaterial color="white" transparent opacity={0.5} />
+                </mesh>
+            </group>
+        );
+    }
+
+    if (constraint.type === 'fixed') {
+        return (
+            <mesh position={markerPos}>
+                <boxGeometry args={[2, 2, 2]} />
+                <meshBasicMaterial color="#3b82f6" transparent opacity={0.6} />
+            </mesh>
+        );
+    }
+
+    return null;
+};
+
+const CollisionMarker = ({ contact }) => {
+    return (
+        <mesh position={[contact.point.x, contact.point.y, contact.point.z]}>
+            <sphereGeometry args={[0.3, 8, 8]} />
+            <meshBasicMaterial color="#ef4444" />
+        </mesh>
+    );
+};
+
 export default function Viewport3D({ objects, isSimulating }) {
     const shapes3D = useStore(state => state.shapes3D);
     const active3DTool = useStore(state => state.active3DTool);
@@ -118,6 +188,7 @@ export default function Viewport3D({ objects, isSimulating }) {
     const simulationFrames = useStore(state => state.simulationFrames);
     const currentFrameIndex = useStore(state => state.currentFrameIndex);
     const isPlaying = useStore(state => state.isPlaying);
+    const constraints = useStore(state => state.constraints);
 
     return (
         <Canvas camera={{ position: [100, 100, 100], fov: 50 }} shadows>
@@ -254,6 +325,16 @@ export default function Viewport3D({ objects, isSimulating }) {
             {/* Native 3D Objects */}
             {shapes3D.map(shape => (
                 <Shape3DNode key={shape.id} shape={shape} />
+            ))}
+
+            {/* Constraints / Joints */}
+            {constraints.map(c => (
+                <JointMarker key={c.id} constraint={c} />
+            ))}
+
+            {/* Collisions for current frame */}
+            {simulationFrames[currentFrameIndex]?.contacts?.map((contact, idx) => (
+                <CollisionMarker key={`contact-${idx}`} contact={contact} />
             ))}
 
             <OrbitControls makeDefault />

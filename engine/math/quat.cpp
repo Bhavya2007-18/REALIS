@@ -40,6 +40,12 @@ Quat Quat::from_euler(float x, float y, float z) {
               cx * sy * cz + sx * cy * sz, cx * cy * sz - sx * sy * cz);
 }
 
+Vec3 Quat::rotate(const Vec3 &v) const {
+  Quat p(0, v.x, v.y, v.z);
+  Quat result = (*this) * p * conjugate();
+  return Vec3(result.x, result.y, result.z);
+}
+
 Mat3 Quat::to_mat3() const {
   float x2 = x + x, y2 = y + y, z2 = z + z;
   float xx = x * x2, xy = x * y2, xz = x * z2;

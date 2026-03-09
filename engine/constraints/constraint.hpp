@@ -48,11 +48,11 @@ public:
   void apply_constraint_force(float lambda_val) {
     if (bodyA && bodyA->inv_mass > 0) {
       bodyA->apply_force(linearA * lambda_val);
-      // Ignore angular force apply for now until full inertia maps are aligned
+      bodyA->apply_torque(angularA * lambda_val);
     }
     if (bodyB && bodyB->inv_mass > 0) {
       bodyB->apply_force(linearB * lambda_val);
-      // Ignore angular force apply for now
+      bodyB->apply_torque(angularB * lambda_val);
     }
   }
 };

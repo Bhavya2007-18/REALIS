@@ -261,6 +261,14 @@ const useStore = create((set) => ({
 
     constraints: [],
     setConstraints: (cons) => set({ constraints: typeof cons === 'function' ? cons(useStore.getState().constraints) : cons }),
+    addConstraint: (constraint) => set((state) => {
+        state.saveHistorySnapshot();
+        return { constraints: [...state.constraints, { id: Math.random().toString(36).substring(2, 9), ...constraint }] };
+    }),
+    removeConstraint: (id) => set((state) => {
+        state.saveHistorySnapshot();
+        return { constraints: state.constraints.filter(c => c.id !== id) };
+    }),
 
     // Right Panel state
     rightPanelView: 'properties', // 'ai' or 'properties'
@@ -334,6 +342,17 @@ const useStore = create((set) => ({
     fps: 60,
     simTime: 0,
     setSimTime: (time) => set({ simTime: time }),
+
+    // --- Simulation Settings ---
+    simulationSettings: {
+        gravity: { x: 0, y: -9.81, z: 0 },
+        timeStep: 0.016,
+        solverIterations: 10,
+        subSteps: 1
+    },
+    setSimulationSettings: (settings) => set((state) => ({
+        simulationSettings: { ...state.simulationSettings, ...settings }
+    })),
 
     // --- Simulation & Playback State ---
     simulationFrames: [], // Array of frames from the backend
