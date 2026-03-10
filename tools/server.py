@@ -57,6 +57,10 @@ class PhysicsConstraint(BaseModel):
     pivot_b: Optional[Vector3] = None
     axis: Optional[Vector3] = None
     angle_limit: Optional[float] = None
+    # Motor support
+    motor_enabled: bool = False
+    target_velocity: float = 0.0
+    max_force: float = 0.0
 
 class SimulationRequest(BaseModel):
     objects: List[SceneObject]
@@ -148,8 +152,52 @@ def run_simulation(req: SimulationRequest):
             input_lines.append(f"ADD_DISTANCE {con.target_a} {con.target_b} {con.distance}")
         elif con.type == "hinge" and con.pivot_a and con.pivot_b and con.axis:
             input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
-            v_per1 = Vector3(x=1, y=0, z=0) if abs(con.axis.x) < 0.9 else Vector3(x=0, y=1, z=0)
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {v_per1.x} {v_per1.y} {v_per1.z}")
+            
+            # Lock two perpendicular axes to the rotation axis
+            v = con.axis
+            # Find an arbitrary vector not parallel to v
+            temp = Vector3(x=1, y=0, z=0) if abs(v.x) < 0.9 else Vector3(x=0, y=1, z=0)
+            # Cross products to find orthogonal basis
+            # n = v x temp
+            nx = v.y * temp.z - v.z * temp.y
+            ny = v.z * temp.x - v.x * temp.z
+            nz = v.x * temp.y - v.y * temp.x
+            # t = v x n
+            tx = v.y * nz - v.z * ny
+            ty = v.z * nx - v.x * nz
+            tz = v.x * ny - v.y * nx
+            
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {nx} {ny} {nz}")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {tx} {ty} {tz}")
+
+            # If motor is enabled, add an active constraint on the rotation axis itself
+            if con.motor_enabled:
+                input_lines.append(f"ADD_MOTOR_JOINT {con.target_a} {con.target_b} {con.axis.x} {con.axis.y} {con.axis.z} {con.target_velocity} {con.max_force}")
+        elif con.type == "slider" and con.axis:
+            # Lock orientation (3 angular DOFs)
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 1 0 0")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 1 0")
+            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 0 1")
+            
+            # Lock 2 linear axes (orthogonal to con.axis)
+            v = con.axis
+            temp = Vector3(x=1, y=0, z=0) if abs(v.x) < 0.9 else Vector3(x=0, y=1, z=0)
+            nx = v.y * temp.z - v.z * temp.y
+            ny = v.z * temp.x - v.x * temp.z
+            nz = v.x * temp.y - v.y * temp.x
+            tx = v.y * nz - v.z * ny
+            ty = v.z * nx - v.x * nz
+            tz = v.x * ny - v.y * nx
+            
+            # Use ADD_POINT_JOINT for linear part if we had a 1D linear lock
+            # For now, we use a trick: lock 2 axes using very large/locked linear motors or similar
+            # But the simulator expects ADD_POINT_JOINT to lock all 3.
+            # We need a 1D linear lock. Let's assume ADD_MOTOR_JOINT with 0 vel and INF force locks it.
+            input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {nx} {ny} {nz} 0 1e10")
+            input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {tx} {ty} {tz} 0 1e10")
+
+            if con.motor_enabled:
+                input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {con.axis.x} {con.axis.y} {con.axis.z} {con.target_velocity} {con.max_force}")
         elif con.type == "fixed" and con.pivot_a and con.pivot_b:
             input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
             input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 1 0 0")

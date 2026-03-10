@@ -157,6 +157,29 @@ const useStore = create((set) => ({
         { id: 'layer2', name: 'Dimensions', color: '#f59e0b', visible: true, locked: false },
     ],
     activeLayerId: 'default',
+
+    // Material presets
+    materials: {
+        steel: { density: 7850, restitution: 0.2, friction: 0.4 },
+        rubber: { density: 1100, restitution: 0.8, friction: 0.9 },
+        wood: { density: 700, restitution: 0.4, friction: 0.5 },
+        plastic: { density: 1000, restitution: 0.6, friction: 0.3 }
+    },
+    applyMaterial: (objectId, materialKey) => set((state) => {
+        const mat = state.materials[materialKey];
+        if (!mat) return state;
+        const updateShapeOrObject = (list) => list.map(o => {
+            if (o.id !== objectId) return o;
+            // Mass calculation could happen here if we had volume,
+            // for now just update properties.
+            return { ...o, restitution: mat.restitution, friction: mat.friction };
+        });
+        return {
+            objects: updateShapeOrObject(state.objects),
+            shapes3D: updateShapeOrObject(state.shapes3D)
+        };
+    }),
+
     setLayers: (layers) => set({ layers: typeof layers === 'function' ? layers(useStore.getState().layers) : layers }),
     addLayer: (layer) => set((state) => ({ layers: [...state.layers, layer] })),
     setActiveLayerId: (id) => set({ activeLayerId: id }),
@@ -263,8 +286,16 @@ const useStore = create((set) => ({
     setConstraints: (cons) => set({ constraints: typeof cons === 'function' ? cons(useStore.getState().constraints) : cons }),
     addConstraint: (constraint) => set((state) => {
         state.saveHistorySnapshot();
-        return { constraints: [...state.constraints, { id: Math.random().toString(36).substring(2, 9), ...constraint }] };
+        const motorDefaults = {
+            motorEnabled: false,
+            targetVelocity: 0,
+            maxForce: 1000
+        };
+        return { constraints: [...state.constraints, { id: Math.random().toString(36).substring(2, 9), ...motorDefaults, ...constraint }] };
     }),
+    updateConstraint: (id, updates) => set((state) => ({
+        constraints: state.constraints.map(c => c.id === id ? { ...c, ...updates } : c)
+    })),
     removeConstraint: (id) => set((state) => {
         state.saveHistorySnapshot();
         return { constraints: state.constraints.filter(c => c.id !== id) };
@@ -284,6 +315,9 @@ const useStore = create((set) => ({
 
     selected3DIds: [],
     setSelected3DIds: (ids) => set({ selected3DIds: typeof ids === 'function' ? ids(useStore.getState().selected3DIds) : ids }),
+
+    selectedJointId: null,
+    setSelectedJointId: (id) => set({ selectedJointId: id }),
 
     activeFileId: null, // Still used for primary inspector focus
     setActiveFileId: (id) => set({ activeFileId: id }),

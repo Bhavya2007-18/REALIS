@@ -21,6 +21,13 @@ export default function SimulateWorkspace() {
     const addConstraint = useStore(state => state.addConstraint);
     const selected3DIds = useStore(state => state.selected3DIds);
     const selectedIds = useStore(state => state.selectedIds);
+    const selectedJointId = useStore(state => state.selectedJointId);
+    const setSelectedJointId = useStore(state => state.setSelectedJointId);
+    const updateConstraint = useStore(state => state.updateConstraint);
+    const materials = useStore(state => state.materials);
+    const applyMaterial = useStore(state => state.applyMaterial);
+    const setShapes3D = useStore(state => state.setShapes3D);
+    const shapes3D = useStore(state => state.shapes3D);
 
     const [isInspectorOpen, setIsInspectorOpen] = useState(true);
     const [isJointModalOpen, setIsJointModalOpen] = useState(false);
@@ -30,7 +37,10 @@ export default function SimulateWorkspace() {
         targetB: '',
         pivotA: { x: 0, y: 0, z: 0 },
         pivotB: { x: 0, y: 0, z: 0 },
-        axis: { x: 0, y: 1, z: 0 }
+        axis: { x: 0, y: 1, z: 0 },
+        motorEnabled: false,
+        targetVelocity: 0,
+        maxForce: 1000
     });
 
     useEffect(() => {
@@ -152,6 +162,82 @@ export default function SimulateWorkspace() {
                                 </div>
                             </section>
 
+                            {/* Object Properties (Conditional) */}
+                            {(selected3DIds.length > 0 || selectedIds.length > 0) && (
+                                <section className="pt-4 border-t border-white/5 animate-in fade-in slide-in-from-right-4 duration-500">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Zap size={14} className="text-primary" />
+                                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Object Properties</h4>
+                                    </div>
+                                    <div className="bg-white/3 rounded-xl p-4 border border-white/5 space-y-4">
+                                        {/* Material Selection */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Material Preset</label>
+                                            <select
+                                                onChange={(e) => {
+                                                    const id = selected3DIds[0] || selectedIds[0];
+                                                    applyMaterial(id, e.target.value);
+                                                }}
+                                                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-primary/50 cursor-pointer"
+                                            >
+                                                <option value="">Custom...</option>
+                                                {Object.keys(materials).map(m => (
+                                                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Physics Toggles */}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-slate-400">Fixed / Static</span>
+                                            <button
+                                                onClick={() => {
+                                                    const id = selected3DIds[0] || selectedIds[0];
+                                                    setShapes3D(prev => prev.map(s => s.id === id ? { ...s, isStatic: !s.isStatic } : s));
+                                                }}
+                                                className={`w-8 h-4 rounded-full transition-colors relative ${shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.isStatic ? 'bg-primary' : 'bg-slate-700'}`}
+                                            >
+                                                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.isStatic ? 'left-4.5' : 'left-0.5'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Precision Sliders */}
+                                        <div className="space-y-3">
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-[9px] text-slate-500 uppercase font-bold">
+                                                    <span>Restitution</span>
+                                                    <span className="text-white font-mono">{shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.restitution?.toFixed(2) || 0.5}</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="0" max="1" step="0.01"
+                                                    value={shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.restitution || 0.5}
+                                                    onChange={(e) => {
+                                                        const id = selected3DIds[0] || selectedIds[0];
+                                                        setShapes3D(prev => prev.map(s => s.id === id ? { ...s, restitution: parseFloat(e.target.value) } : s));
+                                                    }}
+                                                    className="w-full h-1 bg-white/5 rounded-full accent-primary outline-none"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-[9px] text-slate-500 uppercase font-bold">
+                                                    <span>Friction</span>
+                                                    <span className="text-white font-mono">{shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.friction?.toFixed(2) || 0.3}</span>
+                                                </div>
+                                                <input
+                                                    type="range" min="0" max="1" step="0.01"
+                                                    value={shapes3D.find(s => s.id === (selected3DIds[0] || selectedIds[0]))?.friction || 0.3}
+                                                    onChange={(e) => {
+                                                        const id = selected3DIds[0] || selectedIds[0];
+                                                        setShapes3D(prev => prev.map(s => s.id === id ? { ...s, friction: parseFloat(e.target.value) } : s));
+                                                    }}
+                                                    className="w-full h-1 bg-white/5 rounded-full accent-primary outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+
                             {/* Analytics Sparklines */}
                             <section className="pt-4 border-t border-white/5">
                                 <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Real-time Analytics</h4>
@@ -192,17 +278,65 @@ export default function SimulateWorkspace() {
                                         </div>
                                     ) : (
                                         constraints.map(c => (
-                                            <div key={c.id} className="group glass p-3 rounded-xl border border-white/5 flex items-center justify-between hover:border-primary/30 transition-all">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[10px] font-bold text-white uppercase tracking-tight">{c.type} JOINT</span>
-                                                    <span className="text-[9px] text-slate-500 truncate w-32 font-mono">{c.id}</span>
+                                            <div
+                                                key={c.id}
+                                                onClick={() => setSelectedJointId(c.id)}
+                                                className={`group glass p-3 rounded-xl border transition-all cursor-pointer ${selectedJointId === c.id ? 'border-primary bg-primary/10' : 'border-white/5 hover:border-primary/30'}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-[10px] font-bold text-white uppercase tracking-tight">{c.type} JOINT</span>
+                                                        <span className="text-[9px] text-slate-500 truncate w-24 font-mono">{c.id}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        {c.motorEnabled && <Zap size={10} className="text-yellow-400 fill-yellow-400" />}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); removeConstraint(c.id); if (selectedJointId === c.id) setSelectedJointId(null); }}
+                                                            className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => removeConstraint(c.id)}
-                                                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
+
+                                                {/* Motor Controls for selected joint */}
+                                                {selectedJointId === c.id && (
+                                                    <div className="mt-3 pt-3 border-t border-white/5 space-y-3" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[9px] text-slate-400 uppercase font-bold">Motor Active</span>
+                                                            <button
+                                                                onClick={() => updateConstraint(c.id, { motorEnabled: !c.motorEnabled })}
+                                                                className={`w-8 h-4 rounded-full transition-colors relative ${c.motorEnabled ? 'bg-primary' : 'bg-slate-700'}`}
+                                                            >
+                                                                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${c.motorEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between text-[9px] text-slate-500 uppercase font-bold">
+                                                                <span>Target Velocity</span>
+                                                                <span className="text-white font-mono">{c.targetVelocity} rad/s</span>
+                                                            </div>
+                                                            <input
+                                                                type="range" min="-10" max="10" step="0.1"
+                                                                value={c.targetVelocity}
+                                                                onChange={(e) => updateConstraint(c.id, { targetVelocity: parseFloat(e.target.value) })}
+                                                                className="w-full h-1 bg-white/5 rounded-full accent-primary outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between text-[9px] text-slate-500 uppercase font-bold">
+                                                                <span>Max Torque</span>
+                                                                <span className="text-white font-mono">{c.maxForce} Nm</span>
+                                                            </div>
+                                                            <input
+                                                                type="number"
+                                                                value={c.maxForce}
+                                                                onChange={(e) => updateConstraint(c.id, { maxForce: parseFloat(e.target.value) })}
+                                                                className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-xs text-white outline-none font-mono"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
                                     )}
@@ -310,6 +444,44 @@ export default function SimulateWorkspace() {
                                             />
                                         ))}
                                     </div>
+                                </div>
+
+                                {/* Motor Settings in Modal */}
+                                <div className="pt-4 border-t border-white/5 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Zap size={14} className="text-yellow-400" />
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Enable Motor</label>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={newJoint.motorEnabled}
+                                            onChange={(e) => setNewJoint({ ...newJoint, motorEnabled: e.target.checked })}
+                                            className="accent-primary"
+                                        />
+                                    </div>
+                                    {newJoint.motorEnabled && (
+                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase">Velocity</label>
+                                                <input
+                                                    type="number"
+                                                    value={newJoint.targetVelocity}
+                                                    onChange={(e) => setNewJoint({ ...newJoint, targetVelocity: parseFloat(e.target.value) })}
+                                                    className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white outline-none font-mono"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase">Max Torque</label>
+                                                <input
+                                                    type="number"
+                                                    value={newJoint.maxForce}
+                                                    onChange={(e) => setNewJoint({ ...newJoint, maxForce: parseFloat(e.target.value) })}
+                                                    className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white outline-none font-mono"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -1,5 +1,6 @@
 #include "../engine/constraints/angular_constraint.hpp"
 #include "../engine/constraints/distance_constraint.hpp"
+#include "../engine/constraints/linear_constraint.hpp"
 #include "../engine/constraints/point_constraint.hpp"
 #include "../engine/core/integrator.hpp"
 #include "../engine/core/world.hpp"
@@ -12,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 
 using namespace realis;
 
@@ -148,6 +150,47 @@ int main() {
       if (bodyA && bodyB)
         world.add_constraint(
             new AngularConstraint(bodyA, bodyB, Vec3(ax, ay, az)));
+    } else if (cmd == "ADD_MOTOR_JOINT") {
+      std::string idA, idB;
+      float ax, ay, az, vel, torque;
+      ss >> idA >> idB >> ax >> ay >> az >> vel >> torque;
+      RigidBody *bodyA = nullptr, *bodyB = nullptr;
+      for (size_t i = 0; i < objectIds.size(); ++i) {
+        if (objectIds[i] == idA)
+          bodyA = world.bodies[i];
+        if (objectIds[i] == idB)
+          bodyB = world.bodies[i];
+      }
+      if (bodyA && bodyB) {
+        AngularConstraint *ac =
+            new AngularConstraint(bodyA, bodyB, Vec3(ax, ay, az));
+        ac->motorEnabled = true;
+        ac->targetVelocity = vel;
+        ac->maxForce = torque;
+        world.add_constraint(ac);
+      }
+    } else if (cmd == "ADD_LINEAR_MOTOR") {
+      std::string idA, idB;
+      float ax, ay, az, vel, force;
+      ss >> idA >> idB >> ax >> ay >> az >> vel >> force;
+      RigidBody *bodyA = nullptr, *bodyB = nullptr;
+      for (size_t i = 0; i < objectIds.size(); ++i) {
+        if (objectIds[i] == idA)
+          bodyA = world.bodies[i];
+        if (objectIds[i] == idB)
+          bodyB = world.bodies[i];
+      }
+      if (bodyA && bodyB) {
+        LinearConstraint *lc = new LinearConstraint(
+            bodyA, bodyB, Vec3(0, 0, 0), Vec3(0, 0, 0), Vec3(ax, ay, az));
+        lc->motorEnabled = true;
+        lc->targetVelocity = vel;
+        lc->maxForce = force;
+        world.add_constraint(lc);
+      }
+    } else if (cmd == "ADD_SLIDER_LOCK") {
+      // Locks angular DOFs and 2 linear DOFs
+      // Placeholder for complex combined joint
     } else if (cmd == "RUN") {
       std::cout << "START_SIMULATION" << std::endl;
       int steps = static_cast<int>(duration / dt);

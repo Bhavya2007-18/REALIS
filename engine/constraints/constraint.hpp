@@ -34,9 +34,15 @@ public:
   float minLambda;
   float maxLambda;
 
+  // Motor support
+  bool motorEnabled;
+  float targetVelocity;
+  float maxForce; // Max torque for hinge, max force for slider
+
   Constraint(RigidBody *a, RigidBody *b)
       : bodyA(a), bodyB(b), bias(0.0f), effectiveMass(0.0f), lambda(0.0f),
-        C_val(0.0f), J_dot_v(0.0f), minLambda(-1e20f), maxLambda(1e20f) {}
+        C_val(0.0f), J_dot_v(0.0f), minLambda(-1e20f), maxLambda(1e20f),
+        motorEnabled(false), targetVelocity(0.0f), maxForce(0.0f) {}
 
   virtual ~Constraint() = default;
 

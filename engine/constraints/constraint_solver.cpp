@@ -11,86 +11,85 @@ void ConstraintSolver::solve(std::vector<Constraint *> &constraints, float dt) {
 
   int n = constraints.size();
 
-  // 1. Pre-step: compute Jacobians, C_val, J_dot_v
+  // 1. Pre-step: compute Jacobians, C_val, J_dot_v, and Effective Mass
   for (auto c : constraints) {
     c->pre_step(dt);
-  }
 
-  // 2. Build block matrix A_c = J * M^-1 * J^T
-  std::vector<float> A(n * n, 0.0f);
-  std::vector<float> b(n, 0.0f);
-
-  for (int i = 0; i < n; ++i) {
-    Constraint *c_i = constraints[i];
-
-    // J M^-1 F_ext
-    float j_m_f = 0.0f;
-    // J v (which is \dot{C})
-    float j_v = 0.0f;
-
-    if (c_i->bodyA && c_i->bodyA->inv_mass > 0) {
-      j_m_f += c_i->linearA.dot(c_i->bodyA->force * c_i->bodyA->inv_mass);
-      j_m_f += c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor *
-                                 c_i->bodyA->torque);
-      j_v += c_i->linearA.dot(c_i->bodyA->velocity);
-      j_v += c_i->angularA.dot(c_i->bodyA->angular_velocity);
+    // Compute J M^-1 J^T for this single constraint
+    float invMass = 0.0f;
+    if (c->bodyA && c->bodyA->inv_mass > 0) {
+      invMass += c->linearA.dot(c->linearA) * c->bodyA->inv_mass;
+      invMass += c->angularA.dot(c->bodyA->inv_inertia_tensor * c->angularA);
     }
-    if (c_i->bodyB && c_i->bodyB->inv_mass > 0) {
-      j_m_f += c_i->linearB.dot(c_i->bodyB->force * c_i->bodyB->inv_mass);
-      j_m_f += c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor *
-                                 c_i->bodyB->torque);
-      j_v += c_i->linearB.dot(c_i->bodyB->velocity);
-      j_v += c_i->angularB.dot(c_i->bodyB->angular_velocity);
+    if (c->bodyB && c->bodyB->inv_mass > 0) {
+      invMass += c->linearB.dot(c->linearB) * c->bodyB->inv_mass;
+      invMass += c->angularB.dot(c->bodyB->inv_inertia_tensor * c->angularB);
     }
+    c->effectiveMass = (invMass > 0.0f) ? 1.0f / invMass : 0.0f;
 
-    // Baumgarte stabilization
+    // Standard Baumgarte stabilization
     float kp = 400.0f;
-    float kd = 40.0f;
-    float stabilization = kp * c_i->C_val + kd * j_v;
+    c->bias = (kp * c->C_val) / dt;
 
-    // RHS: - J M^-1 F - \dot{J}v - stabilization
-    b[i] = -(j_m_f + c_i->J_dot_v + stabilization);
+    // Warm starting: Apply previous lambda if any (optional, but good for
+    // stability) For now, reset lambda per step unless we implement persistent
+    // constraints
+    c->lambda = 0.0f;
+  }
 
-    for (int j = 0; j < n; ++j) {
-      Constraint *c_j = constraints[j];
-      float val = 0.0f;
-
-      if (c_i->bodyA == c_j->bodyA && c_i->bodyA && c_i->bodyA->inv_mass > 0) {
-        val += c_i->linearA.dot(c_j->linearA) * c_i->bodyA->inv_mass;
-        val +=
-            c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor * c_j->angularA);
+  // 2. Iterative Solve (Projected Gauss-Seidel)
+  const int iterations = 20;
+  for (int iter = 0; iter < iterations; ++iter) {
+    for (auto c : constraints) {
+      // Relative velocity J * v
+      float jv = 0.0f;
+      if (c->bodyA) {
+        jv += c->linearA.dot(c->bodyA->velocity);
+        jv += c->angularA.dot(c->bodyA->angular_velocity);
       }
-      if (c_i->bodyA == c_j->bodyB && c_i->bodyA && c_i->bodyA->inv_mass > 0) {
-        val += c_i->linearA.dot(c_j->linearB) * c_i->bodyA->inv_mass;
-        val +=
-            c_i->angularA.dot(c_i->bodyA->inv_inertia_tensor * c_j->angularB);
-      }
-      if (c_i->bodyB == c_j->bodyA && c_i->bodyB && c_i->bodyB->inv_mass > 0) {
-        val += c_i->linearB.dot(c_j->linearA) * c_i->bodyB->inv_mass;
-        val +=
-            c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor * c_j->angularA);
-      }
-      if (c_i->bodyB == c_j->bodyB && c_i->bodyB && c_i->bodyB->inv_mass > 0) {
-        val += c_i->linearB.dot(c_j->linearB) * c_i->bodyB->inv_mass;
-        val +=
-            c_i->angularB.dot(c_i->bodyB->inv_inertia_tensor * c_j->angularB);
+      if (c->bodyB) {
+        jv += c->linearB.dot(c->bodyB->velocity);
+        jv += c->angularB.dot(c->bodyB->angular_velocity);
       }
 
-      A[i * n + j] = val;
+      // Compute lambda impulse/force
+      // If it's a motor, we want jv to approach targetVelocity
+      float motorBias = c->motorEnabled ? -c->targetVelocity : 0.0f;
+
+      float deltaLambda = c->effectiveMass * (-(jv + c->bias + motorBias));
+
+      // Clamping (Projected part of PGS)
+      float oldLambda = c->lambda;
+      c->lambda += deltaLambda;
+
+      // Enforce limits
+      float minL = c->motorEnabled ? -c->maxForce : c->minLambda;
+      float maxL = c->motorEnabled ? c->maxForce : c->maxLambda;
+
+      if (c->lambda < minL)
+        c->lambda = minL;
+      if (c->lambda > maxL)
+        c->lambda = maxL;
+
+      deltaLambda = c->lambda - oldLambda;
+
+      // Apply impulses immediately to velocities (integrator will use these
+      // updated velocities)
+      if (c->bodyA && c->bodyA->inv_mass > 0) {
+        c->bodyA->velocity = c->bodyA->velocity +
+                             c->linearA * (deltaLambda * c->bodyA->inv_mass);
+        c->bodyA->angular_velocity =
+            c->bodyA->angular_velocity +
+            c->bodyA->inv_inertia_tensor * (c->angularA * deltaLambda);
+      }
+      if (c->bodyB && c->bodyB->inv_mass > 0) {
+        c->bodyB->velocity = c->bodyB->velocity +
+                             c->linearB * (c->bodyB->inv_mass * deltaLambda);
+        c->bodyB->angular_velocity =
+            c->bodyB->angular_velocity +
+            c->bodyB->inv_inertia_tensor * (c->angularB * deltaLambda);
+      }
     }
-  }
-
-  // 3. Solve exact multipliers
-  std::vector<float> lambda(n, 0.0f);
-  if (!MatrixSolver::solve_gaussian(A, b, lambda)) {
-    // Fallback or handle singular matrix (e.g. redundant constraints)
-    // For Phase 2A, assume well-posed full row-rank constraints
-  }
-
-  // 4. Apply continuous constraint forces
-  for (int i = 0; i < n; ++i) {
-    constraints[i]->lambda = lambda[i]; // Store exact multiplier
-    constraints[i]->apply_constraint_force(lambda[i]);
   }
 }
 
