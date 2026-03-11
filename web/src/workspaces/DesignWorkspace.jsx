@@ -838,19 +838,47 @@ export default function DesignWorkspace() {
                 }),
                 // 2. Marshall Native 3D Objects
                 ...shapes3D.map(s => {
-                    const geoType = s.type === 'cube' ? 'box' : s.type;
+                    let geoType = s.type === 'cube' ? 'box' : s.type;
+                    let dimX = s.params?.width || s.params?.radius || 1;
+                    let dimY = s.params?.height || s.params?.radius || 1;
+                    let dimZ = s.params?.depth || s.params?.radius || 1;
+                    let posX = (s.position.x !== undefined) ? s.position.x : (s.position[0] || 0);
+                    let posY = (s.position.y !== undefined) ? s.position.y : (s.position[1] || 0);
+                    let posZ = (s.position.z !== undefined) ? s.position.z : (s.position[2] || 0);
+
+                    if (s.type === 'extruded_solid') {
+                        geoType = 'box'; // Approximate for now
+                        const profile = objects.find(o => o.id === (s.params?.profileId || s.profileId));
+                        if (profile) {
+                            dimX = profile.width || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
+                            dimY = s.params?.distance || s.distance || 10;
+                            dimZ = profile.height || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
+                            
+                            const dir = s.params?.direction || s.direction || 'positive';
+                            let zOffset = 0;
+                            if (dir === 'negative') zOffset = -dimY / 2;
+                            else if (dir === 'positive') zOffset = dimY / 2;
+
+                            posX += profile.x + (profile.width || 0) / 2 || profile.cx || 0;
+                            posY += zOffset;
+                            posZ += profile.y + (profile.height || 0) / 2 || profile.cy || 0;
+                        } else {
+                            dimX = 20; dimY = 10; dimZ = 20;
+                        }
+                    }
+
                     return {
                         id: s.id,
                         geometry: {
                             id: s.id,
                             type: geoType,
-                            position: { x: s.position.x, y: s.position.y, z: s.position.z },
-                            rotation: { x: s.rotation.x, y: s.rotation.y, z: s.rotation.z },
-                            dimensions: {
-                                x: s.params.width || s.params.radius || 1,
-                                y: s.params.height || s.params.radius || 1,
-                                z: s.params.depth || s.params.radius || 1
-                            }
+                            position: { x: posX, y: posY, z: posZ },
+                            rotation: { 
+                                x: (s.rotation.x !== undefined) ? s.rotation.x : (s.rotation[0] || 0), 
+                                y: (s.rotation.y !== undefined) ? s.rotation.y : (s.rotation[1] || 0), 
+                                z: (s.rotation.z !== undefined) ? s.rotation.z : (s.rotation[2] || 0) 
+                            },
+                            dimensions: { x: dimX, y: dimY, z: dimZ }
                         },
                         physics: {
                             mass: s.mass !== undefined ? parseFloat(s.mass) : 1.0,
@@ -1286,6 +1314,10 @@ export default function DesignWorkspace() {
                                 className={`p-2 rounded-lg transition-all cursor-pointer text-[11px] flex items-center gap-1 ${active3DTool === tool ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
                                 title={title}>{icon}</button>
                         ))}
+                        <div className="w-[1px] bg-slate-700/50 mx-1" />
+                        <button onClick={() => setActive3DTool('extrude')}
+                            className={`p-2 rounded-lg transition-all cursor-pointer text-[11px] flex items-center gap-1 ${active3DTool === 'extrude' ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                            title="Extrude (Push/Pull 2D Shapes)"><Layers size={16} /></button>
                         <div className="w-[1px] bg-slate-700/50 mx-1" />
                         {[
                             { tool: 'cube', icon: <Box size={16} />, title: 'Add Cube' },

@@ -37,6 +37,15 @@ const useStore = create((set) => ({
     active3DTool: 'select', // 'select', 'translate', 'rotate', 'scale', 'cube', 'sphere', etc.
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
+    // Advanced Extrude State
+    extrudeOperation: {
+        profileId: null,
+        distance: 20,
+        direction: 'positive', // 'positive', 'negative', 'symmetric'
+        type: 'new' // 'new', 'join', 'cut'
+    },
+    setExtrudeOperation: (op) => set(state => ({ extrudeOperation: { ...state.extrudeOperation, ...op } })),
+
     // History State
     history: [],
     historyIndex: -1,

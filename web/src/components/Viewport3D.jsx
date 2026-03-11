@@ -3,13 +3,15 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import * as THREE from 'three';
 import useStore from '../store/useStore';
+import { createThreeShapeFrom2D } from '../utils/geometryHelpers';
 
-const Shape3DNode = ({ shape }) => {
+const Shape3DNode = React.memo(({ shape }) => {
     const groupRef = useRef();
     const selected3DIds = useStore(state => state.selected3DIds);
     const setSelected3DIds = useStore(state => state.setSelected3DIds);
     const active3DTool = useStore(state => state.active3DTool);
     const setShapes3D = useStore(state => state.setShapes3D);
+    const profile = useStore(state => shape.type === 'extruded_solid' ? state.objects.find(o => o.id === (shape.params?.profileId || shape.profileId)) : null);
 
     // Simulation state
     const simulationFrames = useStore(state => state.simulationFrames);
@@ -27,19 +29,47 @@ const Shape3DNode = ({ shape }) => {
     const currentPos = simState ? [simState.position.x, simState.position.y, simState.position.z] : (shape.position || [0, 0, 0]);
     const currentRot = simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : (shape.rotation || [0, 0, 0]);
 
-    // Memoize geometry to prevent frequent re-allocations
+    // Use a hash of params for more stable memoization
+    const paramsKey = JSON.stringify(shape.params || {});
+
+    // Better geometry management to avoid leaks
     const geometry = React.useMemo(() => {
+        let geo;
         switch (shape.type) {
-            case 'cube': return new THREE.BoxGeometry(shape.params?.width || 10, shape.params?.height || 10, shape.params?.depth || 10);
-            case 'sphere': return new THREE.SphereGeometry(shape.params?.radius || 5, shape.params?.segments || 32, shape.params?.rings || 32);
-            case 'cylinder': return new THREE.CylinderGeometry(shape.params?.radiusTop || 5, shape.params?.radiusBottom || 5, shape.params?.height || 10, shape.params?.segments || 32);
-            case 'cone': return new THREE.ConeGeometry(shape.params?.radius || 5, shape.params?.height || 10, shape.params?.segments || 32);
-            case 'torus': return new THREE.TorusGeometry(shape.params?.radius || 5, shape.params?.tube || 2, shape.params?.radialSegments || 16, shape.params?.tubularSegments || 100);
-            case 'plane': return new THREE.PlaneGeometry(shape.params?.width || 20, shape.params?.depth || 20);
-            case 'capsule': return new THREE.CapsuleGeometry(shape.params?.radius || 2, shape.params?.length || 10, 4, 16);
-            default: return new THREE.BoxGeometry(10, 10, 10);
+            case 'cube': geo = new THREE.BoxGeometry(shape.params?.width || 10, shape.params?.height || 10, shape.params?.depth || 10); break;
+            case 'sphere': geo = new THREE.SphereGeometry(shape.params?.radius || 5, shape.params?.segments || 32, shape.params?.rings || 32); break;
+            case 'cylinder': geo = new THREE.CylinderGeometry(shape.params?.radiusTop || 5, shape.params?.radiusBottom || 5, shape.params?.height || 10, shape.params?.segments || 32); break;
+            case 'cone': geo = new THREE.ConeGeometry(shape.params?.radius || 5, shape.params?.height || 10, shape.params?.segments || 32); break;
+            case 'torus': geo = new THREE.TorusGeometry(shape.params?.radius || 5, shape.params?.tube || 2, shape.params?.radialSegments || 16, shape.params?.tubularSegments || 100); break;
+            case 'plane': geo = new THREE.PlaneGeometry(shape.params?.width || 20, shape.params?.depth || 20); break;
+            case 'capsule': geo = new THREE.CapsuleGeometry(shape.params?.radius || 2, shape.params?.length || 10, 4, 16); break;
+            case 'extruded_solid':
+                if (profile) {
+                    const tShape = createThreeShapeFrom2D(profile);
+                    if (tShape) {
+                        const depth = shape.params?.distance || shape.distance || 10;
+                        geo = new THREE.ExtrudeGeometry(tShape, { depth, bevelEnabled: false });
+                        const dir = shape.params?.direction || shape.direction || 'positive';
+                        if (dir === 'negative') {
+                            geo.translate(0, 0, -depth);
+                        } else if (dir === 'symmetric') {
+                            geo.translate(0, 0, -depth / 2);
+                        }
+                    }
+                }
+                if (!geo) geo = new THREE.BoxGeometry(10, 10, 10);
+                break;
+            default: geo = new THREE.BoxGeometry(10, 10, 10);
         }
-    }, [shape.type, JSON.stringify(shape.params)]);
+        return geo;
+    }, [shape.type, paramsKey, profile]);
+
+    // Cleanup geometry on unmount
+    useEffect(() => {
+        return () => {
+            if (geometry) geometry.dispose();
+        };
+    }, [geometry]);
 
     const onTransformEnd = () => {
         if (!groupRef.current) return;
@@ -107,7 +137,7 @@ const Shape3DNode = ({ shape }) => {
     }
 
     return node;
-};
+});
 
 const JointMarker = ({ constraint }) => {
     const shapes3D = useStore(state => state.shapes3D);
@@ -170,14 +200,187 @@ const JointMarker = ({ constraint }) => {
     return null;
 };
 
-const CollisionMarker = ({ contact }) => {
+const CollisionMarker = React.memo(({ contact }) => {
     return (
         <mesh position={[contact.point.x, contact.point.y, contact.point.z]}>
             <sphereGeometry args={[0.3, 8, 8]} />
             <meshBasicMaterial color="#ef4444" />
         </mesh>
     );
+});
+
+const ExtrudePreview = () => {
+    const active3DTool = useStore(s => s.active3DTool);
+    const extrudeOperation = useStore(s => s.extrudeOperation);
+    const selectedIds = useStore(s => s.selectedIds);
+    const objects = useStore(s => s.objects);
+    
+    if (active3DTool !== 'extrude' || selectedIds.length !== 1) return null;
+    
+    const profile = objects.find(o => o.id === selectedIds[0]);
+    if (!profile) return null;
+    
+    const shape = createThreeShapeFrom2D(profile);
+    if (!shape) return null;
+    
+    const depth = extrudeOperation.distance;
+    
+    const currentPos = [profile.x + (profile.width || 0) / 2 || profile.cx || 0, 0, profile.y + (profile.height || 0) / 2 || profile.cy || 0];
+    const currentRot = [0, profile.rotation ? -profile.rotation * Math.PI / 180 : 0, 0];
+
+    const isNegative = extrudeOperation.direction === 'negative';
+    const isSymmetric = extrudeOperation.direction === 'symmetric';
+    
+    const zOffset = isNegative ? -depth : (isSymmetric ? -depth / 2 : 0);
+
+    return (
+        <group position={currentPos} rotation={[-Math.PI / 2, 0, 0]}>
+            <group rotation={currentRot}>
+                <mesh position={[0, 0, zOffset]}>
+                    <extrudeGeometry args={[shape, { depth: depth, bevelEnabled: false }]} />
+                    <meshStandardMaterial 
+                        color="#22c55e" 
+                        transparent 
+                        opacity={0.6} 
+                        emissive="#22c55e" 
+                        emissiveIntensity={0.5} 
+                        side={THREE.DoubleSide} 
+                    />
+                </mesh>
+            </group>
+        </group>
+    );
 };
+
+const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, currentFrameIndex }) => {
+    const depth = obj.depth !== undefined ? obj.depth : 0.1;
+    const simState = (isPlaying && simulationFrames[currentFrameIndex])
+        ? simulationFrames[currentFrameIndex].states.find(s => s.id === obj.id)
+        : null;
+
+    const yPosOverride = obj.y_override !== undefined ? obj.y_override : depth / 2;
+    const currentPos = simState
+        ? [simState.position.x, simState.position.y, simState.position.z]
+        : [obj.x + (obj.width || 0) / 2 || obj.cx || 0, yPosOverride, obj.y + (obj.height || 0) / 2 || obj.cy || 0];
+
+    const currentRot = simState
+        ? [simState.rotation.x, simState.rotation.y, simState.rotation.z]
+        : [0, obj.rotation ? -obj.rotation * Math.PI / 180 : 0, 0];
+
+    const active3DTool = useStore(state => state.active3DTool);
+    const extrudeOperation = useStore(state => state.extrudeOperation);
+    const setExtrudeOperation = useStore(state => state.setExtrudeOperation);
+    const setObjects = useStore(state => state.setObjects);
+    const selectedIds = useStore(state => state.selectedIds);
+    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const isSelected = selectedIds.includes(obj.id);
+
+    const [isDragging, setIsDragging] = useState(false);
+    const [startY, setStartY] = useState(0);
+    const [startDepth, setStartDepth] = useState(0);
+
+    const handlePointerDown = (e) => {
+        e.stopPropagation();
+        if (active3DTool === 'extrude') {
+            setIsDragging(true);
+            setStartY(e.clientY);
+            if (isSelected) {
+                setStartDepth(extrudeOperation.distance);
+            } else {
+                setStartDepth(depth);
+                setSelectedIds([obj.id]);
+                useStore.setState({ activeFileId: obj.id });
+                setExtrudeOperation({ distance: depth, profileId: obj.id });
+            }
+            e.target.setPointerCapture(e.pointerId);
+        } else if (active3DTool === 'select') {
+            const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
+            if (isMulti) {
+                setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id]);
+            } else {
+                setSelectedIds([obj.id]);
+                useStore.setState({ activeFileId: obj.id });
+            }
+        }
+    };
+
+    const handlePointerMove = (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        const deltaY = startY - e.clientY; 
+        const newDepth = Math.max(0.1, startDepth + deltaY * 0.5);
+        if (active3DTool === 'extrude') {
+            setExtrudeOperation({ distance: newDepth });
+        } else {
+            setObjects(objs => objs.map(o => o.id === obj.id ? { ...o, depth: newDepth } : o));
+        }
+    };
+
+    const handlePointerUp = (e) => {
+        if (isDragging) {
+            setIsDragging(false);
+            e.target.releasePointerCapture(e.pointerId);
+        }
+    };
+
+    const customShape = React.useMemo(() => {
+        if (obj.type === 'polygon' || obj.type === 'path' || obj.type === 'arc') {
+            const shape = new THREE.Shape();
+            if (obj.type === 'polygon' && obj.sides) {
+                const angleStep = (Math.PI * 2) / obj.sides;
+                for (let i = 0; i < obj.sides; i++) {
+                    const px = Math.cos(i * angleStep) * obj.r;
+                    const py = Math.sin(i * angleStep) * obj.r;
+                    if (i === 0) shape.moveTo(px, py); else shape.lineTo(px, py);
+                }
+                shape.closePath();
+            } else if (obj.type === 'arc' && obj.radius) {
+                shape.absarc(0, 0, obj.radius, (obj.startAngle || 0) * Math.PI / 180, (obj.endAngle || 90) * Math.PI / 180, false);
+                shape.lineTo(0, 0); shape.closePath();
+            } else if (obj.type === 'path' && obj.points && obj.points.length > 1) {
+                shape.moveTo(obj.points[0].x, obj.points[0].y);
+                for (let i = 1; i < obj.points.length; i++) shape.lineTo(obj.points[i].x, obj.points[i].y);
+                if (obj.closed) shape.closePath();
+            }
+            return shape;
+        }
+        return null;
+    }, [obj]);
+
+    const geometryProps = React.useMemo(() => {
+        if (obj.type === 'rect') return { type: 'box', args: [obj.width, depth, obj.height] };
+        if (obj.type === 'circle') return { type: 'cylinder', args: [obj.r, obj.r, depth, 32] };
+        if (customShape) return { type: 'extrude', args: [customShape, { depth: depth, bevelEnabled: false }] };
+        return null;
+    }, [obj, depth, customShape]);
+
+    if (!geometryProps) return null;
+
+    return (
+        <mesh 
+            key={`ext-${obj.id}`} 
+            position={currentPos} 
+            rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)} 
+            castShadow
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerOut={handlePointerUp}
+        >
+            {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
+            {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
+            {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
+            <meshStandardMaterial 
+                color={obj.stroke || '#3b82f6'} 
+                transparent 
+                opacity={isSelected ? 0.9 : 0.6} 
+                side={THREE.DoubleSide} 
+                emissive={isSelected || (active3DTool === 'extrude' && isDragging) ? obj.stroke || '#3b82f6' : '#000000'}
+                emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
+            />
+        </mesh>
+    );
+});
 
 export default function Viewport3D({ objects, isSimulating }) {
     const shapes3D = useStore(state => state.shapes3D);
@@ -244,88 +447,25 @@ export default function Viewport3D({ objects, isSimulating }) {
             )}
 
             {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
-            {objects.map((obj) => {
-                const depth = obj.depth !== undefined ? obj.depth : 0.1;
+            {objects.map((obj) => (
+                <Extrudable2DShape 
+                    key={`ext-${obj.id}`} 
+                    obj={obj} 
+                    isPlaying={isPlaying} 
+                    simulationFrames={simulationFrames} 
+                    currentFrameIndex={currentFrameIndex} 
+                />
+            ))}
 
-                // Get simulated state if playing
-                const simState = (isPlaying && simulationFrames[currentFrameIndex])
-                    ? simulationFrames[currentFrameIndex].states.find(s => s.id === obj.id)
-                    : null;
+            {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
 
-                const yPosOverride = obj.y_override !== undefined ? obj.y_override : depth / 2;
-
-                // Physics Pos [x, y, z] -> Three.js Pos [x, y, z]
-                const currentPos = simState
-                    ? [simState.position.x, simState.position.y, simState.position.z]
-                    : [obj.x + (obj.width || 0) / 2 || obj.cx || 0, yPosOverride, obj.y + (obj.height || 0) / 2 || obj.cy || 0];
-
-                const currentRot = simState
-                    ? [simState.rotation.x, simState.rotation.y, simState.rotation.z]
-                    : [0, obj.rotation ? -obj.rotation * Math.PI / 180 : 0, 0];
-
-                if (obj.type === 'rect') {
-                    return (
-                        <mesh key={`ext-${obj.id}`} position={currentPos} rotation={currentRot} castShadow>
-                            <boxGeometry args={[obj.width, depth, obj.height]} />
-                            <meshStandardMaterial color={obj.stroke} transparent opacity={0.6} />
-                        </mesh>
-                    );
-                }
-                if (obj.type === 'circle') {
-                    return (
-                        <mesh key={`ext-${obj.id}`} position={currentPos} rotation={currentRot} castShadow>
-                            <cylinderGeometry args={[obj.r, obj.r, depth, 32]} />
-                            <meshStandardMaterial color={obj.stroke} transparent opacity={0.6} side={THREE.DoubleSide} />
-                        </mesh>
-                    );
-                }
-
-                if (obj.type === 'polygon' || obj.type === 'path' || obj.type === 'arc') {
-                    const shape = new THREE.Shape();
-                    if (obj.type === 'polygon' && obj.sides) {
-                        const angleStep = (Math.PI * 2) / obj.sides;
-                        for (let i = 0; i < obj.sides; i++) {
-                            const px = Math.cos(i * angleStep) * obj.r;
-                            const py = Math.sin(i * angleStep) * obj.r;
-                            if (i === 0) shape.moveTo(px, py); else shape.lineTo(px, py);
-                        }
-                        shape.closePath();
-                        return (
-                            <mesh key={`ext-${obj.id}`} position={currentPos} rotation={simState ? currentRot : [-Math.PI / 2, 0, 0]} castShadow>
-                                <extrudeGeometry args={[shape, { depth: depth, bevelEnabled: false }]} />
-                                <meshStandardMaterial color={obj.stroke} transparent opacity={0.6} side={THREE.DoubleSide} />
-                            </mesh>
-                        );
-                    }
-                    if (obj.type === 'arc' && obj.radius) {
-                        shape.absarc(0, 0, obj.radius, obj.startAngle * Math.PI / 180, obj.endAngle * Math.PI / 180, false);
-                        shape.lineTo(0, 0); shape.closePath();
-                        return (
-                            <mesh key={`ext-${obj.id}`} position={currentPos} rotation={simState ? currentRot : [-Math.PI / 2, 0, 0]} castShadow>
-                                <extrudeGeometry args={[shape, { depth: depth, bevelEnabled: false }]} />
-                                <meshStandardMaterial color={obj.stroke} transparent opacity={0.6} side={THREE.DoubleSide} />
-                            </mesh>
-                        );
-                    }
-                    if (obj.type === 'path' && obj.points && obj.points.length > 1) {
-                        shape.moveTo(obj.points[0].x, obj.points[0].y);
-                        for (let i = 1; i < obj.points.length; i++) shape.lineTo(obj.points[i].x, obj.points[i].y);
-                        if (obj.closed) shape.closePath();
-                        return (
-                            <mesh key={`ext-${obj.id}`} position={currentPos} rotation={simState ? currentRot : [-Math.PI / 2, 0, 0]} castShadow>
-                                <extrudeGeometry args={[shape, { depth: depth, bevelEnabled: false }]} />
-                                <meshStandardMaterial color={obj.stroke} transparent opacity={0.6} side={THREE.DoubleSide} />
-                            </mesh>
-                        );
-                    }
-                }
-                return null;
-            })}
 
             {/* Native 3D Objects */}
             {shapes3D.map(shape => (
                 <Shape3DNode key={shape.id} shape={shape} />
             ))}
+
+            <ExtrudePreview />
 
             {/* Constraints / Joints */}
             {constraints.map(c => (

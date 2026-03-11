@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers } from 'lucide-react'
 import useStore from '../store/useStore'
+import { isClosedProfile } from '../utils/ProfileValidator'
 
 export default function PropertiesPanel() {
     const objects = useStore(s => s.objects)
@@ -14,6 +15,11 @@ export default function PropertiesPanel() {
 
     const shapes3D = useStore(s => s.shapes3D)
     const setShapes3D = useStore(s => s.setShapes3D)
+    const addShape3D = useStore(s => s.addShape3D)
+
+    const active3DTool = useStore(s => s.active3DTool)
+    const extrudeOperation = useStore(s => s.extrudeOperation)
+    const setExtrudeOperation = useStore(s => s.setExtrudeOperation)
 
     const [selectedObject, setSelectedObject] = useState(null)
 
@@ -166,6 +172,81 @@ export default function PropertiesPanel() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+                {/* Advanced Extrude Setup */}
+                {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && isClosedProfile(selectedObject) && (
+                    <div className="space-y-3 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
+                            <Layers size={12} /> Extrude Profile
+                        </h4>
+                        
+                        <div className="space-y-2">
+                            <label className="text-xs text-slate-300">Distance</label>
+                            <input
+                                type="number"
+                                value={extrudeOperation.distance}
+                                onChange={e => setExtrudeOperation({ distance: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs text-slate-300">Direction</label>
+                            <select
+                                value={extrudeOperation.direction}
+                                onChange={e => setExtrudeOperation({ direction: e.target.value })}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300"
+                            >
+                                <option value="positive">+Z Direction</option>
+                                <option value="negative">-Z Direction</option>
+                                <option value="symmetric">Symmetric (Both)</option>
+                            </select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <label className="text-xs text-slate-300">Operation</label>
+                            <select
+                                value={extrudeOperation.type}
+                                onChange={e => setExtrudeOperation({ type: e.target.value })}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300"
+                            >
+                                <option value="new">New Solid</option>
+                                <option value="join" disabled>Join (CSG TBD)</option>
+                                <option value="cut" disabled>Cut (CSG TBD)</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            className="w-full py-1.5 mt-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-md transition-colors"
+                            onClick={() => {
+                                const solidId = `extsolid_${Math.random().toString(36).substring(2, 7)}`;
+                                addShape3D({
+                                    id: solidId,
+                                    type: 'extruded_solid',
+                                    profileId: selectedObject.id,
+                                    distance: extrudeOperation.distance,
+                                    direction: extrudeOperation.direction,
+                                    operation: extrudeOperation.type,
+                                    position: [0, 0, 0],
+                                    rotation: [0, 0, 0],
+                                    scale: [1, 1, 1],
+                                    color: selectedObject.stroke || '#3b82f6',
+                                    params: { ...extrudeOperation }
+                                });
+                                useStore.setState({ active3DTool: 'select', selectedIds: [], selected3DIds: [solidId], activeFileId: solidId });
+                            }}
+                        >
+                            Generate 3D Solid
+                        </button>
+                    </div>
+                )}
+                
+                {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && !isClosedProfile(selectedObject) && (
+                    <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-xs text-red-500">
+                        <strong>Invalid Profile</strong><br/>
+                        Extrude requires a closed 2D profile. The selected {selectedObject.type} is not properly closed.
+                    </div>
+                )}
 
                 {/* General Info */}
                 <div className="space-y-3">
