@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling } from 'lucide-react'
+import { SimulationDemoManager } from '../utils/SimulationDemoManager';
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
@@ -884,7 +885,9 @@ export default function DesignWorkspace() {
                             mass: s.mass !== undefined ? parseFloat(s.mass) : 1.0,
                             restitution: s.restitution !== undefined ? parseFloat(s.restitution) : 0.5,
                             friction: s.friction !== undefined ? parseFloat(s.friction) : 0.3,
-                            is_static: s.isStatic || false
+                            is_static: s.isStatic || false,
+                            initial_velocity: s.initialVelocity || { x: 0, y: 0, z: 0 },
+                            initial_angular_velocity: s.initialAngularVelocity || { x: 0, y: 0, z: 0 }
                         }
                     };
                 })
@@ -904,6 +907,7 @@ export default function DesignWorkspace() {
                     angle_limit: c.angleLimit
                 })),
                 gravity: simulationSettings.gravity,
+                point_gravity: simulationSettings.pointGravity,
                 time_step: simulationSettings.timeStep,
                 sub_steps: simulationSettings.subSteps,
                 duration: 2.0
@@ -912,7 +916,18 @@ export default function DesignWorkspace() {
             // Switch to simulation workspace automatically
             useStore.getState().setActiveWorkspace('simulate');
 
-            const req = await fetch('http://localhost:8000/simulate', {
+            // Robust URL resolution: Use env var, or fallback based on current location
+            const apiBase = import.meta.env.VITE_API_URL;
+            let targetUrl;
+            
+            if (apiBase) {
+                targetUrl = `${apiBase}/simulate`;
+            } else {
+                const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+                targetUrl = `http://${host}:8000/simulate`;
+            }
+
+            const req = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1389,6 +1404,23 @@ export default function DesignWorkspace() {
                 {is3DMode ? (
                     <div className="absolute inset-0 w-full h-full z-20">
                         <Viewport3D objects={renderedObjects} isSimulating={isSimulating} />
+                        
+                        {/* Demo Data Overlay */}
+                        {useStore.getState().demoOverlay && (
+                            <div className="absolute top-4 right-4 glass p-4 rounded-xl border border-primary/20 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500 max-w-xs transition-all">
+                                <h3 className="text-primary font-bold text-lg flex items-center gap-2 mb-1">
+                                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                    {useStore.getState().demoOverlay.title}
+                                </h3>
+                                <div className="text-xs text-slate-400 font-mono whitespace-pre-line leading-relaxed">
+                                    {useStore.getState().demoOverlay.description}
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-slate-700/50 flex justify-between items-center text-[10px] text-slate-500">
+                                    <span>PHYSICS ENGINE: REALIS CORE v0.1.0</span>
+                                    <span>FPS: 60.0</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div
@@ -1520,6 +1552,29 @@ export default function DesignWorkspace() {
                     >
                         <SkipForward size={18} />
                     </button>
+                </div>
+
+                <div className="h-8 w-[1px] bg-slate-700/50"></div>
+
+                {/* Demo Presets */}
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Demos</span>
+                    {[
+                        { id: 'gravity', label: 'Drop', title: 'Gravity Drop Test' },
+                        { id: 'pendulum', label: 'Pivot', title: 'Pendulum Constraint' },
+                        { id: 'collision', label: 'Impact', title: 'Elastic Collision' },
+                        { id: 'dominos', label: 'Domino', title: 'Domino Chain' },
+                        { id: 'orbit', label: 'Orbit', title: 'Orbital Motion' },
+                    ].map(demo => (
+                        <button
+                            key={demo.id}
+                            onClick={() => SimulationDemoManager.loadDemo(demo.id, useStore.getState())}
+                            className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-slate-800/50 text-slate-400 hover:bg-primary/20 hover:text-primary transition-all cursor-pointer border border-transparent hover:border-primary/30"
+                            title={demo.title}
+                        >
+                            {demo.label}
+                        </button>
+                    ))}
                 </div>
                 <div className="h-8 w-[1px] bg-slate-700/50"></div>
                 <div className="flex flex-col min-w-64">

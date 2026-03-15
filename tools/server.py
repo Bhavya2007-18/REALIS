@@ -7,16 +7,17 @@ import os
 
 app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
 
-# Enable CORS for the local Vite dev server
+# ENORMOUSLY PERMISSIVE CORS FOR DEBUGGING
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # --- Data Contracts (JSON Schema) ---
+# ... (rest of models)
 
 class Vector3(BaseModel):
     x: float
@@ -41,6 +42,8 @@ class PhysicsProperties(BaseModel):
     restitution: float = 0.5 # Bounciness
     friction: float = 0.3
     is_static: bool = False
+    initial_velocity: Vector3 = Vector3(x=0, y=0, z=0)
+    initial_angular_velocity: Vector3 = Vector3(x=0, y=0, z=0)
 
 class SceneObject(BaseModel):
     id: str
@@ -68,6 +71,7 @@ class SimulationRequest(BaseModel):
     time_step: float = 0.01
     duration: float = 2.0
     gravity: Vector3 = Vector3(x=0, y=-9.81, z=0)
+    point_gravity: Optional[dict] = None
     sub_steps: int = 1
 
 class ObjectState(BaseModel):
@@ -118,14 +122,22 @@ def run_simulation(req: SimulationRequest):
     print(f"Received simulation request for {len(req.objects)} objects over {req.duration} seconds.")
     
     # Path to the simulator executable
-    sim_path = os.path.join(os.getcwd(), "engine", "build", "realis_simulator.exe")
+    # Use environment variable if provided, otherwise detect based on OS
+    sim_path = os.getenv("REALIS_SIM_PATH")
     
-    if not os.path.exists(sim_path):
-        # Fallback for different CWDs
-        sim_path = os.path.join(os.path.dirname(os.getcwd()), "engine", "build", "realis_simulator.exe")
+    if not sim_path:
+        # Determine default binary name based on OS
+        binary_name = "realis_simulator.exe" if os.name == 'nt' else "realis_simulator"
+        
+        # Priority 1: Relative to current working directory
+        sim_path = os.path.join(os.getcwd(), "engine", "build", binary_name)
+        
+        if not os.path.exists(sim_path):
+            # Priority 2: Relative to script location
+            sim_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "engine", "build", binary_name)
 
     if not os.path.exists(sim_path):
-        raise HTTPException(status_code=500, detail=f"Simulator not found at {sim_path}")
+        raise HTTPException(status_code=500, detail=f"Simulator binary not found at {sim_path}. Set REALIS_SIM_PATH environment variable.")
 
     input_lines = [
         f"SET_DT {req.time_step}",
@@ -133,6 +145,12 @@ def run_simulation(req: SimulationRequest):
         f"SET_SUBSTEPS {req.sub_steps}",
         f"SET_GRAVITY {req.gravity.x} {req.gravity.y} {req.gravity.z}"
     ]
+
+    if req.point_gravity:
+        pg = req.point_gravity
+        center = pg.get('center', {'x': 0, 'y': 0, 'z': 0})
+        strength = pg.get('strength', 1000.0)
+        input_lines.append(f"ADD_POINT_GRAVITY {center['x']} {center['y']} {center['z']} {strength}")
     
     for obj in req.objects:
         pos = obj.geometry.position
@@ -146,6 +164,12 @@ def run_simulation(req: SimulationRequest):
         elif obj.geometry.type == "sphere":
             radius = obj.geometry.dimensions.x
             input_lines.append(f"ADD_SPHERE {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {radius} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
+        
+        # Initial Velocities
+        vel = phys.initial_velocity
+        ang_vel = phys.initial_angular_velocity
+        if vel.x != 0 or vel.y != 0 or vel.z != 0 or ang_vel.x != 0 or ang_vel.y != 0 or ang_vel.z != 0:
+            input_lines.append(f"SET_VELOCITY {obj.id} {vel.x} {vel.y} {vel.z} {ang_vel.x} {ang_vel.y} {ang_vel.z}")
     
     for con in req.constraints:
         if con.type == "distance":

@@ -45,6 +45,10 @@ const useStore = create((set) => ({
         type: 'new' // 'new', 'join', 'cut'
     },
     setExtrudeOperation: (op) => set(state => ({ extrudeOperation: { ...state.extrudeOperation, ...op } })),
+    
+    // Demo Overlay State
+    demoOverlay: null,
+    setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
 
     // History State
     history: [],

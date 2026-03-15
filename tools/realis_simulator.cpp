@@ -8,6 +8,8 @@
 #include "../engine/geometry/box.hpp"
 #include "../engine/geometry/convex_hull.hpp"
 #include "../engine/geometry/sphere.hpp"
+#include "../engine/dynamics/uniform_gravity.hpp"
+#include "../engine/dynamics/point_gravity.hpp"
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -45,7 +47,12 @@ int main() {
     } else if (cmd == "SET_GRAVITY") {
       float gx, gy, gz;
       ss >> gx >> gy >> gz;
-      // Gravity is currently handled by Force Fields or individual bodies
+      // Use gy as uniform gravity acceleration if it matches standard patterns
+      world.add_force_field(new UniformGravityField(std::abs(gy)));
+    } else if (cmd == "ADD_POINT_GRAVITY") {
+      float cx, cy, cz, strength;
+      ss >> cx >> cy >> cz >> strength;
+      world.add_force_field(new PointGravityField(Vec3(cx, cy, cz), strength));
     } else if (cmd == "ADD_BOX") {
       std::string id;
       float px, py, pz, rx, ry, rz, hx, hy, hz, mass, rest, fric;
@@ -191,6 +198,17 @@ int main() {
     } else if (cmd == "ADD_SLIDER_LOCK") {
       // Locks angular DOFs and 2 linear DOFs
       // Placeholder for complex combined joint
+    } else if (cmd == "SET_VELOCITY") {
+      std::string id;
+      float vx, vy, vz, wax, way, waz;
+      ss >> id >> vx >> vy >> vz >> wax >> way >> waz;
+      for (size_t i = 0; i < objectIds.size(); ++i) {
+        if (objectIds[i] == id) {
+          world.bodies[i]->velocity = Vec3(vx, vy, vz);
+          world.bodies[i]->angular_velocity = Vec3(wax, way, waz);
+          break;
+        }
+      }
     } else if (cmd == "RUN") {
       std::cout << "START_SIMULATION" << std::endl;
       int steps = static_cast<int>(duration / dt);
