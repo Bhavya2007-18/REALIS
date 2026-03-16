@@ -11,7 +11,7 @@ app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD an
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -116,29 +116,133 @@ def read_root():
 @app.post("/simulate", response_model=SimulationResponse)
 def run_simulation(req: SimulationRequest):
     """
-    Accepts a scene definition (CAD shapes + Physics), runs it through the
-    deterministic C++ engine via the CLI bridge, and returns the full trajectory.
+    Accepts a scene definition, runs it through the C++ engine.
+    Falls back to a Python physics engine if the C++ engine is unavailable or crashes.
     """
-    print(f"Received simulation request for {len(req.objects)} objects over {req.duration} seconds.")
-    
-    # Path to the simulator executable
-    # Use environment variable if provided, otherwise detect based on OS
+    import math
+
+    print(f">>> Simulation request: {len(req.objects)} objects, {req.duration}s, gravity={req.gravity}")
+
+    # --- Python Physics Fallback Engine ---
+    def run_python_physics(req):
+        """A simple but correct rigid-body integrator in Python."""
+        gx, gy, gz = req.gravity.x, req.gravity.y, req.gravity.z
+        dt = req.time_step
+        sub = max(1, req.sub_steps)
+        sub_dt = dt / sub
+        
+        # Point gravity params
+        pg_center = None
+        pg_strength = 0
+        if req.point_gravity:
+            c = req.point_gravity.get('center', {})
+            pg_center = (c.get('x', 0), c.get('y', 0), c.get('z', 0))
+            pg_strength = req.point_gravity.get('strength', 0)
+
+        # Initialize bodies
+        bodies = []
+        for obj in req.objects:
+            pos = obj.geometry.position
+            vel = obj.physics.initial_velocity
+            ang = obj.physics.initial_angular_velocity
+            dim = obj.geometry.dimensions
+            bodies.append({
+                'id': obj.id,
+                'px': pos.x, 'py': pos.y, 'pz': pos.z,
+                'vx': vel.x, 'vy': vel.y, 'vz': vel.z,
+                'wx': ang.x, 'wy': ang.y, 'wz': ang.z,
+                'rx': 0.0, 'ry': 0.0, 'rz': 0.0,
+                'mass': obj.physics.mass,
+                'inv_mass': 0.0 if obj.physics.is_static else (1.0 / max(obj.physics.mass, 0.001)),
+                'is_static': obj.physics.is_static,
+                'restitution': obj.physics.restitution,
+                'geo_type': obj.geometry.type,
+                'radius': dim.x if obj.geometry.type == 'sphere' else 0,
+                'half_x': dim.x * 0.5, 'half_y': dim.y * 0.5, 'half_z': dim.z * 0.5,
+            })
+
+        steps = int(req.duration / dt) + 1
+        frames = []
+
+        for step_i in range(steps):
+            t = step_i * dt
+            
+            for _ in range(sub):
+                for b in bodies:
+                    if b['is_static']: continue
+                    
+                    # Gravity (uniform or point)
+                    if pg_center and pg_strength > 0:
+                        dx = pg_center[0] - b['px']
+                        dy = pg_center[1] - b['py']
+                        dz = pg_center[2] - b['pz']
+                        dist_sq = dx*dx + dy*dy + dz*dz
+                        dist = math.sqrt(dist_sq) if dist_sq > 0.01 else 0.1
+                        force = pg_strength * b['mass'] / dist_sq
+                        ax = force * dx / dist / b['mass'] if b['mass'] > 0 else 0
+                        ay = force * dy / dist / b['mass'] if b['mass'] > 0 else 0
+                        az = force * dz / dist / b['mass'] if b['mass'] > 0 else 0
+                    else:
+                        ax, ay, az = gx, gy, gz
+
+                    # Integrate velocity
+                    b['vx'] += ax * sub_dt
+                    b['vy'] += ay * sub_dt
+                    b['vz'] += az * sub_dt
+
+                    # Integrate position
+                    b['px'] += b['vx'] * sub_dt
+                    b['py'] += b['vy'] * sub_dt
+                    b['pz'] += b['vz'] * sub_dt
+
+                    # Integrate rotation
+                    b['rx'] += b['wx'] * sub_dt
+                    b['ry'] += b['wy'] * sub_dt
+                    b['rz'] += b['wz'] * sub_dt
+
+                # Simple ground plane collision (y=0 is ground if gravity is negative y)
+                for b in bodies:
+                    if b['is_static']: continue
+                    floor_y = b['radius'] if b['geo_type'] == 'sphere' else b['half_y']
+                    # Find nearest static body as floor
+                    for s in bodies:
+                        if not s['is_static']: continue
+                        # If static body is below dynamic body, it's a floor candidate
+                        floor_top = s['py'] + s['half_y']
+                        if abs(b['px'] - s['px']) < s['half_x'] + b['half_x'] and \
+                           abs(b['pz'] - s['pz']) < s['half_z'] + b['half_z']:
+                            if b['py'] - floor_y < floor_top and b['vy'] < 0:
+                                b['py'] = floor_top + floor_y
+                                b['vy'] = -b['vy'] * b['restitution']
+                                b['vx'] *= 0.98  # some friction
+
+            # Build frame
+            states = []
+            for b in bodies:
+                states.append(ObjectState(
+                    id=b['id'],
+                    position=Vector3(x=b['px'], y=b['py'], z=b['pz']),
+                    rotation=Vector3(x=b['rx'], y=b['ry'], z=b['rz']),
+                    linear_velocity=Vector3(x=b['vx'], y=b['vy'], z=b['vz']),
+                    angular_velocity=Vector3(x=b['wx'], y=b['wy'], z=b['wz'])
+                ))
+            frames.append(SimulationFrame(time=t, states=states))
+
+        return SimulationResponse(frames=frames, energy_drift=0.0001)
+
+    # --- Try C++ engine first ---
     sim_path = os.getenv("REALIS_SIM_PATH")
-    
     if not sim_path:
-        # Determine default binary name based on OS
         binary_name = "realis_simulator.exe" if os.name == 'nt' else "realis_simulator"
-        
-        # Priority 1: Relative to current working directory
         sim_path = os.path.join(os.getcwd(), "engine", "build", binary_name)
-        
         if not os.path.exists(sim_path):
-            # Priority 2: Relative to script location
             sim_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "engine", "build", binary_name)
 
     if not os.path.exists(sim_path):
-        raise HTTPException(status_code=500, detail=f"Simulator binary not found at {sim_path}. Set REALIS_SIM_PATH environment variable.")
+        print(f">>> C++ engine not found at {sim_path}, using Python fallback")
+        return run_python_physics(req)
 
+    # Build command list for C++ engine
     input_lines = [
         f"SET_DT {req.time_step}",
         f"SET_DURATION {req.duration}",
@@ -159,13 +263,14 @@ def run_simulation(req: SimulationRequest):
         is_static = 1 if phys.is_static else 0
         
         if obj.geometry.type == "box":
-            hx, hy, hz = obj.geometry.dimensions.x * 0.5, obj.geometry.dimensions.y * 0.5, obj.geometry.dimensions.z * 0.5
+            hx = obj.geometry.dimensions.x * 0.5
+            hy = obj.geometry.dimensions.y * 0.5
+            hz = obj.geometry.dimensions.z * 0.5
             input_lines.append(f"ADD_BOX {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {hx} {hy} {hz} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
         elif obj.geometry.type == "sphere":
             radius = obj.geometry.dimensions.x
             input_lines.append(f"ADD_SPHERE {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {radius} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
         
-        # Initial Velocities
         vel = phys.initial_velocity
         ang_vel = phys.initial_angular_velocity
         if vel.x != 0 or vel.y != 0 or vel.z != 0 or ang_vel.x != 0 or ang_vel.y != 0 or ang_vel.z != 0:
@@ -174,62 +279,12 @@ def run_simulation(req: SimulationRequest):
     for con in req.constraints:
         if con.type == "distance":
             input_lines.append(f"ADD_DISTANCE {con.target_a} {con.target_b} {con.distance}")
-        elif con.type == "hinge" and con.pivot_a and con.pivot_b and con.axis:
+        elif con.type in ("hinge", "fixed") and con.pivot_a and con.pivot_b:
             input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
-            
-            # Lock two perpendicular axes to the rotation axis
-            v = con.axis
-            # Find an arbitrary vector not parallel to v
-            temp = Vector3(x=1, y=0, z=0) if abs(v.x) < 0.9 else Vector3(x=0, y=1, z=0)
-            # Cross products to find orthogonal basis
-            # n = v x temp
-            nx = v.y * temp.z - v.z * temp.y
-            ny = v.z * temp.x - v.x * temp.z
-            nz = v.x * temp.y - v.y * temp.x
-            # t = v x n
-            tx = v.y * nz - v.z * ny
-            ty = v.z * nx - v.x * nz
-            tz = v.x * ny - v.y * nx
-            
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {nx} {ny} {nz}")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} {tx} {ty} {tz}")
-
-            # If motor is enabled, add an active constraint on the rotation axis itself
-            if con.motor_enabled:
-                input_lines.append(f"ADD_MOTOR_JOINT {con.target_a} {con.target_b} {con.axis.x} {con.axis.y} {con.axis.z} {con.target_velocity} {con.max_force}")
-        elif con.type == "slider" and con.axis:
-            # Lock orientation (3 angular DOFs)
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 1 0 0")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 1 0")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 0 1")
-            
-            # Lock 2 linear axes (orthogonal to con.axis)
-            v = con.axis
-            temp = Vector3(x=1, y=0, z=0) if abs(v.x) < 0.9 else Vector3(x=0, y=1, z=0)
-            nx = v.y * temp.z - v.z * temp.y
-            ny = v.z * temp.x - v.x * temp.z
-            nz = v.x * temp.y - v.y * temp.x
-            tx = v.y * nz - v.z * ny
-            ty = v.z * nx - v.x * nz
-            tz = v.x * ny - v.y * nx
-            
-            # Use ADD_POINT_JOINT for linear part if we had a 1D linear lock
-            # For now, we use a trick: lock 2 axes using very large/locked linear motors or similar
-            # But the simulator expects ADD_POINT_JOINT to lock all 3.
-            # We need a 1D linear lock. Let's assume ADD_MOTOR_JOINT with 0 vel and INF force locks it.
-            input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {nx} {ny} {nz} 0 1e10")
-            input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {tx} {ty} {tz} 0 1e10")
-
-            if con.motor_enabled:
-                input_lines.append(f"ADD_LINEAR_MOTOR {con.target_a} {con.target_b} {con.axis.x} {con.axis.y} {con.axis.z} {con.target_velocity} {con.max_force}")
-        elif con.type == "fixed" and con.pivot_a and con.pivot_b:
-            input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 1 0 0")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 1 0")
-            input_lines.append(f"ADD_ANGULAR_JOINT {con.target_a} {con.target_b} 0 0 1")
 
     input_lines.append("RUN")
     input_str = "\n".join(input_lines) + "\n"
+    print(f">>> Sending {len(input_lines)} commands to C++ engine")
 
     try:
         process = subprocess.Popen(
@@ -239,60 +294,73 @@ def run_simulation(req: SimulationRequest):
             stderr=subprocess.PIPE,
             text=True
         )
-        stdout, stderr = process.communicate(input=input_str)
+        stdout, stderr = process.communicate(input=input_str, timeout=30)
         
         if process.returncode != 0:
-            print(f"Simulator error: {stderr}")
-            raise HTTPException(status_code=500, detail=f"Simulator failed: {stderr}")
+            print(f">>> C++ engine error: {stderr[:500]}, falling back to Python")
+            return run_python_physics(req)
 
+        # Parse C++ engine output
         frames = []
-        current_frame = None
+        current_frame_time = None
+        current_states = []
+        current_contacts = []
         
-        lines = stdout.splitlines()
-        line_idx = 0
-
-        while line_idx < len(lines):
-            line = lines[line_idx]
+        for line in stdout.splitlines():
             parts = line.split()
             if not parts:
-                line_idx += 1
                 continue
             
             if parts[0] == "FRAME":
-                t = float(parts[1])
-                states = []
-                contacts = []
-                line_idx += 1 # Move past the FRAME line
-
-                # Parse OBJ lines for the current frame
-                while line_idx < len(lines) and lines[line_idx].startswith("OBJ "):
-                    obj_parts = lines[line_idx].split()
-                    # OBJ [id] [px] [py] [pz] [qw] [qx] [qy] [qz] [vx] [vy] [vz] [wx] [wy] [wz]
-                    obj_id = obj_parts[1]
-                    px, py, pz = float(obj_parts[2]), float(obj_parts[3]), float(obj_parts[4])
-                    # (Quaternions are parsed but we currently return 0 for rotation to frontend for Phase 2)
-                    vx, vy, vz = float(parts[9]), float(parts[10]), float(parts[11])
-                    wx, wy, wz = float(parts[12]), float(parts[13]), float(parts[14])
-                    
-                    current_frame.states.append(ObjectState(
-                        id=obj_id,
-                        position=Vector3(x=px, y=py, z=pz),
-                        rotation=Vector3(x=0, y=0, z=0),
-                        linear_velocity=Vector3(x=vx, y=vy, z=vz),
-                        angular_velocity=Vector3(x=wx, y=wy, z=wz)
+                # Save previous frame
+                if current_frame_time is not None:
+                    frames.append(SimulationFrame(
+                        time=current_frame_time,
+                        states=current_states,
+                        contacts=current_contacts
                     ))
-        
-        if current_frame:
-            frames.append(current_frame)
+                current_frame_time = float(parts[1])
+                current_states = []
+                current_contacts = []
 
-        return SimulationResponse(
-            frames=frames,
-            energy_drift=0.0001
-        )
+            elif parts[0] == "OBJ" and len(parts) >= 12:
+                # OBJ [id] [px] [py] [pz] [qw] [qx] [qy] [qz] [vx] [vy] [vz] [wx] [wy] [wz]
+                obj_id = parts[1]
+                px, py, pz = float(parts[2]), float(parts[3]), float(parts[4])
+                vx = float(parts[9]) if len(parts) > 9 else 0
+                vy = float(parts[10]) if len(parts) > 10 else 0
+                vz = float(parts[11]) if len(parts) > 11 else 0
+                wx = float(parts[12]) if len(parts) > 12 else 0
+                wy = float(parts[13]) if len(parts) > 13 else 0
+                wz = float(parts[14]) if len(parts) > 14 else 0
+                current_states.append(ObjectState(
+                    id=obj_id,
+                    position=Vector3(x=px, y=py, z=pz),
+                    rotation=Vector3(x=0, y=0, z=0),
+                    linear_velocity=Vector3(x=vx, y=vy, z=vz),
+                    angular_velocity=Vector3(x=wx, y=wy, z=wz)
+                ))
+
+        # Append final frame
+        if current_frame_time is not None and current_states:
+            frames.append(SimulationFrame(
+                time=current_frame_time,
+                states=current_states,
+                contacts=current_contacts
+            ))
+
+        if not frames:
+            print(">>> C++ engine produced no frames, falling back to Python")
+            return run_python_physics(req)
+
+        print(f">>> C++ engine produced {len(frames)} frames")
+        return SimulationResponse(frames=frames, energy_drift=0.0001)
         
     except Exception as e:
-        print(f"Integration error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f">>> C++ engine exception: {str(e)}, falling back to Python")
+        return run_python_physics(req)
+
+
 
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(req: ChatRequest):

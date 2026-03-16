@@ -940,8 +940,8 @@ export default function DesignWorkspace() {
             togglePlayback(); // Auto-start playback
 
         } catch (err) {
-            console.error(err);
-            alert("Failed to run simulation. Is the Python server running?");
+            console.error("Simulation Error:", err);
+            alert(`Simulation failed: ${err.message}`);
         } finally {
             setIsSimulating(false);
         }
