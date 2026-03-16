@@ -843,9 +843,9 @@ export default function DesignWorkspace() {
                     let dimX = s.params?.width || s.params?.radius || 1;
                     let dimY = s.params?.height || s.params?.radius || 1;
                     let dimZ = s.params?.depth || s.params?.radius || 1;
-                    let posX = (s.position.x !== undefined) ? s.position.x : (s.position[0] || 0);
-                    let posY = (s.position.y !== undefined) ? s.position.y : (s.position[1] || 0);
-                    let posZ = (s.position.z !== undefined) ? s.position.z : (s.position[2] || 0);
+                    let posX = (s.position?.x !== undefined) ? s.position.x : (s.position?.[0] || 0);
+                    let posY = (s.position?.y !== undefined) ? s.position.y : (s.position?.[1] || 0);
+                    let posZ = (s.position?.z !== undefined) ? s.position.z : (s.position?.[2] || 0);
 
                     if (s.type === 'extruded_solid') {
                         geoType = 'box'; // Approximate for now
@@ -875,9 +875,9 @@ export default function DesignWorkspace() {
                             type: geoType,
                             position: { x: posX, y: posY, z: posZ },
                             rotation: { 
-                                x: (s.rotation.x !== undefined) ? s.rotation.x : (s.rotation[0] || 0), 
-                                y: (s.rotation.y !== undefined) ? s.rotation.y : (s.rotation[1] || 0), 
-                                z: (s.rotation.z !== undefined) ? s.rotation.z : (s.rotation[2] || 0) 
+                                x: (s.rotation?.x !== undefined) ? s.rotation.x : (s.rotation?.[0] || 0), 
+                                y: (s.rotation?.y !== undefined) ? s.rotation.y : (s.rotation?.[1] || 0), 
+                                z: (s.rotation?.z !== undefined) ? s.rotation.z : (s.rotation?.[2] || 0) 
                             },
                             dimensions: { x: dimX, y: dimY, z: dimZ }
                         },
