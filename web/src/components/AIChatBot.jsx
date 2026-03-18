@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight } from 'lucide-react'
 import useStore from '../store/useStore'
+import commandHandler from '../services/commandHandler'
+import modelLoader from '../services/modelLoader'
 
 export default function AIChatBot() {
     const isAIPanelOpen = useStore((s) => s.isAIPanelOpen)
@@ -36,6 +38,21 @@ export default function AIChatBot() {
         setMessages(prev => [...prev, userMsg])
         setInputValue('')
         setIsTyping(true)
+
+        // ── 1. Check for local Command Handler (Demo Models) ───────────────
+        const localAction = commandHandler.handleCommand(msg)
+        if (localAction && localAction.type === 'LOAD_MODEL') {
+            setTimeout(() => {
+                modelLoader.loadModel(localAction.model)
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: localAction.reply,
+                    actionType: 'CREATE_CAD' // Reuse color coding
+                }])
+                setIsTyping(false)
+            }, 800) // Small delay for "AI thinking" feel
+            return
+        }
 
         try {
             const req = await fetch('http://localhost:8000/api/chat', {
