@@ -26,8 +26,17 @@ const Shape3DNode = React.memo(({ shape }) => {
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === shape.id)
         : null;
 
-    const currentPos = simState ? [simState.position.x, simState.position.y, simState.position.z] : (shape.position || [0, 0, 0]);
-    const currentRot = simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : (shape.rotation || [0, 0, 0]);
+    // Helper to safely format vectors for R3F
+    const formatVec = (vec, def) => {
+        if (!vec) return def;
+        if (Array.isArray(vec)) return vec;
+        if (typeof vec === 'object') return [vec.x || 0, vec.y || 0, vec.z || 0];
+        return def;
+    };
+
+    const currentPos = simState ? [simState.position.x, simState.position.y, simState.position.z] : formatVec(shape.position, [0, 0, 0]);
+    const currentRot = simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : formatVec(shape.rotation, [0, 0, 0]);
+    const currentScale = formatVec(shape.scale, [1, 1, 1]);
 
     // Use a hash of params for more stable memoization
     const paramsKey = JSON.stringify(shape.params || {});
@@ -92,7 +101,7 @@ const Shape3DNode = React.memo(({ shape }) => {
             ref={groupRef}
             position={currentPos}
             rotation={currentRot}
-            scale={shape.scale || [1, 1, 1]}
+            scale={currentScale}
             onClick={(e) => {
                 e.stopPropagation();
                 if (!isTransforming) {

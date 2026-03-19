@@ -7,11 +7,13 @@ import modelLoader from '../services/modelLoader'
 import engineModel from '../models/engineModel'
 import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
-import { Box, Play, Trash2 } from 'lucide-react'
+import componentLibrary from '../models/componentLibrary'
+import { Box, Play, Trash2, Layers } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
     const sidebarView = useStore((s) => s.sidebarView)
+    const addShape3D = useStore((s) => s.addShape3D)
     const { size, onMouseDown } = useResizable({ initial: 260, min: 170, max: 600, direction: 'right' })
 
     if (!isSidebarOpen) return null
@@ -98,6 +100,42 @@ export default function Sidebar() {
                                         <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
                                             <Play size={32} fill="currentColor" className="text-primary" />
                                         </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Component Library Section */}
+                        <div className="flex flex-col overflow-hidden border-t border-slate-200 dark:border-slate-800" style={{ minHeight: '180px' }}>
+                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800/50">
+                                <ChevronDown size={14} className="text-slate-400" />
+                                <span className="text-[11px] font-bold uppercase text-slate-500">Component Library</span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                {componentLibrary.map((comp) => (
+                                    <div
+                                        key={comp.id}
+                                        onClick={() => {
+                                            useStore.setState({ is3DMode: true });
+                                            addShape3D({
+                                                ...comp,
+                                                id: `comp_${Math.random().toString(36).substring(2,7)}`
+                                            });
+                                        }}
+                                        className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
+                                    >
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-2">
+                                                <Layers size={12} className="text-slate-400 group-hover:text-primary" />
+                                                {comp.name}
+                                            </span>
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium capitalize">
+                                                {comp.material.replace('_', ' ')}
+                                            </span>
+                                        </div>
+                                        <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                            {comp.description}
+                                        </p>
                                     </div>
                                 ))}
                             </div>

@@ -3,6 +3,17 @@ import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link,
 import useStore from '../store/useStore'
 import { isClosedProfile } from '../utils/ProfileValidator'
 
+const MATERIALS = {
+    custom: { name: 'Custom' },
+    aluminum: { name: 'Aluminum', color: '#d1d5db', roughness: 0.3, metalness: 0.8, friction: 0.1, restitution: 0.2 },
+    steel: { name: 'Steel', color: '#9ca3af', roughness: 0.4, metalness: 0.9, friction: 0.3, restitution: 0.3 },
+    cast_iron: { name: 'Cast Iron', color: '#4b5563', roughness: 0.6, metalness: 0.6, friction: 0.2, restitution: 0.1 },
+    structural_steel: { name: 'Structural Steel', color: '#eab308', roughness: 0.7, metalness: 0.8, friction: 0.4, restitution: 0.1 },
+    plastic: { name: 'Generic Plastic', color: '#3b82f6', roughness: 0.8, metalness: 0.1, friction: 0.5, restitution: 0.6 },
+    rubber: { name: 'Rubber', color: '#1f2937', roughness: 0.9, metalness: 0.0, friction: 0.9, restitution: 0.8 },
+    titanium: { name: 'Titanium', color: '#e5e7eb', roughness: 0.2, metalness: 0.8, friction: 0.3, restitution: 0.4 }
+}
+
 export default function PropertiesPanel() {
     const objects = useStore(s => s.objects)
     const setObjects = useStore(s => s.setObjects)
@@ -253,6 +264,19 @@ export default function PropertiesPanel() {
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Settings size={12} /> General
                     </h4>
+
+                    <div className="grid grid-cols-3 items-center gap-2 mb-2">
+                        <label className="text-xs text-slate-400">Name</label>
+                        <div className="col-span-2">
+                            <input
+                                type="text"
+                                value={selectedObject.name || ''}
+                                placeholder={`${selectedObject.type}_${selectedObject.id.substring(0, 4)}`}
+                                onChange={e => handleChange('name', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-xs font-mono"
+                            />
+                        </div>
+                    </div>
 
                     <div className="grid grid-cols-3 items-center gap-2">
                         <label className="text-xs text-slate-400">Type</label>
@@ -639,11 +663,41 @@ export default function PropertiesPanel() {
                     </h4>
 
                     <div className="space-y-3 pt-1">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 pl-1">Material</label>
+                            <select
+                                value={selectedObject.material || 'custom'}
+                                onChange={e => {
+                                    const mat = e.target.value;
+                                    handleChange('material', mat);
+                                    if (mat !== 'custom') {
+                                        const props = MATERIALS[mat];
+                                        if (selectedObject.is3D) {
+                                            handleChange('color', props.color);
+                                            handleChange('roughness', props.roughness);
+                                            handleChange('metalness', props.metalness);
+                                        } else {
+                                            handleChange('stroke', props.color);
+                                        }
+                                        handleChange('friction', props.friction);
+                                        handleChange('restitution', props.restitution);
+                                    }
+                                }}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer mb-2"
+                            >
+                                {Object.entries(MATERIALS).map(([key, m]) => (
+                                    <option key={key} value={key}>{m.name}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="flex items-center gap-2">
                             <input
                                 type="color"
                                 value={selectedObject.is3D ? (selectedObject.color || '#ffffff') : (selectedObject.stroke || '#ffffff')}
-                                onChange={e => handleChange(selectedObject.is3D ? 'color' : 'stroke', e.target.value)}
+                                onChange={e => {
+                                    handleChange('material', 'custom');
+                                    handleChange(selectedObject.is3D ? 'color' : 'stroke', e.target.value);
+                                }}
                                 className="size-6 p-0 border-0 rounded overflow-hidden cursor-pointer"
                             />
                             <label className="text-xs text-slate-300">{selectedObject.is3D ? 'Base Color' : 'Stroke Color'}</label>

@@ -1,11 +1,12 @@
 import React from 'react'
-import { Home, Edit3, Boxes, ShieldCheck, AlertTriangle, Layers } from 'lucide-react'
+import { Home, Edit3, Boxes, ShieldCheck, AlertTriangle, Layers, Activity } from 'lucide-react'
 import useStore from '../store/useStore'
 
 const TABS = [
     { id: 'realis', label: 'REALIS', icon: Home },
     { id: 'design', label: 'Design', icon: Edit3 },
     { id: 'simulate', label: 'Simulation', icon: Boxes },
+    { id: 'analyze', label: 'Analyze', icon: Activity },
     { id: 'verify', label: 'Verification', icon: ShieldCheck },
     { id: 'limit', label: 'Limitation', icon: AlertTriangle },
     { id: 'material', label: 'Material Related', icon: Layers },

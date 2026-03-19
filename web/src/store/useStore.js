@@ -313,13 +313,15 @@ const useStore = create((set) => ({
         state.saveHistorySnapshot();
         return { constraints: state.constraints.filter(c => c.id !== id) };
     }),
-
     // Right Panel state
     rightPanelView: 'properties', // 'ai' or 'properties'
     setRightPanelView: (view) => set({ rightPanelView: view }),
 
     isRightPanelOpen: true,
     toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
+
+    isAIPanelOpen: false,
+    toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
 
     // File Tree state
     // Selection state
@@ -385,24 +387,40 @@ const useStore = create((set) => ({
             ]
         }
     ],
-
     fps: 60,
     simTime: 0,
     setSimTime: (time) => set({ simTime: time }),
 
     // --- Simulation Settings ---
+    simulationMode: 'preview', // 'preview' | 'accurate'
+    simulationType: 'rigid', // 'rigid' | 'thermal' | 'fluid'
+    simulationPreset: null,
+    
     simulationSettings: {
-        gravity: { x: 0, y: -9.81, z: 0 },
+        gravity: { x: 0, y: 9.81, z: 0 },
         timeStep: 0.016,
         solverIterations: 10,
-        subSteps: 1
+        subSteps: 1,
+        airResistance: 0.01,
+        frictionCoeff: 0.3,
+        ambientTemp: 20
     },
     setSimulationSettings: (settings) => set((state) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
 
-    // --- Simulation & Playback State ---
-    simulationFrames: [], // Array of frames from the backend
+    // --- Simulation State ───────────────────────────────────────────────────
+    simulationState: {
+        time: 0,
+        energy: { kinetic: 0, potential: 0, total: 0 },
+        thermalAnalytics: { maxTemp: 20, avgTemp: 20, heatRisk: 'LOW' }
+    },
+    setSimulationState: (stateUpdate) => set(state => ({
+        simulationState: { ...state.simulationState, ...stateUpdate }
+    })),
+
+    // Used for backend-dependent playback, though we are shifting to client-side
+    simulationFrames: [], 
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
     setIsPlaying: (playing) => set({ isPlaying: playing }),
@@ -412,6 +430,33 @@ const useStore = create((set) => ({
     // Helper to control playback
     togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
     resetPlayback: () => set({ currentFrameIndex: 0, isPlaying: false, simTime: 0 }),
+
+    // --- Analysis & Visualization (ANSYS Upgrade) ---
+    analysisSettings: {
+        showVectors: false,
+        showHeatmap: false,
+        vectorScale: 2.0,
+        colorTheme: 'thermal'
+    },
+    setAnalysisSettings: (settings) => set((state) => ({
+        analysisSettings: { ...state.analysisSettings, ...settings }
+    })),
+
+    energyHistory: [], // [{ time, kinetic, potential, total }, ...]
+    addEnergySnapshot: (snapshot) => set((state) => {
+        const nextHistory = [...state.energyHistory, snapshot];
+        if (nextHistory.length > 200) nextHistory.shift();
+        return { energyHistory: nextHistory };
+    }),
+    clearEnergyHistory: () => set({ energyHistory: [] }),
+
+    // --- AI Chatbot Context ─────────────────────────────────────────────────
+    aiMemory: [], // Track user actions
+    addAIMemory: (action) => set(state => {
+        const memory = [...state.aiMemory, action];
+        if (memory.length > 10) memory.shift();
+        return { aiMemory: memory };
+    })
 }))
 
 export default useStore

@@ -11,6 +11,9 @@ export default function AIChatBot() {
     const setObjects = useStore((s) => s.setObjects)
     const activeFileId = useStore((s) => s.activeFileId)
     const setConstraints = useStore((s) => s.setConstraints)
+    const simulationType = useStore((s) => s.simulationType)
+    const aiMemory = useStore((s) => s.aiMemory || [])
+    const simulationState = useStore((s) => s.simulationState || {})
 
     const [messages, setMessages] = useState([
         {
@@ -39,15 +42,34 @@ export default function AIChatBot() {
         setInputValue('')
         setIsTyping(true)
 
-        // ── 1. Check for local Command Handler (Demo Models) ───────────────
+        // ── 1. Check for local Command Handler (Demo Models & Sim Commands) ───────────────
         const localAction = commandHandler.handleCommand(msg)
-        if (localAction && localAction.type === 'LOAD_MODEL') {
+        if (localAction) {
+            // Update memory
+            useStore.setState(s => ({ aiMemory: [msg, ...(s.aiMemory || [])].slice(0, 3) }));
+
             setTimeout(() => {
-                modelLoader.loadModel(localAction.model)
+                let actionColor = 'CREATE_CAD';
+                if (localAction.type === 'LOAD_MODEL') {
+                    modelLoader.loadModel(localAction.model)
+                } else if (localAction.type === 'TRIGGER_SIMULATION') {
+                    useStore.setState({ isPlaying: true });
+                    actionColor = 'SET_PHYSICS';
+                } else if (localAction.type === 'AI_INSIGHT') {
+                    actionColor = 'SET_PHYSICS';
+                } else if (localAction.type === 'SET_MATERIAL') {
+                    actionColor = 'SET_PHYSICS';
+                    if (activeFileId) {
+                        setObjects(prev => prev.map(o => 
+                            o.id === activeFileId ? { ...o, material: localAction.material } : o
+                        ));
+                    }
+                }
+
                 setMessages(prev => [...prev, {
                     role: 'assistant',
                     content: localAction.reply,
-                    actionType: 'CREATE_CAD' // Reuse color coding
+                    actionType: actionColor
                 }])
                 setIsTyping(false)
             }, 800) // Small delay for "AI thinking" feel
@@ -117,11 +139,11 @@ export default function AIChatBot() {
     }
 
     const quickPrompts = [
-        { icon: <Layers size={10} />, label: 'Draw Box', cmd: 'Draw a 100x100 box', color: 'text-blue-400' },
-        { icon: <Layers size={10} />, label: 'Draw Circle', cmd: 'Draw a circle of radius 50', color: 'text-blue-400' },
-        { icon: <Weight size={10} />, label: 'Make Static', cmd: 'Make it static', color: 'text-amber-400' },
+        { icon: <Zap size={10} />, label: 'Run Simulation', cmd: 'Run simulation', color: 'text-primary' },
+        { icon: <Layers size={10} />, label: 'Thermal Prep', cmd: 'Load Thermal Stress Test', color: 'text-rose-400' },
+        { icon: <Anchor size={10} />, label: 'Optimize Design', cmd: 'How do I increase efficiency?', color: 'text-teal-400' },
+        { icon: <Weight size={10} />, label: 'Apply Steel', cmd: 'Make it steel', color: 'text-slate-400' },
         { icon: <Weight size={10} />, label: 'Mass = 5', cmd: 'Set mass to 5', color: 'text-amber-400' },
-        { icon: <Weight size={10} />, label: 'Friction 0.8', cmd: 'Set friction to 0.8', color: 'text-amber-400' },
         { icon: <Anchor size={10} />, label: 'Pin to World', cmd: 'Pin it to world', color: 'text-violet-400' },
     ]
 
@@ -150,12 +172,37 @@ export default function AIChatBot() {
                 </div>
                 <div>
                     <h3 className="font-bold text-sm text-white">REALIS AI</h3>
-                    <p className="text-[9px] text-slate-500">Physics · CAD · Joints</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">
+                            {simulationType ? simulationType.toUpperCase() : 'RIGID'} SIM
+                        </span>
+                        <span className="text-[9px] text-slate-500">· {objects.length} Objects</span>
+                    </div>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
                     <span className="size-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-[9px] text-green-400">Online</span>
                 </div>
+            </div>
+
+            {/* Insights & Memory */}
+            <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/40 text-[10px] space-y-2">
+                <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px]">AI Insights</span>
+                    <span className="text-secondary font-mono">
+                        {simulationType === 'thermal' ? 'Heat Risk: ' + (simulationState?.maxTemp > 500 ? 'High' : 'Normal') : 'Efficiency: 92%'}
+                    </span>
+                </div>
+                {aiMemory.length > 0 && (
+                    <div className="space-y-1">
+                        <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px]">Recent Actions</span>
+                        {aiMemory.map((mem, i) => (
+                            <div key={i} className="text-slate-400 truncate pr-2 opacity-80" title={mem}>
+                                ▹ {mem}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Messages */}

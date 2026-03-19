@@ -6,6 +6,9 @@ export default function Navbar() {
     const toggleRightPanel = useStore(s => s.toggleRightPanel)
     const rightPanelView = useStore(s => s.rightPanelView)
     const setRightPanelView = useStore(s => s.setRightPanelView)
+    const isAIPanelOpen = useStore(s => s.isAIPanelOpen)
+    const toggleAIPanel = useStore(s => s.toggleAIPanel)
+    const isPlaying = useStore(s => s.isPlaying)
 
     // Store state for serialization
     const objects = useStore(s => s.objects)
@@ -90,10 +93,13 @@ export default function Navbar() {
         <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-6 py-3 z-50 shrink-0">
             <div className="flex items-center gap-8">
                 <div className="flex items-center gap-3">
-                    <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+                    <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
                         <Box size={20} />
                     </div>
-                    <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">REALIS Engineering</h2>
+                    <div className="flex flex-col">
+                        <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">REALIS</h2>
+                        <span className="text-[9px] text-slate-500 tracking-wider uppercase font-bold">Engineering</span>
+                    </div>
                 </div>
                 <div className="hidden md:flex items-center gap-6">
                     <div className="relative">
@@ -175,11 +181,11 @@ export default function Navbar() {
                         <SlidersHorizontal size={18} />
                     </button>
                     <button
-                        onClick={() => handleTogglePanel('ai')}
-                        className={`p-1.5 rounded-md transition-colors ${isRightPanelOpen && rightPanelView === 'ai' ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                        onClick={() => toggleAIPanel()}
+                        className={`p-1.5 rounded-md transition-all ${isAIPanelOpen ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105' : 'text-slate-500 hover:text-primary hover:bg-slate-700/50'}`}
                         title="AI Copilot"
                     >
-                        <Sparkles size={18} />
+                        <Sparkles size={18} className={isPlaying ? 'animate-pulse' : ''} />
                     </button>
                 </div>
 
