@@ -192,7 +192,7 @@ Before contributing:
 
 ## Contact
 
-[To be determined]
+[to be determined]
 
 ---
 
