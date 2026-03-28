@@ -5,6 +5,9 @@ import Viewport3D from '../components/Viewport3D';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
+import MechanicalAssemblySolver from '../utils/solvers/mechanicalAssemblySolver';
+import V6RenderAdapter from '../utils/v6RenderAdapter';
+import { SIM_UNITS, clamp, isFiniteNumber, createSimulationLogger } from '../utils/simulationSafety';
 import V6ControlPanel from '../components/V6ControlPanel';
 import modelLoader from '../services/modelLoader';
 import ModelControls from '../components/ModelControls';
@@ -44,9 +47,14 @@ export default function SimulateWorkspace() {
     // ── V6 Engine State ─────────────────────────────────────────────────────
     const simulationPreset = useStore(state => state.simulationPreset);
     const isV6Active = simulationPreset === 'v6_engine_simulation';
+    const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
+    const v6RenderAdapterRef = useRef(new V6RenderAdapter());
+    const v6LogRef = useRef(createSimulationLogger('SimulateWorkspace:V6', { throttleFrames: 30 }));
+    const mechanicalSolverRef = useRef(new MechanicalAssemblySolver({ dt: 0.016, substeps: 4 }));
     const [v6EngineState, setV6EngineState] = useState(null);
     const [showV6Panel, setShowV6Panel] = useState(false);
+    const [isMechanicalAssemblyActive, setIsMechanicalAssemblyActive] = useState(false);
 
     // Initialize V6 solver when V6 model is loaded
     useEffect(() => {
@@ -69,6 +77,15 @@ export default function SimulateWorkspace() {
             setV6EngineState(null);
         }
     }, [isV6Active]);
+
+    useEffect(() => {
+        if (isV6Active || !isMechanicalAssemblyPreset) {
+            setIsMechanicalAssemblyActive(false);
+            return;
+        }
+        const initialized = mechanicalSolverRef.current.initialize(shapes3D);
+        setIsMechanicalAssemblyActive(initialized);
+    }, [isV6Active, isMechanicalAssemblyPreset, shapes3D]);
 
     // Core Engine Refs
     const reqRef = useRef(null);
@@ -137,9 +154,16 @@ export default function SimulateWorkspace() {
         let lastTime = performance.now();
 
         const loop = (time) => {
-            const rawDt = Math.min((time - lastTime) / 1000, 0.05); // cap at 50ms
+            const elapsed = (time - lastTime) / 1000;
+            const rawDt = Math.min(Math.max(elapsed, 0), SIM_UNITS.TARGET_FRAME_DT);
             lastTime = time;
+            if (!isFiniteNumber(rawDt)) {
+                v6LogRef.current.log(Math.floor(time), 'invalid_dt', { elapsed, rawDt, source: 'mainLoop' }, 'error');
+                reqRef.current = requestAnimationFrame(loop);
+                return;
+            }
 
+<<<<<<< HEAD
             const bodies = mechSolver.current.bodies || [];
             const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
             if (boatBody) {
@@ -165,71 +189,27 @@ export default function SimulateWorkspace() {
                 }
             }
 
+=======
+            if (isMechanicalAssemblyActive) {
+                const { states, time: simTime } = mechanicalSolverRef.current.tick(rawDt);
+                if (states && states.size > 0) {
+                    setShapes3D(prev => mechanicalSolverRef.current.applyToShapes(prev, states));
+                }
+                setSimulationState({
+                    time: simTime || 0,
+                    energy: { kinetic: 0, potential: 0, total: 0 }
+                });
+>>>>>>> 1544cacb694b307d2cbb457f4068dab715d68631
             // ── V6 Engine specialised loop ───────────────────────────────────
-            if (isV6Active && v6SolverRef.current) {
+            } else if (isV6Active && v6SolverRef.current) {
                 const snap = v6SolverRef.current.tick(rawDt);
                 setV6EngineState(snap);
-
-                // Animate the 3D shapes by computing each piston/rod world position
-                // from the solver snapshot and updating shapes3D in the store.
-                const SCALE = 200;
-                const { crankAngle, cylinders } = snap;
-                const crankInertia = v6SolverRef.current.config.crankInertia;
-
-                setShapes3D(prev => prev.map(shape => {
-                    // ── Crankshaft rotation ────────────────────────────────
-                    if (shape.id === 'v6_crankshaft' || shape.id === 'v6_flywheel') {
-                        // Rotate around Z-axis by crankAngle
-                        return { ...shape, rotation: [Math.PI / 2, crankAngle, 0] };
-                    }
-
-                    // ── Per-cylinder components ────────────────────────────
-                    const m = shape.id.match(/v6_(crank_throw|con_rod|piston)_(\d+)/);
-                    if (!m) return shape;
-                    const partType = m[1];
-                    const idx = parseInt(m[2], 10);
-                    if (idx >= 6 || !cylinders[idx]) return shape;
-
-                    const cyl = cylinders[idx];
-                    const { pistonPos, crankPinPos, rodAngle } = cyl;
-                    const zPos = shape.position[2]; // keep original Z (layer depth)
-
-                    if (partType === 'crank_throw') {
-                        return {
-                            ...shape,
-                            position: [crankPinPos.x * SCALE, crankPinPos.y * SCALE, zPos]
-                        };
-                    }
-                    if (partType === 'piston') {
-                        // Update color glow during power stroke
-                        const isLeft = idx < 3;
-                        const glow = cyl.combustionGlow;
-                        const baseColor = isLeft ? '#e11d48' : '#2563eb';
-                        return {
-                            ...shape,
-                            position: [pistonPos.x * SCALE, pistonPos.y * SCALE, zPos],
-                            emissiveIntensity: glow * 2.5,
-                            color: glow > 0.15
-                                ? (isLeft ? '#ff6b6b' : '#60a5fa')
-                                : baseColor,
-                        };
-                    }
-                    if (partType === 'con_rod') {
-                        // Position at midpoint of crank pin → piston
-                        const mx = (crankPinPos.x + pistonPos.x) / 2 * SCALE;
-                        const my = (crankPinPos.y + pistonPos.y) / 2 * SCALE;
-                        const dx = (pistonPos.x - crankPinPos.x) * SCALE;
-                        const dy = (pistonPos.y - crankPinPos.y) * SCALE;
-                        const len = Math.sqrt(dx * dx + dy * dy);
-                        return {
-                            ...shape,
-                            position: [mx, my, zPos],
-                            rotation: [0, 0, Math.atan2(dy, dx) + Math.PI / 2],
-                            params: { ...shape.params, height: len },
-                        };
-                    }
-                    return shape;
-                }));
+                setShapes3D(prev => {
+                    v6RenderAdapterRef.current.snapshotToTransforms(snap, prev, rawDt, v6SolverRef.current.config);
+                    const alpha = clamp(snap.interpolationAlpha ?? 0, 0, 1);
+                    const interpolated = v6RenderAdapterRef.current.getInterpolatedTransforms(alpha);
+                    return v6RenderAdapterRef.current.apply(prev, interpolated);
+                });
 
                 setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
 
@@ -286,8 +266,7 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isPlaying, simulationType, isV6Active, renderBodies]);
+    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, renderBodies, setShapes3D, setSimulationState]);
 
     // Handle Reset
     useEffect(() => {
@@ -425,6 +404,7 @@ export default function SimulateWorkspace() {
                         <option value="">+ Load Preset...</option>
                         <option value="engineModel">Legacy Engine Demo</option>
                         <option value="v6EngineModel">V6 Engine (Advanced)</option>
+                        <option value="shaftRingAssemblyModel">Shaft Ring Assembly</option>
                         <option value="sliderCrankModel">Slider-Crank Mechanism</option>
                         <option value="springMassModel">Spring-Mass System</option>
                         <option value="leverModel">Lever System</option>

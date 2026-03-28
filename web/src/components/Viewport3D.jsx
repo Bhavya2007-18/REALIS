@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, Suspense } from 'react';
-import { Canvas, useLoader } from '@react-three/fiber';
+import { Canvas, useLoader, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport, useProgress, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Grid as GridIcon, Maximize2, Minimize2 } from 'lucide-react';
@@ -14,13 +14,29 @@ function Loader() {
   return <Html center className="text-white text-xs font-mono bg-black/50 p-2 rounded">{progress.toFixed(0)}% loaded</Html>
 }
 
-const OBJModel = ({ objPath, mtlPath }) => {
-    const materials = mtlPath ? useLoader(MTLLoader, mtlPath) : null;
+const CinematicCameraRig = () => {
+    const tRef = useRef(0);
+    useFrame(({ camera }, delta) => {
+        tRef.current += delta;
+        const targetX = Math.sin(tRef.current * 0.5) * 2;
+        const targetZ = 98 + Math.cos(tRef.current * 0.4) * 2.5;
+        const targetY = 100 + Math.sin(tRef.current * 0.3) * 0.5;
+        const zoomPulse = 1 + Math.sin(tRef.current * 0.18) * 0.03;
+        camera.position.x += (targetX - camera.position.x) * 0.03;
+        camera.position.y += (targetY - camera.position.y) * 0.03;
+        camera.position.z += (targetZ - camera.position.z) * 0.03;
+        camera.zoom += (zoomPulse - camera.zoom) * 0.02;
+        camera.updateProjectionMatrix();
+        camera.lookAt(0, 0, 0);
+    });
+    return null;
+};
+
+const OBJModelWithMTL = ({ objPath, mtlPath }) => {
+    const materials = useLoader(MTLLoader, mtlPath);
     const obj = useLoader(OBJLoader, objPath, (loader) => {
-        if (materials) {
-            materials.preload();
-            loader.setMaterials(materials);
-        }
+        materials.preload();
+        loader.setMaterials(materials);
     });
 
     useEffect(() => {
@@ -32,6 +48,25 @@ const OBJModel = ({ objPath, mtlPath }) => {
     }, [obj]);
 
     return <primitive object={obj} />;
+};
+
+const OBJModelPlain = ({ objPath }) => {
+    const obj = useLoader(OBJLoader, objPath);
+
+    useEffect(() => {
+        if (obj) {
+            const box = new THREE.Box3().setFromObject(obj);
+            const center = box.getCenter(new THREE.Vector3());
+            obj.position.sub(center);
+        }
+    }, [obj]);
+
+    return <primitive object={obj} />;
+};
+
+const OBJModel = ({ objPath, mtlPath }) => {
+    if (mtlPath) return <OBJModelWithMTL objPath={objPath} mtlPath={mtlPath} />;
+    return <OBJModelPlain objPath={objPath} />;
 };
 
 const Shape3DNode = React.memo(({ shape }) => {
@@ -66,6 +101,25 @@ const Shape3DNode = React.memo(({ shape }) => {
     const currentPos = simState ? [simState.position.x, simState.position.y, simState.position.z] : formatVec(shape.position, [0, 0, 0]);
     const currentRot = simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : formatVec(shape.rotation, [0, 0, 0]);
     const currentScale = formatVec(shape.scale, [1, 1, 1]);
+    const trailRef = useRef([]);
+    const [trailPositions, setTrailPositions] = useState([]);
+    const hasTrail = shape.id?.startsWith('v6_');
+
+    useFrame(() => {
+        if (!hasTrail) return;
+        if (!Array.isArray(currentPos) || currentPos.length < 3) return;
+        const prev = trailRef.current[trailRef.current.length - 1];
+        const next = prev
+            ? [
+                prev[0] + (currentPos[0] - prev[0]) * 0.2,
+                prev[1] + (currentPos[1] - prev[1]) * 0.2,
+                prev[2] + (currentPos[2] - prev[2]) * 0.2
+            ]
+            : [...currentPos];
+        trailRef.current.push(next);
+        if (trailRef.current.length > 3) trailRef.current.shift();
+        setTrailPositions([...trailRef.current]);
+    });
 
     // Use a hash of params for more stable memoization
     const paramsKey = JSON.stringify(shape.params || {});
@@ -151,8 +205,8 @@ const Shape3DNode = React.memo(({ shape }) => {
                 <mesh castShadow receiveShadow geometry={geometry}>
                     <meshStandardMaterial
                         color={shape.color || '#3b82f6'}
-                        roughness={shape.roughness !== undefined ? shape.roughness : 0.5}
-                        metalness={shape.metalness !== undefined ? shape.metalness : 0.1}
+                        roughness={shape.roughness !== undefined ? shape.roughness : 0.2}
+                        metalness={shape.metalness !== undefined ? shape.metalness : 0.8}
                         transparent
                         opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
                     />
@@ -164,6 +218,19 @@ const Shape3DNode = React.memo(({ shape }) => {
                     <lineBasicMaterial attach="material" color="white" />
                 </lineSegments>
             )}
+            {hasTrail && geometry && trailPositions.map((trailPos, idx) => (
+                <mesh key={`${shape.id}_trail_${idx}`} position={trailPos} geometry={geometry}>
+                    <meshStandardMaterial
+                        color={shape.color || '#3b82f6'}
+                        transparent
+                        opacity={0.12 * (idx + 1)}
+                        depthWrite={false}
+                        blending={THREE.AdditiveBlending}
+                        roughness={0.15}
+                        metalness={0.85}
+                    />
+                </mesh>
+            ))}
         </group>
     );
 
@@ -476,7 +543,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     );
 });
 
-export default function Viewport3D({ objects, isSimulating }) {
+export default function Viewport3D({ objects }) {
     const shapes3D = useStore(state => state.shapes3D);
     const active3DTool = useStore(state => state.active3DTool);
     const addShape3D = useStore(state => state.addShape3D);
@@ -506,13 +573,29 @@ export default function Viewport3D({ objects, isSimulating }) {
                 </button>
             </div>
 
-            <Canvas camera={{ position: [100, 100, 100], fov: 50 }} shadows>
+            <Canvas
+                camera={{ position: [100, 100, 100], fov: 46 }}
+                shadows
+                gl={{
+                    antialias: true,
+                    toneMapping: THREE.ACESFilmicToneMapping,
+                    toneMappingExposure: 1.12,
+                    outputColorSpace: THREE.SRGBColorSpace
+                }}
+            >
                 <color attach="background" args={['#0a0f1a']} />
-                <ambientLight intensity={0.5} />
-                <directionalLight position={[100, 200, 50]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
+                <fog attach="fog" args={['#0a0f1a', 180, 520]} />
+                <ambientLight intensity={0.14} />
+                <directionalLight position={[120, 220, 90]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0002} />
+                <directionalLight position={[-90, 100, -70]} intensity={0.42} />
+                <directionalLight position={[0, 80, -220]} intensity={0.26} color="#a5b4fc" />
 
                 <Environment preset="city" />
+<<<<<<< HEAD
                 {useStore.getState().water?.enabled && <WaterSurface />}
+=======
+                <CinematicCameraRig />
+>>>>>>> 1544cacb694b307d2cbb457f4068dab715d68631
 
                 {/* Engineering Grid */}
                 {showGrid && (
