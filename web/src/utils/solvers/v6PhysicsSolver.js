@@ -151,7 +151,9 @@ export default class V6PhysicsSolver {
             this._accumulator -= dt;
         }
 
-        return this.getSnapshot();
+        const snapshot = this.getSnapshot();
+        snapshot.interpolationAlpha = Math.max(0, Math.min(1, this._accumulator / dt));
+        return snapshot;
     }
 
     /**
@@ -190,6 +192,7 @@ export default class V6PhysicsSolver {
 
             cylinders.push({
                 index:         i,
+                phaseOffset:   phase,
                 bank:          i < 3 ? 'left' : 'right',
                 bankRad,
                 stroke:        this.strokePhases[i],
