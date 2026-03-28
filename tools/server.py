@@ -4,6 +4,14 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 import subprocess
 import os
+import sys
+
+# Ensure REALIS root is in scope for core.ai_import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.ai_import.models import AIImportRequest, AIImportResponse
+from core.ai_import.pipeline import AISketchPipeline
+
+ai_pipeline = AISketchPipeline()
 
 app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
 
@@ -112,6 +120,23 @@ class ChatResponse(BaseModel):
 @app.get("/")
 def read_root():
     return {"status": "REALIS API Online"}
+
+@app.post("/api/ai_import", response_model=AIImportResponse)
+def run_ai_import(req: AIImportRequest):
+    """
+    Executes the 11-phase AI Sketch-to-Simulation compiler pipeline.
+    """
+    try:
+        # User input could include forcing a system hypothesis if ambiguity resubmitted
+        # We can simulate parsing `user_prompt` for a forced type or just run normal process
+        # For our MVP backend, we pass it safely.
+        res = ai_pipeline.process(req)
+        return res
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/simulate", response_model=SimulationResponse)
 def run_simulation(req: SimulationRequest):

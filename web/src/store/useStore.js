@@ -323,6 +323,11 @@ const useStore = create((set) => ({
     isAIPanelOpen: false,
     toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
 
+    isAIImportOpen: false,
+    toggleAIImport: () => set((state) => ({ isAIImportOpen: !state.isAIImportOpen })),
+    aiImportData: null,
+    setAIImportData: (data) => set({ aiImportData: data }),
+
     // File Tree state
     // Selection state
     selectedIds: [],

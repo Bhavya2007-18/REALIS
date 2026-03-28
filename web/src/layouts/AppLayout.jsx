@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import AIChatBot from '../components/AIChatBot'
 import BottomBar from '../components/BottomBar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
+import AIImportPanel from '../components/AIImportPanel'
 import PropertiesPanel from '../components/PropertiesPanel'
 import useStore from '../store/useStore'
 import { useEffect } from 'react'
@@ -51,6 +52,7 @@ export default function AppLayout() {
                         <AIChatBot />
                     </div>
                 )}
+                <AIImportPanel />
             </main>
             <BottomBar />
         </div>

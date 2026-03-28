@@ -1,5 +1,5 @@
 import React from 'react'
-import { Files, Search, GitBranch, Play, Boxes, Settings, User } from 'lucide-react'
+import { Files, Search, GitBranch, Play, Boxes, Settings, User, PenTool } from 'lucide-react'
 import useStore from '../store/useStore'
 
 const ACTIONS = [
@@ -15,6 +15,8 @@ export default function ActivityBar() {
     const setSidebarView = useStore((s) => s.setSidebarView)
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
     const toggleSidebar = useStore((s) => s.toggleSidebar)
+    const isAIImportOpen = useStore((s) => s.isAIImportOpen)
+    const toggleAIImport = useStore((s) => s.toggleAIImport)
 
     const handleAction = (id) => {
         if (sidebarView === id && isSidebarOpen) {
@@ -45,6 +47,16 @@ export default function ActivityBar() {
                         </button>
                     )
                 })}
+                <button
+                    onClick={toggleAIImport}
+                    className={`relative p-2 transition-colors group ${isAIImportOpen ? 'text-blue-500' : 'text-slate-400 hover:text-slate-100'}`}
+                    title="AI Sketch Import"
+                >
+                    {isAIImportOpen && (
+                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500" />
+                    )}
+                    <PenTool size={24} strokeWidth={1.5} />
+                </button>
             </div>
 
             <div className="flex flex-col gap-4 items-center w-full">
