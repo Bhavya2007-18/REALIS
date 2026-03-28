@@ -195,7 +195,7 @@ class RigidBody1D:
         dx_dt: float = velocity
 
         # v̇  = F / m   (Newton II)
-        force: float = self._gravity_field.force(self._mass)
+        force: float = self._gravity_field.force(self._mass, position)
         dv_dt: float = force / self._mass
 
         return (dx_dt, dv_dt)

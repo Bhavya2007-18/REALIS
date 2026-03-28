@@ -90,7 +90,7 @@ def main():
 
     # ---- STEP 3: Visualize (only if verification passes) ----
     for solver_fn, solver_name in SOLVERS:
-        if verification_results[solver_name]:
+        if verification_results.get(solver_name, False):
             print(f">>> Generating plots for {solver_name} ...")
             plot_from_json(json_paths[solver_name], OUTPUT_DIR)
             print()

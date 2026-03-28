@@ -90,6 +90,7 @@ def run_simulation(integrator, integrator_name: str, dt: float):
     y0 = np.array([X0, V0])
     t_arr, y_arr = integrator(f, y0, T_SPAN, dt)
 
+    # extract positions and velocities
     positions = y_arr[:, 0]
     velocities = y_arr[:, 1]
 

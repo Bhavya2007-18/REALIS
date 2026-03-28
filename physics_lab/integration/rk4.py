@@ -54,6 +54,7 @@ def rk4(f, y0, t_span, dt):
         ti = t[i]
         yi = y[i]
 
+        # Standard RK4 steps
         k1 = np.asarray(f(ti,            yi),            dtype=float)
         k2 = np.asarray(f(ti + 0.5 * dt, yi + 0.5 * dt * k1), dtype=float)
         k3 = np.asarray(f(ti + 0.5 * dt, yi + 0.5 * dt * k2), dtype=float)

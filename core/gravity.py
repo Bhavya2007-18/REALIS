@@ -123,13 +123,15 @@ class UniformGravityField:
         """Magnitude of gravitational acceleration (read-only)."""
         return self._g
 
-    def force(self, mass: float) -> float:
+    def force(self, mass: float, position: float = 0.0) -> float:
         """Compute the gravitational force on a point mass.
 
         Parameters
         ----------
         mass : float
             Mass of the body (must be positive).
+        position : float, optional
+            Vertical position (unused in uniform field), by default 0.0.
 
         Returns
         -------
@@ -144,7 +146,7 @@ class UniformGravityField:
         ValueError
             If *mass* is negative.
         TypeError
-            If *mass* is not a real number.
+            If *mass* or *position* is not a real number.
 
         Assumptions
         ~~~~~~~~~~~
@@ -153,6 +155,10 @@ class UniformGravityField:
         * No dependence on timestep or velocity.
         """
         self._validate_mass(mass)
+        if not isinstance(position, (int, float)):
+            raise TypeError(
+                f"Position must be a real number, got {type(position).__name__}"
+            )
         return -mass * self._g
 
     def potential_energy(self, mass: float, height: float) -> float:

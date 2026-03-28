@@ -76,7 +76,6 @@ def verify_energy(json_path: str, tolerance: float = 1e-3) -> bool:
 
     if max_drift > tolerance:
         print(f"  RESULT : FAIL")
-        print(f"  Verification Failed. Visualization Aborted.")
         return False
 
     print(f"  RESULT : PASS")

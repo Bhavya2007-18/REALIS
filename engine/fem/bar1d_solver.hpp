@@ -137,8 +137,7 @@ public:
       }
     }
 
-    // ── Step 4: Neumann BCs (point forces) ───────────────────────────────
-    // Simply add to the load vector — this is the natural BC.
+    // ── Step 4: Neumann BCs ─────────────────────────────────────────────
     for (const auto &kv : neumann_bcs) {
       F[kv.first] += kv.second;
     }

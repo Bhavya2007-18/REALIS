@@ -163,7 +163,6 @@ export default function SimulateWorkspace() {
                 return;
             }
 
-<<<<<<< HEAD
             const bodies = mechSolver.current.bodies || [];
             const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
             if (boatBody) {
@@ -189,7 +188,6 @@ export default function SimulateWorkspace() {
                 }
             }
 
-=======
             if (isMechanicalAssemblyActive) {
                 const { states, time: simTime } = mechanicalSolverRef.current.tick(rawDt);
                 if (states && states.size > 0) {
@@ -199,7 +197,6 @@ export default function SimulateWorkspace() {
                     time: simTime || 0,
                     energy: { kinetic: 0, potential: 0, total: 0 }
                 });
->>>>>>> 1544cacb694b307d2cbb457f4068dab715d68631
             // ── V6 Engine specialised loop ───────────────────────────────────
             } else if (isV6Active && v6SolverRef.current) {
                 const snap = v6SolverRef.current.tick(rawDt);
