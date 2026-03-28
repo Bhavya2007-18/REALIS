@@ -46,12 +46,7 @@ export default class V6RenderAdapter {
     }
 
     getCylinderAngle(snap, cyl) {
-        const base = (snap.crankAngle || 0) + (cyl.phaseOffset ?? 0)
-        const cycle = ((snap.time || 0) * 0.6) % 1
-        const easedCycle = smoothstep(cycle)
-        const easedDelta = (easedCycle - cycle) * 0.04
-        const wobble = Math.sin((snap.time || 0) * 2) * 0.01
-        return base + easedDelta + wobble
+        return (snap.crankAngle || 0) + (cyl.phaseOffset ?? 0)
     }
 
     getLaggedPistonPosition(cylinderIndex, computedPos) {

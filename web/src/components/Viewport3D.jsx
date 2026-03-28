@@ -14,23 +14,7 @@ function Loader() {
   return <Html center className="text-white text-xs font-mono bg-black/50 p-2 rounded">{progress.toFixed(0)}% loaded</Html>
 }
 
-const CinematicCameraRig = () => {
-    const tRef = useRef(0);
-    useFrame(({ camera }, delta) => {
-        tRef.current += delta;
-        const targetX = Math.sin(tRef.current * 0.5) * 2;
-        const targetZ = 98 + Math.cos(tRef.current * 0.4) * 2.5;
-        const targetY = 100 + Math.sin(tRef.current * 0.3) * 0.5;
-        const zoomPulse = 1 + Math.sin(tRef.current * 0.18) * 0.03;
-        camera.position.x += (targetX - camera.position.x) * 0.03;
-        camera.position.y += (targetY - camera.position.y) * 0.03;
-        camera.position.z += (targetZ - camera.position.z) * 0.03;
-        camera.zoom += (zoomPulse - camera.zoom) * 0.02;
-        camera.updateProjectionMatrix();
-        camera.lookAt(0, 0, 0);
-    });
-    return null;
-};
+ 
 
 const OBJModelWithMTL = ({ objPath, mtlPath }) => {
     const materials = useLoader(MTLLoader, mtlPath);
@@ -76,6 +60,7 @@ const Shape3DNode = React.memo(({ shape }) => {
     const active3DTool = useStore(state => state.active3DTool);
     const setShapes3D = useStore(state => state.setShapes3D);
     const profile = useStore(state => shape.type === 'extruded_solid' ? state.objects.find(o => o.id === (shape.params?.profileId || shape.profileId)) : null);
+    const isV6Active = useStore(state => state.simulationPreset === 'v6_engine_simulation');
 
     // Simulation state
     const simulationFrames = useStore(state => state.simulationFrames);
@@ -86,7 +71,7 @@ const Shape3DNode = React.memo(({ shape }) => {
     const isTransforming = isSelected && ['translate', 'rotate', 'scale'].includes(active3DTool);
 
     // Get simulated state if playing
-    const simState = (isPlaying && simulationFrames[currentFrameIndex])
+    const simState = (!isV6Active && !shape.isStatic && isPlaying && simulationFrames[currentFrameIndex])
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === shape.id)
         : null;
 
@@ -362,7 +347,8 @@ const ExtrudePreview = () => {
 
 const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, currentFrameIndex }) => {
     const depth = obj.depth !== undefined ? obj.depth : 0.1;
-    const simState = (isPlaying && simulationFrames[currentFrameIndex])
+    const isV6Active = useStore(state => state.simulationPreset === 'v6_engine_simulation');
+    const simState = (!isV6Active && isPlaying && simulationFrames[currentFrameIndex])
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === obj.id)
         : null;
 
@@ -591,11 +577,7 @@ export default function Viewport3D({ objects }) {
                 <directionalLight position={[0, 80, -220]} intensity={0.26} color="#a5b4fc" />
 
                 <Environment preset="city" />
-<<<<<<< HEAD
                 {useStore.getState().water?.enabled && <WaterSurface />}
-=======
-                <CinematicCameraRig />
->>>>>>> 1544cacb694b307d2cbb457f4068dab715d68631
 
                 {/* Engineering Grid */}
                 {showGrid && (

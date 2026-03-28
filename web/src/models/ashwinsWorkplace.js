@@ -45,7 +45,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0.4 },
             params: { width: 12, height: 10, depth: 16 },
             color: "#4d342c",
-            isStatic: true
+            isStatic: false
         },
         // Ship Hull - Stern (Back)
         {
@@ -56,7 +56,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { width: 15, height: 14, depth: 18 },
             color: "#3e2723",
-            isStatic: true
+            isStatic: false
         },
         // Main Deck
         {
@@ -67,7 +67,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { width: 48, height: 1, depth: 16 },
             color: "#795548",
-            isStatic: true
+            isStatic: false
         },
         // Main Mast (Front)
         {
@@ -78,7 +78,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { radiusTop: 0.8, radiusBottom: 0.8, height: 35, segments: 16 },
             color: "#2d1b15",
-            isStatic: true
+            isStatic: false
         },
         // Main Mast (Center)
         {
@@ -89,7 +89,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { radiusTop: 1.0, radiusBottom: 1.0, height: 45, segments: 16 },
             color: "#2d1b15",
-            isStatic: true
+            isStatic: false
         },
         // Fore Sail
         {
@@ -100,7 +100,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0.1, y: 0, z: 0 },
             params: { width: 20, height: 15, depth: 0.3 },
             color: "#f5f5f5",
-            isStatic: true
+            isStatic: false
         },
         // Main Sail
         {
@@ -111,7 +111,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0.1, y: 0, z: 0 },
             params: { width: 28, height: 22, depth: 0.3 },
             color: "#ffffff",
-            isStatic: true
+            isStatic: false
         },
         // Ship Railing (Left)
         {
@@ -122,7 +122,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { width: 48, height: 2, depth: 0.5 },
             color: "#3e2723",
-            isStatic: true
+            isStatic: false
         },
         // Ship Railing (Right)
         {
@@ -133,7 +133,7 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { width: 48, height: 2, depth: 0.5 },
             color: "#3e2723",
-            isStatic: true
+            isStatic: false
         },
 
         {
@@ -188,7 +188,7 @@ const ashwinsWorkplace = {
             rotation: { x: Math.PI / 2, y: 0, z: 0 },
             params: { radiusTop: 1.2, radiusBottom: 1.2, height: 3, segments: 12 },
             color: "#1f2937",
-            isStatic: true
+            isStatic: false
         }
     ]
 };
