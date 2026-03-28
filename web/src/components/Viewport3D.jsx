@@ -591,7 +591,11 @@ export default function Viewport3D({ objects }) {
                 <directionalLight position={[0, 80, -220]} intensity={0.26} color="#a5b4fc" />
 
                 <Environment preset="city" />
+<<<<<<< HEAD
                 {useStore.getState().water?.enabled && <WaterSurface />}
+=======
+                {useStore.getState().simulationPreset === 'ashwins_workplace' && useStore.getState().water?.enabled && <WaterSurface />}
+>>>>>>> 8475d06b4b1c2a07dbf694427168d2ee01410170
                 <CinematicCameraRig />
 
                 {/* Engineering Grid */}

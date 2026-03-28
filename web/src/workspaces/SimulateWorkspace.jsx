@@ -163,6 +163,7 @@ export default function SimulateWorkspace() {
                 return;
             }
 
+<<<<<<< HEAD
             const bodies = mechSolver.current.bodies || [];
             const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
             if (boatBody) {
@@ -170,7 +171,16 @@ export default function SimulateWorkspace() {
                 boatBody.mass = boatBody.mass || 150;
             }
             stepWater(rawDt, bodies);
+=======
+>>>>>>> 8475d06b4b1c2a07dbf694427168d2ee01410170
             if (useStore.getState().simulationPreset === 'ashwins_workplace') {
+                const bodies = mechSolver.current.bodies || [];
+                const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
+                if (boatBody) {
+                    boatBody.isStatic = false;
+                    boatBody.mass = boatBody.mass || 150;
+                }
+                stepWater(rawDt, bodies);
                 const ctrl = useStore.getState().boatControl;
                 if (ctrl && ctrl.enabled) {
                     const boat = bodies.find(b => b.id === 'ship_hull_bottom');

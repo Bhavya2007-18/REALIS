@@ -13,6 +13,7 @@ import {
     buildForceVectors
 } from '../physicsEngine.js';
 import { applyWaterForces } from '../waterPhysics.js';
+import useStore from '../../store/useStore.js';
 
 export default class MechanicsSolver {
     constructor(settings = {}) {
@@ -83,7 +84,7 @@ export default class MechanicsSolver {
         for (let s = 0; s < subSteps; s++) {
             // 1. Apply forces
             applyForces(this.bodies, this.settings);
-            if (this.settings.water?.enabled) {
+            if (this.settings.water?.enabled && useStore.getState().simulationPreset === 'ashwins_workplace') {
                 applyWaterForces(this.bodies, this.settings.water, this.settings.gravity);
             }
 
