@@ -27,6 +27,22 @@ export function applyForces(bodies, settings = {}) {
             z: gravity.z ?? 0
         };
 
+        // External force (e.g., motor thrust) - acceleration += F/m
+        if (b.externalForce) {
+            const m = b.mass || 1;
+            b.acceleration.x += (b.externalForce.x || 0) / m;
+            b.acceleration.y += (b.externalForce.y || 0) / m;
+            b.acceleration.z = (b.acceleration.z || 0) + (b.externalForce.z || 0) / m;
+        }
+        if (b.externalTorque) {
+            const w = b.params?.width || b.dimensions?.x || 10;
+            const d = b.params?.depth || b.dimensions?.z || 10;
+            const m = b.mass || 1;
+            const Iz = (m * (w * w + d * d)) / 12;
+            b.angularAcceleration = b.angularAcceleration || { x: 0, y: 0, z: 0 };
+            b.angularAcceleration.z += (b.externalTorque.z || 0) / Math.max(Iz, 1e-3);
+        }
+
         // Air resistance (drag ∝ v²·Cd)
         const speed = Math.sqrt(
             (b.velocity?.x ?? 0) ** 2 +
@@ -62,6 +78,16 @@ export function integrate(bodies, dt) {
         b.position.x += b.velocity.x * dt;
         b.position.y += b.velocity.y * dt;
         b.position.z = (b.position.z ?? 0) + (b.velocity.z ?? 0) * dt;
+
+        if (b.angularAcceleration || b.angularVelocity) {
+            const ang = b.angularAcceleration || { x: 0, y: 0, z: 0 };
+            b.angularVelocity = b.angularVelocity || { x: 0, y: 0, z: 0 };
+            b.angularVelocity.z += (ang.z || 0) * dt;
+            b.angularVelocity.z *= 0.985;
+            const rot = Array.isArray(b.rotation) ? b.rotation : [b.rotation?.x || 0, b.rotation?.y || 0, b.rotation?.z || 0];
+            const newRotZ = (rot[2] || 0) + b.angularVelocity.z * dt;
+            b.rotation = [rot[0], rot[1], newRotZ];
+        }
     });
 }
 
@@ -78,22 +104,27 @@ export function detectCollisions(bodies) {
             const a = bodies[i];
             const b = bodies[j];
             if (a.isStatic && b.isStatic) continue;
-
-            const rA = a.radius || a.r || 10;
-            const rB = b.radius || b.r || 10;
-
-            const dx = (b.position?.x ?? b.cx ?? 0) - (a.position?.x ?? a.cx ?? 0);
-            const dy = (b.position?.y ?? b.cy ?? 0) - (a.position?.y ?? a.cy ?? 0);
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const minDist = rA + rB;
-
-            if (dist < minDist && dist > 0.001) {
-                collisions.push({
-                    a,
-                    b,
-                    normal: { x: dx / dist, y: dy / dist },
-                    penetration: minDist - dist
-                });
+            const ax = a.position?.x ?? a.cx ?? 0;
+            const ay = a.position?.y ?? a.cy ?? 0;
+            const az = a.position?.z ?? 0;
+            const bx = b.position?.x ?? b.cx ?? 0;
+            const by = b.position?.y ?? b.cy ?? 0;
+            const bz = b.position?.z ?? 0;
+            const ahe = a.halfExtents || { x: a.radius || 10, y: a.radius || 10, z: a.radius || 10 };
+            const bhe = b.halfExtents || { x: b.radius || 10, y: b.radius || 10, z: b.radius || 10 };
+            const dx = bx - ax;
+            const dy = by - ay;
+            const dz = bz - az;
+            const ox = (ahe.x + bhe.x) - Math.abs(dx);
+            const oy = (ahe.y + bhe.y) - Math.abs(dy);
+            const oz = (ahe.z + bhe.z) - Math.abs(dz);
+            if (ox > 0 && oy > 0 && oz > 0) {
+                const minPen = Math.min(ox, oy, oz);
+                let normal = { x: 0, y: 0, z: 0 };
+                if (minPen === ox) normal = { x: Math.sign(dx), y: 0, z: 0 };
+                else if (minPen === oy) normal = { x: 0, y: Math.sign(dy), z: 0 };
+                else normal = { x: 0, y: 0, z: Math.sign(dz) };
+                collisions.push({ a, b, normal, penetration: minPen });
             }
         }
     }
@@ -105,25 +136,26 @@ export function detectCollisions(bodies) {
  */
 export function resolveCollisions(collisions) {
     collisions.forEach(({ a, b, normal, penetration }) => {
-        // Positional correction
         const correction = penetration * 0.5;
         if (!a.isStatic) {
             a.position.x -= normal.x * correction;
             a.position.y -= normal.y * correction;
+            a.position.z = (a.position.z ?? 0) - (normal.z || 0) * correction;
         }
         if (!b.isStatic) {
             b.position.x += normal.x * correction;
             b.position.y += normal.y * correction;
+            b.position.z = (b.position.z ?? 0) + (normal.z || 0) * correction;
         }
 
-        // Velocity response (elastic impulse)
         const restitution = Math.min(a.restitution ?? 0.5, b.restitution ?? 0.5);
 
         const relVelX = (b.velocity?.x ?? 0) - (a.velocity?.x ?? 0);
         const relVelY = (b.velocity?.y ?? 0) - (a.velocity?.y ?? 0);
-        const relVelAlongNormal = relVelX * normal.x + relVelY * normal.y;
+        const relVelZ = (b.velocity?.z ?? 0) - (a.velocity?.z ?? 0);
+        const relVelAlongNormal = relVelX * normal.x + relVelY * normal.y + relVelZ * (normal.z || 0);
 
-        if (relVelAlongNormal > 0) return; // Already separating
+        if (relVelAlongNormal > 0) return;
 
         const invMassA = a.isStatic ? 0 : 1 / (a.mass || 1);
         const invMassB = b.isStatic ? 0 : 1 / (b.mass || 1);
@@ -133,14 +165,16 @@ export function resolveCollisions(collisions) {
         const impulseMag = -(1 + restitution) * relVelAlongNormal / invMassSum;
 
         if (!a.isStatic) {
-            a.velocity = a.velocity || { x: 0, y: 0 };
+            a.velocity = a.velocity || { x: 0, y: 0, z: 0 };
             a.velocity.x -= impulseMag * invMassA * normal.x;
             a.velocity.y -= impulseMag * invMassA * normal.y;
+            a.velocity.z -= impulseMag * invMassA * (normal.z || 0);
         }
         if (!b.isStatic) {
-            b.velocity = b.velocity || { x: 0, y: 0 };
+            b.velocity = b.velocity || { x: 0, y: 0, z: 0 };
             b.velocity.x += impulseMag * invMassB * normal.x;
             b.velocity.y += impulseMag * invMassB * normal.y;
+            b.velocity.z += impulseMag * invMassB * (normal.z || 0);
         }
     });
 }

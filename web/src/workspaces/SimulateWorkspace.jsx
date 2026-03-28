@@ -8,6 +8,7 @@ import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
 import V6ControlPanel from '../components/V6ControlPanel';
 import modelLoader from '../services/modelLoader';
 import ModelControls from '../components/ModelControls';
+import { stepWater } from '../utils/waterPhysics';
 
 export default function SimulateWorkspace() {
     // Top-level store values
@@ -92,7 +93,9 @@ export default function SimulateWorkspace() {
 
     // Apply settings changes to solvers
     useEffect(() => {
-        mechSolver.current.updateSettings({ ...simulationSettings, mode: simulationMode });
+        const preset = useStore.getState().simulationPreset;
+        const groundY = preset === 'ashwins_workplace' ? -1000 : simulationSettings.groundY;
+        mechSolver.current.updateSettings({ ...simulationSettings, groundY, mode: simulationMode, water: useStore.getState().water });
         thermSolver.current.updateSettings(simulationSettings);
     }, [simulationSettings, simulationMode]);
     
@@ -136,6 +139,31 @@ export default function SimulateWorkspace() {
         const loop = (time) => {
             const rawDt = Math.min((time - lastTime) / 1000, 0.05); // cap at 50ms
             lastTime = time;
+
+            const bodies = mechSolver.current.bodies || [];
+            const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
+            if (boatBody) {
+                boatBody.isStatic = false;
+                boatBody.mass = boatBody.mass || 150;
+            }
+            stepWater(rawDt, bodies);
+            if (useStore.getState().simulationPreset === 'ashwins_workplace') {
+                const ctrl = useStore.getState().boatControl;
+                if (ctrl && ctrl.enabled) {
+                    const boat = bodies.find(b => b.id === 'ship_hull_bottom');
+                    if (boat) {
+                        const boost = Math.max(0, (ctrl.thrust || 0)) * 12;
+                        const m = boat.mass || 1;
+                        boat.externalForce = {
+                            x: (boat.externalForce?.x || 0) + boost,
+                            y: boat.externalForce?.y || 0,
+                            z: boat.externalForce?.z || 0
+                        };
+                        const w = boat.params?.width || 50;
+                        boat.externalTorque = { z: -boost * (w / 2) * 0.2 };
+                    }
+                }
+            }
 
             // ── V6 Engine specialised loop ───────────────────────────────────
             if (isV6Active && v6SolverRef.current) {
@@ -208,9 +236,40 @@ export default function SimulateWorkspace() {
             // ── Generic rigid / thermal loop ─────────────────────────────────
             } else if (simulationType === 'rigid') {
                 const snapshot = mechSolver.current.step();
+                
+                // Find the main hull to sync other ship parts
+                const hull = snapshot.bodies.find(b => b.id === 'ship_hull_bottom');
+                const hullOffset = hull ? {
+                    x: (Array.isArray(hull.position) ? hull.position[0] : hull.position.x) - (shapes3D.find(s => s.id === 'ship_hull_bottom')?.position?.[0] || 0),
+                    y: (Array.isArray(hull.position) ? hull.position[1] : hull.position.y) - (shapes3D.find(s => s.id === 'ship_hull_bottom')?.position?.[1] || 0),
+                    z: (Array.isArray(hull.position) ? hull.position[2] : (hull.position.z || 0)) - (shapes3D.find(s => s.id === 'ship_hull_bottom')?.position?.[2] || 0)
+                } : { x: 0, y: 0, z: 0 };
+
                 const newRenderBodies = renderBodies.map(rb => {
                     const sb = snapshot.bodies.find(b => b.id === rb.id);
-                    return sb ? { ...rb, position: sb.position } : rb;
+                    if (sb) {
+                        const pos = Array.isArray(sb.position)
+                            ? sb.position
+                            : [sb.position.x || 0, sb.position.y || 0, sb.position.z || 0];
+                        const rot = Array.isArray(sb.rotation)
+                            ? sb.rotation
+                            : [sb.rotation?.x || 0, sb.rotation?.y || 0, sb.rotation?.z || 0];
+                        return { ...rb, position: pos, rotation: rot };
+                    } else if (rb.id.startsWith('ship_') || rb.id === 'motor_dummy' || rb.id === 'ship_motor_dummy') {
+                        // Static ship parts follow the hull
+                        const orig = shapes3D.find(s => s.id === rb.id);
+                        if (orig) {
+                            return {
+                                ...rb,
+                                position: [
+                                    (orig.position?.[0] || 0) + hullOffset.x,
+                                    (orig.position?.[1] || 0) + hullOffset.y,
+                                    (orig.position?.[2] || 0) + hullOffset.z
+                                ]
+                            };
+                        }
+                    }
+                    return rb;
                 });
                 setRenderBodies(newRenderBodies);
                 setVectors(snapshot.vectors || []);
@@ -304,6 +363,31 @@ export default function SimulateWorkspace() {
                 {/* Mode & Overlays */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
+                        {useStore.getState().simulationPreset === 'ashwins_workplace' && (
+                            <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Boat Motor</span>
+                                <button
+                                    onClick={() => useStore.getState().setBoatControl({ enabled: !useStore.getState().boatControl.enabled })}
+                                    className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${useStore.getState().boatControl.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    {useStore.getState().boatControl.enabled ? 'On' : 'Off'}
+                                </button>
+                                <div className="flex items-center gap-1 text-[10px]">
+                                    <span>Thrust</span>
+                                    <input
+                                        type="range" min="0" max="200" step="5"
+                                        defaultValue={useStore.getState().boatControl.thrust || 0}
+                                        onChange={e => useStore.getState().setBoatControl({ thrust: parseInt(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px]">
+                                    <span>Steer</span>
+                                    <button onClick={() => useStore.getState().setBoatControl({ steer: -1 })} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded">Left</button>
+                                    <button onClick={() => useStore.getState().setBoatControl({ steer: 0 })} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded">Center</button>
+                                    <button onClick={() => useStore.getState().setBoatControl({ steer: 1 })} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded">Right</button>
+                                </div>
+                            </div>
+                        )}
                         <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Solver Mode</span>
                         <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
                             <button onClick={() => useStore.setState({ simulationMode: 'preview' })} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all cursor-pointer ${simulationMode === 'preview' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-600 hover:text-white'}`}>Preview</button>

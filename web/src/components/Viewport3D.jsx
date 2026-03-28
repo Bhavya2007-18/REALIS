@@ -7,6 +7,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import useStore from '../store/useStore';
 import { createThreeShapeFrom2D } from '../utils/geometryHelpers';
+import WaterSurface from './WaterSurface';
 
 function Loader() {
   const { progress } = useProgress()
@@ -511,6 +512,7 @@ export default function Viewport3D({ objects, isSimulating }) {
                 <directionalLight position={[100, 200, 50]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
 
                 <Environment preset="city" />
+                {useStore.getState().water?.enabled && <WaterSurface />}
 
                 {/* Engineering Grid */}
                 {showGrid && (

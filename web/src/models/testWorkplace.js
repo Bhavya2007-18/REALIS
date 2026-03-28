@@ -4,6 +4,7 @@
  */
 
 const testWorkplace = {
+  id: 'test_workplace',
   name: 'test workplace',
   description: 'Modular physics lab preset with mixed objects for quick tests.',
   category: 'Sandbox',

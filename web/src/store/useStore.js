@@ -41,6 +41,26 @@ const useStore = create((set) => ({
     active3DTool: 'select', // 'select', 'translate', 'rotate', 'scale', 'cube', 'sphere', etc.
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
+    water: {
+        enabled: true,
+        level: 0,
+        depth: 60,
+        density: 1000,
+        linearDrag: 0.4,
+        quadDrag: 0.1,
+        ripple: { grid: 40, size: 600, stiffness: 0.015, damping: 0.04 }
+    },
+    setWater: (cfg) => set(state => ({ water: { ...state.water, ...cfg } })),
+
+    // Boat Motor (only for Ashwin's Workplace)
+    boatControl: {
+        enabled: false,
+        thrust: 0,      // Newton equivalent (scaled)
+        steer: 0        // -1 left .. +1 right
+    },
+    setBoatControl: (update) => set(state => ({
+        boatControl: { ...state.boatControl, ...update }
+    })),
     // Advanced Extrude State
     extrudeOperation: {
         profileId: null,

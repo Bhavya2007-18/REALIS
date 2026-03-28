@@ -29,15 +29,36 @@ const modelLoader = {
 
             // 3. Add native 3D shapes
             if (model.shapes3D && model.shapes3D.length > 0) {
-                store.setShapes3D(model.shapes3D.map(shape => ({
+                const shapes = model.shapes3D.map(shape => ({
                     ...shape,
                     id: shape.id || `shape3d_${Math.random().toString(36).substring(2, 9)}`,
                     color: shape.color || '#3b82f6',
-                    mass: shape.mass || 1.0,
+                    mass: shape.mass ?? 1.0,
                     restitution: shape.restitution || 0.5,
                     friction: shape.friction || 0.3,
-                    isStatic: shape.isStatic || false
-                })));
+                    isStatic: shape.isStatic ?? false
+                }))
+
+                if (model.id === 'ashwins_workplace') {
+                    const rhoWood = 500
+                    const tagShip = s => (s.name || '').toLowerCase().includes('ship')
+                    shapes.forEach(s => {
+                        if (tagShip(s) && s.type === 'cube' && s.params) {
+                            const w = s.params.width || 1
+                            const h = s.params.height || 1
+                            const d = s.params.depth || 1
+                            const vol = w * h * d
+                            s.mass = rhoWood * vol * 0.001
+                            s.fluidInteraction = 'water'
+                            s.material = 'wood'
+                            s.restitution = 0.3
+                            s.friction = 0.4
+                            if (s.id === 'ship_hull_bottom') s.isStatic = false
+                        }
+                    })
+                }
+
+                store.setShapes3D(shapes);
                 useStore.setState({ is3DView: true });
             }
 

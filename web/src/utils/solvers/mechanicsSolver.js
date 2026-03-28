@@ -12,6 +12,7 @@ import {
     calculateEnergy,
     buildForceVectors
 } from '../physicsEngine.js';
+import { applyWaterForces } from '../waterPhysics.js';
 
 export default class MechanicsSolver {
     constructor(settings = {}) {
@@ -43,6 +44,12 @@ export default class MechanicsSolver {
                 pos = { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 };
             }
 
+            const dimX = b.params?.width ?? b.dimensions?.x ?? (b.radius ? b.radius * 2 : 10);
+            const dimY = b.params?.height ?? b.dimensions?.y ?? (b.radius ? b.radius * 2 : 10);
+            const dimZ = b.params?.depth ?? b.dimensions?.z ?? (b.radius ? b.radius * 2 : 10);
+            const halfExtents = { x: (dimX || 10) / 2, y: (dimY || 10) / 2, z: (dimZ || 10) / 2 };
+            const approxRadius = Math.sqrt(halfExtents.x ** 2 + halfExtents.y ** 2 + halfExtents.z ** 2);
+
             return {
                 ...b,
                 position: pos,
@@ -50,7 +57,8 @@ export default class MechanicsSolver {
                 velocity: b.velocity ?? { x: 0, y: 0, z: 0 },
                 acceleration: b.acceleration ?? { x: 0, y: 0, z: 0 },
                 mass: b.mass ?? 1,
-                radius: b.radius ?? b.r ?? 10,
+                radius: b.radius ?? b.r ?? approxRadius,
+                halfExtents
             };
         });
     }
@@ -75,6 +83,9 @@ export default class MechanicsSolver {
         for (let s = 0; s < subSteps; s++) {
             // 1. Apply forces
             applyForces(this.bodies, this.settings);
+            if (this.settings.water?.enabled) {
+                applyWaterForces(this.bodies, this.settings.water, this.settings.gravity);
+            }
 
             // 2. Resolve constraints (distance/rod relaxation)
             this._resolveConstraints(5);
@@ -155,6 +166,8 @@ export default class MechanicsSolver {
             bodies: this.bodies.map(b => ({
                 id: b.id,
                 position: { ...b.position },
+                rotation: Array.isArray(b.rotation) ? [...b.rotation] : { ...(b.rotation || {}) },
+                angularVelocity: { ...(b.angularVelocity || {}) },
                 velocity: { ...b.velocity },
                 acceleration: { ...b.acceleration },
                 onGround: b.onGround ?? false

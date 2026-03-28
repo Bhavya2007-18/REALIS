@@ -4,33 +4,22 @@
  */
 
 const ashwinsWorkplace = {
+    id: "ashwins_workplace",
     name: "ashwins workplace",
     description: "Classic Roblox-style Pirate Island with an enhanced ship, sails, and palm trees.",
     category: "Environment",
     complexity: "High",
     shapes3D: [
-        // --- THE OCEAN ---
-        {
-            id: "ocean",
-            type: "plane",
-            name: "Ocean",
-            position: { x: 0, y: -0.1, z: 0 },
-            rotation: { x: -Math.PI / 2, y: 0, z: 0 },
-            params: { width: 400, depth: 400 },
-            color: "#0077be",
-            opacity: 0.6,
-            isStatic: true
-        },
 
-        // --- THE ISLAND ---
+        // --- SMALL ROCK WITH TREE ---
         {
-            id: "island_main",
+            id: "rock_small",
             type: "sphere",
-            name: "Main Island",
-            position: { x: -20, y: -15, z: 0 },
+            name: "Small Rock",
+            position: { x: -40, y: -5, z: -20 },
             rotation: { x: 0, y: 0, z: 0 },
-            params: { radius: 50, segments: 32, rings: 32 },
-            color: "#f2d2a9", // Sand color
+            params: { radius: 6, segments: 16, rings: 16 },
+            color: "#6b7280",
             isStatic: true
         },
 
@@ -44,7 +33,8 @@ const ashwinsWorkplace = {
             rotation: { x: 0, y: 0, z: 0 },
             params: { width: 50, height: 6, depth: 18 },
             color: "#4d342c",
-            isStatic: true
+            mass: 150,
+            isStatic: false
         },
         // Ship Hull - Bow (Front)
         {
@@ -146,34 +136,23 @@ const ashwinsWorkplace = {
             isStatic: true
         },
 
-        // --- PALM TREES (Island Side) ---
         {
-            id: "palm_1_trunk",
+            id: "tree_trunk",
             type: "cylinder",
-            name: "Palm Tree Trunk",
-            position: { x: -25, y: 12, z: -15 },
-            rotation: { x: 0, y: 0, z: 0.1 },
-            params: { radiusTop: 1.0, radiusBottom: 1.5, height: 25, segments: 8 },
-            color: "#795548",
+            name: "Tree Trunk",
+            position: { x: -40, y: 2, z: -20 },
+            rotation: { x: 0, y: 0, z: 0 },
+            params: { radiusTop: 0.8, radiusBottom: 1.0, height: 12, segments: 12 },
+            color: "#8b5a2b",
             isStatic: true
         },
         {
-            id: "palm_1_leaves_1",
+            id: "tree_leaves",
             type: "cube",
-            name: "Palm Leaf 1",
-            position: { x: -25, y: 24, z: -15 },
-            rotation: { x: 0.4, y: 0, z: 0 },
-            params: { width: 15, height: 0.5, depth: 3 },
-            color: "#2e7d32",
-            isStatic: true
-        },
-        {
-            id: "palm_1_leaves_2",
-            type: "cube",
-            name: "Palm Leaf 2",
-            position: { x: -25, y: 24, z: -15 },
-            rotation: { x: -0.4, y: Math.PI / 2, z: 0 },
-            params: { width: 15, height: 0.5, depth: 3 },
+            name: "Tree Leaves",
+            position: { x: -40, y: 9, z: -20 },
+            rotation: { x: 0, y: 0, z: 0 },
+            params: { width: 8, height: 3, depth: 8 },
             color: "#2e7d32",
             isStatic: true
         },
@@ -199,6 +178,17 @@ const ashwinsWorkplace = {
             params: { radiusTop: 1.5, radiusBottom: 1.5, height: 4, segments: 12 },
             color: "#4e342e",
             isStatic: false
+        }
+        ,
+        {
+            id: "ship_motor_dummy",
+            type: "cylinder",
+            name: "Motor Dummy",
+            position: { x: 34, y: 2, z: 0 },
+            rotation: { x: Math.PI / 2, y: 0, z: 0 },
+            params: { radiusTop: 1.2, radiusBottom: 1.2, height: 3, segments: 12 },
+            color: "#1f2937",
+            isStatic: true
         }
     ]
 };
