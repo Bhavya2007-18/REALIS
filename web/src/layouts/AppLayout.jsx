@@ -61,7 +61,7 @@ export default function AppLayout() {
                 {/* Floating AI Panel Overlay */}
                 {isAIPanelOpen && (
                     <div className="absolute right-4 bottom-20 z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 h-[600px] max-h-[80vh] flex flex-col slide-in-panel">
-                        <AIChatBot />
+                        <AIChatBot toggleAIPanel={toggleAIPanel} />
                     </div>
                 )}
             </main>

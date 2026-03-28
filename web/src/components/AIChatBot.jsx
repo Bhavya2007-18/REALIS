@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight } from 'lucide-react'
+import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight, X } from 'lucide-react'
 import useStore from '../store/useStore'
 import commandHandler from '../services/commandHandler'
 import modelLoader from '../services/modelLoader'
 
-export default function AIChatBot() {
+export default function AIChatBot({ toggleAIPanel }) {
     const isAIPanelOpen = useStore((s) => s.isAIPanelOpen)
     const addCADObject = useStore((s) => s.addCADObject)
     const objects = useStore((s) => s.objects)
@@ -182,6 +182,9 @@ export default function AIChatBot() {
                 <div className="ml-auto flex items-center gap-1.5">
                     <span className="size-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-[9px] text-green-400">Online</span>
+                    <button onClick={toggleAIPanel} className="text-slate-500 hover:text-slate-300 transition-colors">
+                        <X size={16} />
+                    </button>
                 </div>
             </div>
 

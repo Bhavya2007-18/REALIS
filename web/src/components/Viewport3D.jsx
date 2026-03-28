@@ -187,7 +187,6 @@ const JointMarker = ({ constraint }) => {
     // Find targets to position the marker
     const allEntities = [...shapes3D, ...objects];
     const targetA = allEntities.find(e => e.id === constraint.targetA);
-    const targetB = allEntities.find(e => e.id === constraint.targetB);
 
     if (!targetA) return null;
 

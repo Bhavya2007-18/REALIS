@@ -1,6 +1,6 @@
 export class SimulationDemoManager {
     static loadDemo(demoId, store) {
-        const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings } = store;
+        const { clearDesign } = store;
         
         // 1. Clear existing scene
         clearDesign();

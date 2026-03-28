@@ -5,14 +5,12 @@ import useResizable from '../hooks/useResizable'
 import ObjectHierarchy from './ObjectHierarchy'
 import LayerPanel from './LayerPanel'
 import modelLoader from '../services/modelLoader'
-import engineModel from '../models/engineModel'
 import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
 import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import componentLibrary from '../models/componentLibrary'
 import testWorkplace from '../models/testWorkplace'
-import v6EngineModel from '../models/v6EngineModel'
-import { Box, Play, Trash2, Layers, FileCode } from 'lucide-react'
+import { Box, Trash2, Layers, FileCode } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -109,46 +107,6 @@ export default function Sidebar() {
                             )}
                         </div>
                         
-                        {/* Pre-made Simulations Section */}
-                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.prebuilt ? 'overflow-hidden' : ''}`} style={expanded.prebuilt ? { minHeight: '100px' } : {}}>
-                            <div onClick={() => toggleSection('prebuilt')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
-                                {expanded.prebuilt ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-                                <span className="text-[11px] font-bold uppercase text-emerald-500/80">Prebuilt Simulations</span>
-                            </div>
-                            {expanded.prebuilt && (
-                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                    {[v6EngineModel].map((m) => (
-                                        <div
-                                            key={m.name}
-                                            onClick={() => {
-                                                // Load the model into store
-                                                modelLoader.loadModel(m);
-                                                // Auto-switch to Simulation workspace so V6 solver activates
-                                                useStore.setState({ activeWorkspace: 'simulate' });
-                                            }}
-                                            className="group flex flex-col p-2.5 rounded-lg border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer relative overflow-hidden"
-                                        >
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-emerald-500 transition-colors flex items-center gap-2">
-                                                    <Box size={12} className="text-slate-400 group-hover:text-emerald-500" />
-                                                    {m.name}
-                                                </span>
-                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 font-medium">
-                                                    {m.complexity}
-                                                </span>
-                                            </div>
-                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
-                                                {m.description}
-                                            </p>
-                                            <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
-                                                <Play size={32} fill="currentColor" className="text-emerald-500" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
                         {/* Demo Models Section */}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.models ? 'overflow-hidden' : ''}`} style={expanded.models ? { minHeight: '180px' } : {}}>
                             <div onClick={() => toggleSection('models')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
@@ -172,6 +130,9 @@ export default function Sidebar() {
                                                     {m.complexity}
                                                 </span>
                                             </div>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                                {m.description}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>

@@ -17,6 +17,7 @@ export default function AnalyzeWorkspace() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [stats, setStats] = useState({ kinetic: 0, potential: 0, total: 0 });
     const [selectedId, setSelectedId] = useState(null);
+    const [selectedBodyInfo, setSelectedBodyInfo] = useState({ velocity: 0, mass: 0 });
 
     // Initialize Engine with current CAD objects
     useEffect(() => {
@@ -42,7 +43,7 @@ export default function AnalyzeWorkspace() {
         });
 
         clearEnergyHistory();
-    }, [objects, constraints]);
+    }, [objects, constraints, clearEnergyHistory]); // Added clearEnergyHistory to dependencies
 
     // Animation Loop
     useEffect(() => {
@@ -55,6 +56,15 @@ export default function AnalyzeWorkspace() {
                 const energy = engine.calculateEnergy();
                 setStats(energy);
                 addEnergySnapshot({ ...energy, time: Date.now() });
+
+                if (selectedId) {
+                    const body = engine.bodies.find(b => b.id === selectedId);
+                    if (body) {
+                        const velocity = Math.sqrt(body.velocity.x**2 + body.velocity.y**2);
+                        const mass = body.mass;
+                        setSelectedBodyInfo({ velocity, mass });
+                    }
+                }
             }
             render();
             raf = requestAnimationFrame(loop);
@@ -151,7 +161,7 @@ export default function AnalyzeWorkspace() {
 
         raf = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(raf);
-    }, [isPlaying, analysisSettings, selectedId]);
+    }, [isPlaying, analysisSettings, selectedId, addEnergySnapshot, setSelectedBodyInfo]); // Added addEnergySnapshot to dependencies
 
     const handleCanvasClick = (e) => {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -314,16 +324,13 @@ export default function AnalyzeWorkspace() {
                                      <div>
                                          <p className="text-[8px] text-slate-500 uppercase font-black tracking-tighter">Velocity</p>
                                          <p className="text-lg font-mono text-white leading-tight">
-                                             {Math.sqrt(
-                                                 engineRef.current.bodies.find(b => b.id === selectedId)?.velocity.x**2 + 
-                                                 engineRef.current.bodies.find(b => b.id === selectedId)?.velocity.y**2 || 0
-                                             ).toFixed(1)} <span className="text-[10px] text-slate-500">m/s</span>
+                                             {selectedBodyInfo.velocity.toFixed(1)} <span className="text-[10px] text-slate-500">m/s</span>
                                          </p>
                                      </div>
                                      <div>
                                          <p className="text-[8px] text-slate-500 uppercase font-black tracking-tighter">Mass</p>
                                          <p className="text-lg font-mono text-white leading-tight">
-                                             {engineRef.current.bodies.find(b => b.id === selectedId)?.mass || 0} <span className="text-[10px] text-slate-500">kg</span>
+                                             {selectedBodyInfo.mass} <span className="text-[10px] text-slate-500">kg</span>
                                          </p>
                                      </div>
                                  </div>
