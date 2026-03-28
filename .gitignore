@@ -65,3 +65,12 @@ htmlcov/
 # Profiling
 *.prof
 *.pstats
+
+# Node.js and Frontend
+node_modules/
+tools/node/
+tools/download_node.ps1
+web/dist/
+.env
+.parcel-cache/
+.eslintcache
