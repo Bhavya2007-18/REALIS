@@ -66,7 +66,7 @@ struct Bar1DMesh {
       mesh.node_positions[i] = i * Le;
     }
 
-    // Create n_elem elements with sequential connectivity
+    // Create n_elem elements
     mesh.elements.reserve(n_elem);
     for (int e = 0; e < n_elem; ++e) {
       mesh.elements.emplace_back(e, e + 1, E, A, Le);

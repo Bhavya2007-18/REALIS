@@ -102,7 +102,7 @@ class MassSpring1D:
         return 0.5 * self._stiffness * x * x
 
     def total_energy(self, state: State1D) -> float:
-        """E = KE + PE  (conserved invariant)."""
+        """E = KE + PE."""
         return self.kinetic_energy(state) + self.potential_energy(state)
 
     def __repr__(self) -> str:

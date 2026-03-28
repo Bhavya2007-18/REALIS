@@ -95,7 +95,7 @@ def run_and_export(
         "history": history,
     }
 
-    # --- write JSON (no compression, no filtering) ---
+    # --- write JSON ---
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     with open(output_path, "w") as fp:
         json.dump(payload, fp, indent=2)

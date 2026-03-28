@@ -165,7 +165,56 @@ export default function SimulateWorkspace() {
                 return;
             }
 
+<<<<<<< HEAD
             if (isV6Active && v6SolverRef.current) {
+=======
+<<<<<<< HEAD
+            const bodies = mechSolver.current.bodies || [];
+            const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
+            if (boatBody) {
+                boatBody.isStatic = false;
+                boatBody.mass = boatBody.mass || 150;
+            }
+            stepWater(rawDt, bodies);
+=======
+>>>>>>> 8475d06b4b1c2a07dbf694427168d2ee01410170
+            if (useStore.getState().simulationPreset === 'ashwins_workplace') {
+                const bodies = mechSolver.current.bodies || [];
+                const boatBody = bodies.find(b => b.id === 'ship_hull_bottom');
+                if (boatBody) {
+                    boatBody.isStatic = false;
+                    boatBody.mass = boatBody.mass || 150;
+                }
+                stepWater(rawDt, bodies);
+                const ctrl = useStore.getState().boatControl;
+                if (ctrl && ctrl.enabled) {
+                    const boat = bodies.find(b => b.id === 'ship_hull_bottom');
+                    if (boat) {
+                        const boost = Math.max(0, (ctrl.thrust || 0)) * 12;
+                        const m = boat.mass || 1;
+                        boat.externalForce = {
+                            x: (boat.externalForce?.x || 0) + boost,
+                            y: boat.externalForce?.y || 0,
+                            z: boat.externalForce?.z || 0
+                        };
+                        const w = boat.params?.width || 50;
+                        boat.externalTorque = { z: -boost * (w / 2) * 0.2 };
+                    }
+                }
+            }
+
+            if (isMechanicalAssemblyActive) {
+                const { states, time: simTime } = mechanicalSolverRef.current.tick(rawDt);
+                if (states && states.size > 0) {
+                    setShapes3D(prev => mechanicalSolverRef.current.applyToShapes(prev, states));
+                }
+                setSimulationState({
+                    time: simTime || 0,
+                    energy: { kinetic: 0, potential: 0, total: 0 }
+                });
+            // ── V6 Engine specialised loop ───────────────────────────────────
+            } else if (isV6Active && v6SolverRef.current) {
+>>>>>>> a5aa07513f12610dd70e80f5503aa18c3342e993
                 const snap = v6SolverRef.current.tick(rawDt);
                 setV6EngineState(snap);
                 setShapes3D(prev => {
