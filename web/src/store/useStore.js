@@ -7,6 +7,10 @@ const useStore = create((set) => ({
     activeTool: 'select', // 'select', 'move', 'rotate', 'rect', 'ruler', 'pencil'
     setActiveTool: (tool) => set({ activeTool: tool }),
 
+    // Global view mode (persist across workspaces)
+    is3DView: true,
+    setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
+
     // Sidebar/Activity Bar state
     sidebarView: 'explorer', // 'explorer', 'search', 'git', 'debug'
     setSidebarView: (view) => set({ sidebarView: view }),
@@ -49,6 +53,10 @@ const useStore = create((set) => ({
     // Demo Overlay State
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
+
+    // Grid State
+    showGrid: true,
+    toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
     // History State
     history: [],
@@ -403,6 +411,7 @@ const useStore = create((set) => ({
         subSteps: 1,
         airResistance: 0.01,
         frictionCoeff: 0.3,
+        groundY: 0,
         ambientTemp: 20
     },
     setSimulationSettings: (settings) => set((state) => ({

@@ -9,6 +9,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+<<<<<<< HEAD
+    port: 3000,
+    strictPort: true,
+=======
     proxy: {
       // Forward all /api/* calls to the FastAPI backend
       '/api': {
@@ -17,5 +21,6 @@ export default defineConfig({
         secure: false,
       },
     },
+>>>>>>> 1977c09f4e93d71c2626cee0c04a40a0782789fe
   },
 })

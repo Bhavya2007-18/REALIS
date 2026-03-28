@@ -7,6 +7,7 @@ const TABS = [
     { id: 'design', label: 'Design', icon: Edit3 },
     { id: 'simulate', label: 'Simulation', icon: Boxes },
     { id: 'analyze', label: 'Analyze', icon: Activity },
+    { id: 'test', label: 'Test Workplace', icon: Layers },
     { id: 'verify', label: 'Verification', icon: ShieldCheck },
     { id: 'limit', label: 'Limitation', icon: AlertTriangle },
     { id: 'material', label: 'Material Related', icon: Layers },
@@ -26,7 +27,15 @@ export default function BottomBar() {
                     return (
                         <button
                             key={id}
-                            onClick={() => setActiveWorkspace(id)}
+                            onClick={() => {
+                                if (id === 'simulate') {
+                                    const st = useStore.getState();
+                                    st.resetPlayback();
+                                    st.setSimulationFrames([]);
+                                    st.setSimulationState({ time: 0 });
+                                }
+                                setActiveWorkspace(id);
+                            }}
                             className={`flex items-center gap-2 px-6 h-full border-b-2 text-sm font-medium transition-all cursor-pointer
                 ${isActive
                                     ? 'border-primary bg-primary/10 text-primary font-bold tracking-tight'
