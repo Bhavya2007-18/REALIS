@@ -5,6 +5,8 @@ import AIChatBot from '../components/AIChatBot'
 import BottomBar from '../components/BottomBar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
 import PropertiesPanel from '../components/PropertiesPanel'
+import SketchImportPanel from '../components/SketchImportPanel'
+import SketchPreviewOverlay from '../components/SketchPreviewOverlay'
 import useStore from '../store/useStore'
 import modelLoader from '../services/modelLoader'
 import ashwinsWorkplace from '../models/ashwinsWorkplace'
@@ -49,8 +51,12 @@ export default function AppLayout() {
                 <Sidebar />
                 <div className="flex-1 relative bg-[#0a0f1a]">
                     <WorkspaceRenderer />
+                    <SketchPreviewOverlay />
                 </div>
                 {isRightPanelOpen && rightPanelView === 'properties' && <PropertiesPanel />}
+                
+                {/* Floating Modal for Sketch Import */}
+                <SketchImportPanel />
                 
                 {/* Floating AI Panel Overlay */}
                 {isAIPanelOpen && (

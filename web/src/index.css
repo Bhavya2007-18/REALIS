@@ -118,4 +118,56 @@
   .heatmap-cold { background: linear-gradient(135deg, #3b82f6, #0ea5e9); color: white; }
   .heatmap-warm { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; }
   .heatmap-hot { background: linear-gradient(135deg, #ef4444, #9f1239); color: white; }
+
+  /* Sketch Import Panel — slide up from bottom */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+  .slide-up {
+    animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Sketch Import Panel — fade in from center */
+  @keyframes fadeInScale {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  .sketch-panel-enter {
+    animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Scanning bar for the processing state */
+  @keyframes scanBar {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(400%); }
+  }
+  .scan-bar {
+    animation: scanBar 1.4s ease-in-out infinite;
+  }
+
+  /* Pulsing indigo glow for AI nodes */
+  @keyframes nodeGlow {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(99,102,241,0.4)); }
+    50%       { filter: drop-shadow(0 0 12px rgba(99,102,241,0.9)); }
+  }
+  .node-glow {
+    animation: nodeGlow 2s ease-in-out infinite;
+  }
+
+  /* Dashed edge march */
+  @keyframes dashMarch {
+    to { stroke-dashoffset: -20; }
+  }
+  .edge-march {
+    animation: dashMarch 0.8s linear infinite;
+  }
+
+  /* Confidence bar fill */
+  @keyframes fillBar {
+    from { width: 0%; }
+  }
+  .confidence-fill {
+    animation: fillBar 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }

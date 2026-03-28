@@ -1,4 +1,4 @@
-import { Search, Bell, Settings, User, Box, SlidersHorizontal, Sparkles, FileJson, FolderOpen, Save, FilePlus, ChevronDown, Undo2, Redo2, Trash2 } from 'lucide-react'
+import { Search, Bell, Settings, User, Box, SlidersHorizontal, Sparkles, FileJson, FolderOpen, Save, FilePlus, ChevronDown, Undo2, Redo2, Trash2, PenTool } from 'lucide-react'
 import useStore from '../store/useStore'
 import { useRef, useState } from 'react'
 export default function Navbar() {
@@ -8,6 +8,8 @@ export default function Navbar() {
     const setRightPanelView = useStore(s => s.setRightPanelView)
     const isAIPanelOpen = useStore(s => s.isAIPanelOpen)
     const toggleAIPanel = useStore(s => s.toggleAIPanel)
+    const toggleSketchImport = useStore(s => s.toggleSketchImport)
+    const isSketchImportOpen = useStore(s => s.isSketchImportOpen)
     const isPlaying = useStore(s => s.isPlaying)
 
     // Store state for serialization
@@ -179,6 +181,13 @@ export default function Navbar() {
                         title="Properties Inspector"
                     >
                         <SlidersHorizontal size={18} />
+                    </button>
+                    <button
+                        onClick={() => toggleSketchImport()}
+                        className={`p-1.5 rounded-md transition-all ${isSketchImportOpen ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-105' : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-700/50'}`}
+                        title="AI Sketch Import"
+                    >
+                        <PenTool size={18} />
                     </button>
                     <button
                         onClick={() => toggleAIPanel()}

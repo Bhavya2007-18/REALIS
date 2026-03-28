@@ -77,7 +77,7 @@ export default function AIChatBot() {
         }
 
         try {
-            const req = await fetch('http://localhost:8000/api/chat', {
+            const req = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: [...messages, userMsg] })
