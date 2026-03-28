@@ -9,6 +9,14 @@ const ashwinsWorkplace = {
     description: "Classic Roblox-style Pirate Island with an enhanced ship, sails, and palm trees.",
     category: "Environment",
     complexity: "High",
+    physics_config: {
+        gravity: { x: 0, y: -9.81, z: 0 },
+        timeStep: 0.016,
+        solverIterations: 10,
+        subSteps: 1,
+        airResistance: 0.01,
+        frictionCoeff: 0.3
+    },
     shapes3D: [
 
         // --- SMALL ROCK WITH TREE ---

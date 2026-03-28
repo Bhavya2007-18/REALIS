@@ -68,6 +68,15 @@ const modelLoader = {
                         }
                     });
                 }
+                if (model.id === 'test_workplace') {
+                    shapes.forEach(s => {
+                        if (s.id === 'lab_floor') return;
+                        s.isStatic = false;
+                        s.mass = s.mass ?? 1.0;
+                        s.restitution = s.restitution ?? 0.4;
+                        s.friction = s.friction ?? 0.3;
+                    });
+                }
 
                 store.setShapes3D(shapes);
                 useStore.setState({ is3DView: true });

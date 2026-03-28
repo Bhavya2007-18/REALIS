@@ -9,6 +9,14 @@ const testWorkplace = {
   description: 'Modular physics lab preset with mixed objects for quick tests.',
   category: 'Sandbox',
   complexity: 'Medium',
+  physics_config: {
+    gravity: { x: 0, y: -9.81, z: 0 },
+    timeStep: 0.016,
+    solverIterations: 10,
+    subSteps: 1,
+    airResistance: 0.01,
+    frictionCoeff: 0.3
+  },
   shapes3D: [
     // Ground / Lab Floor
     {
