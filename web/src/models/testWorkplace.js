@@ -1,4 +1,7 @@
-
+/**
+ * Test Workplace (Physics Sandbox Preset)
+ * A modular lab-like scene with multiple objects to start experimenting immediately.
+ */
 
 const testWorkplace = {
   id: 'test_workplace',
@@ -15,7 +18,7 @@ const testWorkplace = {
     frictionCoeff: 0.3
   },
   shapes3D: [
-    
+    // Ground / Lab Floor
     {
       id: 'lab_floor',
       type: 'plane',
@@ -30,7 +33,7 @@ const testWorkplace = {
       isStatic: true
     },
 
-    
+    // Particle Lab cluster
     {
       id: 'particle_sphere_small_1',
       type: 'sphere',
@@ -71,7 +74,7 @@ const testWorkplace = {
       isStatic: false
     },
 
-    
+    // Mechanics Arena cluster
     {
       id: 'mech_ball_heavy',
       type: 'sphere',
@@ -112,7 +115,7 @@ const testWorkplace = {
       isStatic: false
     },
 
-    
+    // Motion Lab anchors (light drones)
     {
       id: 'motion_drone_1',
       type: 'sphere',
