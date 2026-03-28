@@ -4,6 +4,17 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 import subprocess
 import os
+import sys
+
+# Support two invocation styles:
+#   1. uvicorn tools.server:app        (run from project root, 'tools' is a package)
+#   2. python server.py / uvicorn server:app  (run from inside tools/)
+try:
+    from tools.sketch_ai.api import router as sketch_router
+except ImportError:
+    # Running from inside tools/ — add parent to sys.path
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from tools.sketch_ai.api import router as sketch_router
 
 app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
 
@@ -15,6 +26,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(sketch_router)
 
 # --- Data Contracts (JSON Schema) ---
 # ... (rest of models)

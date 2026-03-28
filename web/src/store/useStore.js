@@ -456,7 +456,14 @@ const useStore = create((set) => ({
         const memory = [...state.aiMemory, action];
         if (memory.length > 10) memory.shift();
         return { aiMemory: memory };
-    })
+    }),
+
+    // --- Sketch Import State ────────────────────────────────────────────────
+    isSketchImportOpen: false,
+    toggleSketchImport: () => set(state => ({ isSketchImportOpen: !state.isSketchImportOpen })),
+    setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
+    sketchDraft: null, // Holds the interpreted draft
+    setSketchDraft: (draft) => set({ sketchDraft: draft })
 }))
 
 export default useStore
