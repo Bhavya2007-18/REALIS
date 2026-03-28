@@ -13,48 +13,61 @@ const modelLoader = {
             // 0. Validate via new Schema
             const model = validateModelSchema(modelConfig);
 
-<<<<<<< HEAD
             // 1. Clear current scene
             store.clearDesign();
 
-            // 2. Add all 2D objects
-            store.setObjects(model.objects || []);
-
-            // 2b. Add native 3D shapes (V6 engine and similar prebuilts use this)
-            if (model.shapes3D && model.shapes3D.length > 0) {
-                store.setShapes3D(model.shapes3D);
-                // Switch to 3D mode automatically
-                const { setActive3DTool } = store;
-                useStore.setState({ is3DMode: true });
+            // 2. Add all 2D objects with sane defaults
+            if (model.objects) {
+                store.setObjects(model.objects.map(obj => ({
+                    ...obj,
+                    stroke: obj.stroke || '#3b82f6',
+                    fill: obj.fill || 'rgba(59, 130, 246, 0.2)',
+                    strokeWidth: obj.strokeWidth || 2,
+                    rotation: obj.rotation || 0
+                })));
             }
 
-            // 3. Apply constraints if present
+            // 3. Add native 3D shapes
+            if (model.shapes3D && model.shapes3D.length > 0) {
+                store.setShapes3D(model.shapes3D.map(shape => ({
+                    ...shape,
+                    id: shape.id || `shape3d_${Math.random().toString(36).substring(2, 9)}`,
+                    color: shape.color || '#3b82f6',
+                    mass: shape.mass || 1.0,
+                    restitution: shape.restitution || 0.5,
+                    friction: shape.friction || 0.3,
+                    isStatic: shape.isStatic || false
+                })));
+                useStore.setState({ is3DView: true });
+            }
+
+            // 4. Apply constraints if present
             store.setConstraints(model.constraints || []);
 
-            // 4. Set simulation settings based on schema physics_config
-            store.setSimulationSettings({
-                gravity: model.physics_config.gravity,
-                timeStep: model.physics_config.timeStep,
-                solverIterations: model.physics_config.solverIterations,
-                subSteps: model.physics_config.subSteps,
-                airResistance: model.physics_config.airResistance,
-                frictionCoeff: model.physics_config.frictionCoeff
-            });
+            // 5. Set simulation settings based on schema physics_config
+            if (model.physics_config) {
+                store.setSimulationSettings({
+                    gravity: model.physics_config.gravity,
+                    timeStep: model.physics_config.timeStep,
+                    solverIterations: model.physics_config.solverIterations,
+                    subSteps: model.physics_config.subSteps,
+                    airResistance: model.physics_config.airResistance,
+                    frictionCoeff: model.physics_config.frictionCoeff
+                });
+            }
 
-            // 5. Check and set any active model controls from schema
+            // 6. Set active model controls if present
             const controls = model.controls?.parameters || [];
             if (store.setActiveModelControls) {
                 store.setActiveModelControls(controls);
             }
 
-            // 6. Store current active preset ID
+            // 7. Store current active preset ID
             useStore.setState({ simulationPreset: model.id });
 
-            // 7. Reset playback state
+            // 8. Reset playback state
             store.resetPlayback();
 
-            console.log(`Model successfully loaded: ${model.name}`);
-            
             return {
                 success: true,
                 name: model.name,
@@ -66,38 +79,6 @@ const modelLoader = {
                 success: false,
                 error: error.message
             };
-=======
-        // 2. Add all objects
-        // We use setObjects directly to avoid multiple history snapshots during initialization
-        if (model.objects) {
-            store.setObjects(model.objects.map(obj => ({
-                ...obj,
-                // Ensure unique IDs if they aren't already (though models should have stable IDs)
-                // id: obj.id || Math.random().toString(36).substring(2, 9),
-                stroke: obj.stroke || '#3b82f6',
-                fill: obj.fill || 'rgba(59, 130, 246, 0.2)',
-                strokeWidth: obj.strokeWidth || 2,
-                rotation: obj.rotation || 0
-            })));
-        }
-
-        // 3. Add 3D shapes
-        if (model.shapes3D) {
-            store.setShapes3D(model.shapes3D.map(shape => ({
-                ...shape,
-                id: shape.id || `shape3d_${Math.random().toString(36).substring(2, 9)}`,
-                color: shape.color || '#3b82f6',
-                mass: shape.mass || 1.0,
-                restitution: shape.restitution || 0.5,
-                friction: shape.friction || 0.3,
-                isStatic: shape.isStatic || false
-            })));
-        }
-
-        // 4. Apply constraints if present
-        if (model.constraints) {
-            store.setConstraints(model.constraints);
->>>>>>> 8040287e5262865e33c0b0226f898c2bd474b564
         }
     }
 };

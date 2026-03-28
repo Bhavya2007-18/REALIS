@@ -144,20 +144,6 @@ const Shape3DNode = React.memo(({ shape }) => {
                 }
             }}
         >
-<<<<<<< HEAD
-            <mesh castShadow receiveShadow geometry={geometry}>
-                <meshStandardMaterial
-                    color={shape.color || '#3b82f6'}
-                    roughness={shape.roughness !== undefined ? shape.roughness : 0.5}
-                    metalness={shape.metalness !== undefined ? shape.metalness : 0.1}
-                    transparent
-                    opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
-                    emissive={shape.emissiveColor || shape.color || '#000000'}
-                    emissiveIntensity={shape.emissiveIntensity !== undefined ? shape.emissiveIntensity : 0}
-                />
-            </mesh>
-            {isSelected && (
-=======
             {shape.type === 'obj' ? (
                 <OBJModel objPath={shape.params?.objPath} mtlPath={shape.params?.mtlPath} />
             ) : (
@@ -172,7 +158,6 @@ const Shape3DNode = React.memo(({ shape }) => {
                 </mesh>
             )}
             {isSelected && geometry && (
->>>>>>> 8040287e5262865e33c0b0226f898c2bd474b564
                 <lineSegments>
                     <edgesGeometry attach="geometry" args={[geometry]} />
                     <lineBasicMaterial attach="material" color="white" />
