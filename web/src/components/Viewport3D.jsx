@@ -578,13 +578,6 @@ export default function Viewport3D({ objects }) {
 
                 <Environment preset="city" />
                 {useStore.getState().water?.enabled && <WaterSurface />}
-<<<<<<< HEAD
-=======
-=======
-                {useStore.getState().simulationPreset === 'ashwins_workplace' && useStore.getState().water?.enabled && <WaterSurface />}
->>>>>>> 8475d06b4b1c2a07dbf694427168d2ee01410170
-                <CinematicCameraRig />
->>>>>>> a5aa07513f12610dd70e80f5503aa18c3342e993
 
                 {/* Engineering Grid */}
                 {showGrid && (
