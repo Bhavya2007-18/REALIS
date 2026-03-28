@@ -7,8 +7,9 @@ import modelLoader from '../services/modelLoader'
 import engineModel from '../models/engineModel'
 import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
+import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import componentLibrary from '../models/componentLibrary'
-import { Box, Play, Trash2, Layers } from 'lucide-react'
+import { Box, Play, Trash2, Layers, FileCode } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -37,14 +38,21 @@ export default function Sidebar() {
                 {/* Explorer Sections */}
                 {sidebarView === 'explorer' && (
                     <>
-                        {/* Open Editors Section (Placeholder) */}
+                        {/* Open Editors Section */}
                         <div className="border-b border-slate-200 dark:border-slate-800">
                             <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group">
                                 <ChevronDown size={14} className="text-slate-400" />
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Open Editors</span>
                             </div>
-                            <div className="px-4 py-2 text-[11px] text-slate-600 dark:text-slate-400 italic">
-                                No files open
+                            <div className="px-2 py-1 space-y-0.5">
+                                <div
+                                    onClick={() => modelLoader.loadModel(ashwinsWorkplace)}
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] text-primary bg-primary/10 cursor-pointer hover:bg-primary/20 transition-colors border border-primary/20"
+                                >
+                                    <FileCode size={14} className="text-primary" />
+                                    <span className="font-medium">ashwins workplace</span>
+                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title="Active File"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -77,7 +85,7 @@ export default function Sidebar() {
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Demo Models</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {[engineModel, pendulumModel, projectileModel].map((m) => (
+                                {[ashwinsWorkplace, engineModel, pendulumModel, projectileModel].map((m) => (
                                     <div
                                         key={m.name}
                                         onClick={() => modelLoader.loadModel(m)}

@@ -50,6 +50,10 @@ const useStore = create((set) => ({
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
 
+    // Grid State
+    showGrid: true,
+    toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+
     // History State
     history: [],
     historyIndex: -1,

@@ -6,6 +6,8 @@ import BottomBar from '../components/BottomBar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
 import PropertiesPanel from '../components/PropertiesPanel'
 import useStore from '../store/useStore'
+import modelLoader from '../services/modelLoader'
+import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import { useEffect } from 'react'
 
 export default function AppLayout() {
@@ -15,6 +17,11 @@ export default function AppLayout() {
     const toggleAIPanel = useStore((s) => s.toggleAIPanel)
     const undo = useStore((s) => s.undo)
     const redo = useStore((s) => s.redo)
+
+    // Load default model on mount
+    useEffect(() => {
+        modelLoader.loadModel(ashwinsWorkplace);
+    }, []);
 
     // Global keyboard shortcuts
     useEffect(() => {
