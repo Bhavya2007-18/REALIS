@@ -1,4 +1,5 @@
-import { ChevronDown, MoreHorizontal, Maximize2 } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ChevronRight, MoreHorizontal, Maximize2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import useResizable from '../hooks/useResizable'
 import ObjectHierarchy from './ObjectHierarchy'
@@ -8,6 +9,7 @@ import engineModel from '../models/engineModel'
 import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
 import componentLibrary from '../models/componentLibrary'
+import v6EngineModel from '../models/v6EngineModel'
 import { Box, Play, Trash2, Layers } from 'lucide-react'
 
 export default function Sidebar() {
@@ -15,6 +17,19 @@ export default function Sidebar() {
     const sidebarView = useStore((s) => s.sidebarView)
     const addShape3D = useStore((s) => s.addShape3D)
     const { size, onMouseDown } = useResizable({ initial: 260, min: 170, max: 600, direction: 'right' })
+
+    const [expanded, setExpanded] = useState({
+        editors: false,
+        hierarchy: true,
+        layers: true,
+        models: true,
+        prebuilt: true,
+        library: true
+    })
+
+    const toggleSection = (section) => {
+        setExpanded(prev => ({ ...prev, [section]: !prev[section] }))
+    }
 
     if (!isSidebarOpen) return null
 
@@ -39,106 +54,154 @@ export default function Sidebar() {
                     <>
                         {/* Open Editors Section (Placeholder) */}
                         <div className="border-b border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group">
-                                <ChevronDown size={14} className="text-slate-400" />
+                            <div onClick={() => toggleSection('editors')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
+                                {expanded.editors ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Open Editors</span>
                             </div>
-                            <div className="px-4 py-2 text-[11px] text-slate-600 dark:text-slate-400 italic">
-                                No files open
-                            </div>
+                            {expanded.editors && (
+                                <div className="px-4 py-2 text-[11px] text-slate-600 dark:text-slate-400 italic">
+                                    No files open
+                                </div>
+                            )}
                         </div>
 
                         {/* Project Folder Section */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group">
-                                <ChevronDown size={14} className="text-slate-400" />
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.hierarchy ? 'flex-1 overflow-hidden' : ''}`}>
+                            <div onClick={() => toggleSection('hierarchy')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
+                                {expanded.hierarchy ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Object Hierarchy</span>
                             </div>
-                            <div className="flex-1 overflow-hidden">
-                                <ObjectHierarchy />
-                            </div>
+                            {expanded.hierarchy && (
+                                <div className="flex-1 overflow-hidden">
+                                    <ObjectHierarchy />
+                                </div>
+                            )}
                         </div>
 
                         {/* Layers Section */}
-                        <div className="flex flex-col overflow-hidden border-t border-slate-800" style={{ minHeight: '140px', maxHeight: '200px' }}>
-                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30">
-                                <ChevronDown size={14} className="text-slate-400" />
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.layers ? 'overflow-hidden' : ''}`} style={expanded.layers ? { minHeight: '140px', maxHeight: '200px' } : {}}>
+                            <div onClick={() => toggleSection('layers')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
+                                {expanded.layers ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Layers</span>
                             </div>
-                            <div className="flex-1 overflow-hidden">
-                                <LayerPanel />
+                            {expanded.layers && (
+                                <div className="flex-1 overflow-hidden">
+                                    <LayerPanel />
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Pre-made Simulations Section */}
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.prebuilt ? 'overflow-hidden' : ''}`} style={expanded.prebuilt ? { minHeight: '100px' } : {}}>
+                            <div onClick={() => toggleSection('prebuilt')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
+                                {expanded.prebuilt ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                                <span className="text-[11px] font-bold uppercase text-emerald-500/80">Prebuilt Simulations</span>
                             </div>
+                            {expanded.prebuilt && (
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {[v6EngineModel].map((m) => (
+                                        <div
+                                            key={m.name}
+                                            onClick={() => {
+                                                // Load the model into store
+                                                modelLoader.loadModel(m);
+                                                // Auto-switch to Simulation workspace so V6 solver activates
+                                                useStore.setState({ activeWorkspace: 'simulate' });
+                                            }}
+                                            className="group flex flex-col p-2.5 rounded-lg border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer relative overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-emerald-500 transition-colors flex items-center gap-2">
+                                                    <Box size={12} className="text-slate-400 group-hover:text-emerald-500" />
+                                                    {m.name}
+                                                </span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 font-medium">
+                                                    {m.complexity}
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                                {m.description}
+                                            </p>
+                                            <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
+                                                <Play size={32} fill="currentColor" className="text-emerald-500" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Models Section */}
-                        <div className="flex flex-col overflow-hidden border-t border-slate-200 dark:border-slate-800" style={{ minHeight: '180px' }}>
-                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800/50">
-                                <ChevronDown size={14} className="text-slate-400" />
+                        {/* Demo Models Section */}
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.models ? 'overflow-hidden' : ''}`} style={expanded.models ? { minHeight: '180px' } : {}}>
+                            <div onClick={() => toggleSection('models')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
+                                {expanded.models ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Demo Models</span>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {[engineModel, pendulumModel, projectileModel].map((m) => (
-                                    <div
-                                        key={m.name}
-                                        onClick={() => modelLoader.loadModel(m)}
-                                        className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
-                                    >
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-2">
-                                                <Box size={12} className="text-slate-400 group-hover:text-primary" />
-                                                {m.name}
-                                            </span>
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">
-                                                {m.complexity}
-                                            </span>
+                            {expanded.models && (
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {[engineModel, pendulumModel, projectileModel].map((m) => (
+                                        <div
+                                            key={m.name}
+                                            onClick={() => modelLoader.loadModel(m)}
+                                            className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-2">
+                                                    <Box size={12} className="text-slate-400 group-hover:text-primary" />
+                                                    {m.name}
+                                                </span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium">
+                                                    {m.complexity}
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                                {m.description}
+                                            </p>
+                                            <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
+                                                <Play size={32} fill="currentColor" className="text-primary" />
+                                            </div>
                                         </div>
-                                        <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
-                                            {m.description}
-                                        </p>
-                                        
-                                        {/* Hover decoration */}
-                                        <div className="absolute right-[-4px] bottom-[-4px] opacity-0 group-hover:opacity-10 transition-opacity">
-                                            <Play size={32} fill="currentColor" className="text-primary" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Component Library Section */}
-                        <div className="flex flex-col overflow-hidden border-t border-slate-200 dark:border-slate-800" style={{ minHeight: '180px' }}>
-                            <div className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800/50">
-                                <ChevronDown size={14} className="text-slate-400" />
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.library ? 'overflow-hidden' : ''}`} style={expanded.library ? { minHeight: '180px' } : {}}>
+                            <div onClick={() => toggleSection('library')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
+                                {expanded.library ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Component Library</span>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {componentLibrary.map((comp) => (
-                                    <div
-                                        key={comp.id}
-                                        onClick={() => {
-                                            useStore.setState({ is3DMode: true });
-                                            addShape3D({
-                                                ...comp,
-                                                id: `comp_${Math.random().toString(36).substring(2,7)}`
-                                            });
-                                        }}
-                                        className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
-                                    >
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-2">
-                                                <Layers size={12} className="text-slate-400 group-hover:text-primary" />
-                                                {comp.name}
-                                            </span>
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium capitalize">
-                                                {comp.material.replace('_', ' ')}
-                                            </span>
+                            {expanded.library && (
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {componentLibrary.map((comp) => (
+                                        <div
+                                            key={comp.id}
+                                            onClick={() => {
+                                                useStore.setState({ is3DMode: true });
+                                                addShape3D({
+                                                    ...comp,
+                                                    id: `comp_${Math.random().toString(36).substring(2,7)}`
+                                                });
+                                            }}
+                                            className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-2">
+                                                    <Layers size={12} className="text-slate-400 group-hover:text-primary" />
+                                                    {comp.name}
+                                                </span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium capitalize">
+                                                    {comp.material.replace('_', ' ')}
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                                {comp.description}
+                                            </p>
                                         </div>
-                                        <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
-                                            {comp.description}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </>
                 )}

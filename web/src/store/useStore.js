@@ -409,6 +409,29 @@ const useStore = create((set) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
 
+    // --- Active Model Controls ---
+    activeModelControls: [],
+    setActiveModelControls: (controls) => set({ activeModelControls: controls }),
+    updateModelControl: (controlId, value) => set((state) => {
+        // Update the control value
+        const newControls = state.activeModelControls.map(c => 
+            c.id === controlId ? { ...c, current: value } : c
+        );
+        
+        // Also map this to the actual object/constraint inside the engine
+        const { objects, constraints } = state;
+        const [targetId, property] = controlId.split('.');
+
+        const newObjects = objects.map(o => o.id === targetId ? { ...o, [property]: value } : o);
+        const newConstraints = constraints.map(c => c.id === targetId ? { ...c, [property]: value } : c);
+
+        return { 
+            activeModelControls: newControls,
+            objects: newObjects,
+            constraints: newConstraints
+        };
+    }),
+
     // --- Simulation State ───────────────────────────────────────────────────
     simulationState: {
         time: 0,
@@ -435,6 +458,9 @@ const useStore = create((set) => ({
     analysisSettings: {
         showVectors: false,
         showHeatmap: false,
+        showJoints: false,
+        showAnchors: false,
+        isExplodedView: false,
         vectorScale: 2.0,
         colorTheme: 'thermal'
     },

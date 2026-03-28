@@ -96,7 +96,7 @@ const Shape3DNode = React.memo(({ shape }) => {
         }));
     };
 
-    const node = (
+    const meshNode = (
         <group
             ref={groupRef}
             position={currentPos}
@@ -122,6 +122,8 @@ const Shape3DNode = React.memo(({ shape }) => {
                     metalness={shape.metalness !== undefined ? shape.metalness : 0.1}
                     transparent
                     opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
+                    emissive={shape.emissiveColor || shape.color || '#000000'}
+                    emissiveIntensity={shape.emissiveIntensity !== undefined ? shape.emissiveIntensity : 0}
                 />
             </mesh>
             {isSelected && (
@@ -133,19 +135,18 @@ const Shape3DNode = React.memo(({ shape }) => {
         </group>
     );
 
-    if (isTransforming) {
-        return (
-            <TransformControls
-                mode={active3DTool}
-                onMouseUp={onTransformEnd}
-                onObjectChange={() => { }}
-            >
-                {node}
-            </TransformControls>
-        );
-    }
-
-    return node;
+    return (
+        <>
+            {meshNode}
+            {isTransforming && !isPlaying && (
+                <TransformControls
+                    object={groupRef}
+                    mode={active3DTool}
+                    onMouseUp={onTransformEnd}
+                />
+            )}
+        </>
+    );
 });
 
 const JointMarker = ({ constraint }) => {
@@ -283,6 +284,37 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const selectedIds = useStore(state => state.selectedIds);
     const setSelectedIds = useStore(state => state.setSelectedIds);
     const isSelected = selectedIds.includes(obj.id);
+    const isTransforming = isSelected && ['translate', 'rotate', 'scale'].includes(active3DTool);
+
+    const groupRef = useRef();
+
+    const onTransformEnd = () => {
+        if (!groupRef.current) return;
+        const o = groupRef.current;
+        setObjects(objs => objs.map(item => {
+            if (item.id === obj.id) {
+                // In 2D map, x,y match x,z in 3D.
+                let update = { ...item };
+                
+                // Map the new 3D positions back to the 2D schema structure (since REALIS models use cx/cy or x/y)
+                if (item.cx !== undefined) {
+                    update.cx = o.position.x;
+                    update.cy = o.position.z;
+                } else if (item.x !== undefined) {
+                    update.x = o.position.x - (item.width || 0) / 2;
+                    update.y = o.position.z - (item.height || 0) / 2;
+                }
+
+                if (active3DTool === 'rotate') {
+                    // Approximate rotation back to 2D
+                    update.rotation = -(o.rotation.y * 180 / Math.PI);
+                }
+                
+                return update;
+            }
+            return item;
+        }));
+    };
 
     const [isDragging, setIsDragging] = useState(false);
     const [startY, setStartY] = useState(0);
@@ -365,29 +397,51 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
 
     if (!geometryProps) return null;
 
+    const meshNode = (
+        <group ref={groupRef} position={currentPos} rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)}>
+            <mesh 
+                castShadow
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerOut={handlePointerUp}
+            >
+                {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
+                {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
+                {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
+                <meshStandardMaterial 
+                    color={obj.fill || obj.stroke || '#3b82f6'} 
+                    transparent 
+                    opacity={isSelected ? 0.9 : 0.8} 
+                    side={THREE.DoubleSide} 
+                    emissive={isSelected || (active3DTool === 'extrude' && isDragging) ? obj.stroke || '#3b82f6' : '#000000'}
+                    emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
+                />
+            </mesh>
+            {isSelected && (
+                <lineSegments>
+                    <edgesGeometry attach="geometry" args={[
+                        geometryProps.type === 'box' ? new THREE.BoxGeometry(...geometryProps.args) :
+                        geometryProps.type === 'cylinder' ? new THREE.CylinderGeometry(...geometryProps.args) :
+                        new THREE.ExtrudeGeometry(...geometryProps.args)
+                    ]} />
+                    <lineBasicMaterial attach="material" color="white" />
+                </lineSegments>
+            )}
+        </group>
+    );
+
     return (
-        <mesh 
-            key={`ext-${obj.id}`} 
-            position={currentPos} 
-            rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)} 
-            castShadow
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerOut={handlePointerUp}
-        >
-            {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
-            {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
-            {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
-            <meshStandardMaterial 
-                color={obj.stroke || '#3b82f6'} 
-                transparent 
-                opacity={isSelected ? 0.9 : 0.6} 
-                side={THREE.DoubleSide} 
-                emissive={isSelected || (active3DTool === 'extrude' && isDragging) ? obj.stroke || '#3b82f6' : '#000000'}
-                emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
-            />
-        </mesh>
+        <>
+            {meshNode}
+            {isTransforming && !isPlaying && (
+                <TransformControls
+                    object={groupRef}
+                    mode={active3DTool}
+                    onMouseUp={onTransformEnd}
+                />
+            )}
+        </>
     );
 });
 

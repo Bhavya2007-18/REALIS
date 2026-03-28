@@ -95,9 +95,17 @@ export default function PropertiesPanel() {
         if (selectedObject.is3D) {
             setShapes3D(prev => prev.map(o => {
                 if (o.id === selectedObject.id) {
-                    if (subfield) {
-                        const val = value === '' ? 0 : parseFloat(value);
-                        return { ...o, [field]: { ...o[field], [subfield]: isNaN(val) ? 0 : val } }
+                    if (subfield !== null) {
+                        const val = value === '' ? '' : parseFloat(value);
+                        const safeVal = isNaN(val) && value !== '' ? 0 : val;
+                        const idx = subfield === 'x' ? 0 : subfield === 'y' ? 1 : 2;
+
+                        if (Array.isArray(o[field])) {
+                            const newArr = [...o[field]];
+                            newArr[idx] = safeVal;
+                            return { ...o, [field]: newArr }
+                        }
+                        return { ...o, [field]: { ...o[field], [subfield]: safeVal } }
                     }
                     if (field === 'params') {
                         const newParams = { ...o.params };
@@ -308,7 +316,7 @@ export default function PropertiesPanel() {
                                         <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
                                         <input
                                             type="number"
-                                            value={selectedObject.position[axis]}
+                                            value={Array.isArray(selectedObject.position) ? selectedObject.position[['x','y','z'].indexOf(axis)] : (selectedObject.position?.[axis] ?? 0)}
                                             onChange={e => handleChange('position', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -326,7 +334,7 @@ export default function PropertiesPanel() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={selectedObject.rotation[axis]}
+                                            value={Array.isArray(selectedObject.rotation) ? selectedObject.rotation[['x','y','z'].indexOf(axis)] : (selectedObject.rotation?.[axis] ?? 0)}
                                             onChange={e => handleChange('rotation', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -344,7 +352,7 @@ export default function PropertiesPanel() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={selectedObject.scale[axis]}
+                                            value={Array.isArray(selectedObject.scale) ? selectedObject.scale[['x','y','z'].indexOf(axis)] : (selectedObject.scale?.[axis] ?? 1)}
                                             onChange={e => handleChange('scale', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />

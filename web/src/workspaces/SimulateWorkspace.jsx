@@ -4,7 +4,10 @@ import useStore from '../store/useStore';
 import Viewport3D from '../components/Viewport3D';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
+import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
+import V6ControlPanel from '../components/V6ControlPanel';
 import modelLoader from '../services/modelLoader';
+import ModelControls from '../components/ModelControls';
 
 export default function SimulateWorkspace() {
     // Top-level store values
@@ -35,6 +38,35 @@ export default function SimulateWorkspace() {
 
     const [isInspectorOpen, setIsInspectorOpen] = useState(true);
     
+    // ── V6 Engine State ─────────────────────────────────────────────────────
+    const simulationPreset = useStore(state => state.simulationPreset);
+    const isV6Active = simulationPreset === 'v6_engine_simulation';
+    const v6SolverRef = useRef(null);
+    const [v6EngineState, setV6EngineState] = useState(null);
+    const [showV6Panel, setShowV6Panel] = useState(false);
+
+    // Initialize V6 solver when V6 model is loaded
+    useEffect(() => {
+        if (isV6Active) {
+            v6SolverRef.current = new V6PhysicsSolver({
+                crankRadius:     45,
+                rodLength:       130,
+                pistonMass:      0.45,
+                crankInertia:    0.35,
+                initialRPM:      800,
+                combustionForce: 30000,
+                frictionTorque:  20,
+                vAngleDeg:       60,
+            });
+            setShowV6Panel(true);
+            setV6EngineState(v6SolverRef.current.getSnapshot());
+        } else {
+            v6SolverRef.current = null;
+            setShowV6Panel(false);
+            setV6EngineState(null);
+        }
+    }, [isV6Active]);
+
     // Core Engine Refs
     const reqRef = useRef(null);
     const mechSolver = useRef(new MechanicsSolver(simulationSettings));
@@ -62,7 +94,7 @@ export default function SimulateWorkspace() {
         thermSolver.current.updateSettings(simulationSettings);
     }, [simulationSettings, simulationMode]);
 
-    // Main Simulation Loop
+    // ── Main Simulation Loop ───────────────────────────────────────────────────
     useEffect(() => {
         if (!isPlaying) {
             cancelAnimationFrame(reqRef.current);
@@ -70,32 +102,94 @@ export default function SimulateWorkspace() {
         }
 
         let lastTime = performance.now();
+
         const loop = (time) => {
-            const dt = (time - lastTime) / 1000;
+            const rawDt = Math.min((time - lastTime) / 1000, 0.05); // cap at 50ms
             lastTime = time;
 
-            if (simulationType === 'rigid') {
+            // ── V6 Engine specialised loop ───────────────────────────────────
+            if (isV6Active && v6SolverRef.current) {
+                const snap = v6SolverRef.current.tick(rawDt);
+                setV6EngineState(snap);
+
+                // Animate the 3D shapes by computing each piston/rod world position
+                // from the solver snapshot and updating shapes3D in the store.
+                const SCALE = 200;
+                const { crankAngle, cylinders } = snap;
+                const crankInertia = v6SolverRef.current.config.crankInertia;
+
+                setShapes3D(prev => prev.map(shape => {
+                    // ── Crankshaft rotation ────────────────────────────────
+                    if (shape.id === 'v6_crankshaft' || shape.id === 'v6_flywheel') {
+                        // Rotate around Z-axis by crankAngle
+                        return { ...shape, rotation: [Math.PI / 2, crankAngle, 0] };
+                    }
+
+                    // ── Per-cylinder components ────────────────────────────
+                    const m = shape.id.match(/v6_(crank_throw|con_rod|piston)_(\d+)/);
+                    if (!m) return shape;
+                    const partType = m[1];
+                    const idx = parseInt(m[2], 10);
+                    if (idx >= 6 || !cylinders[idx]) return shape;
+
+                    const cyl = cylinders[idx];
+                    const { pistonPos, crankPinPos, rodAngle } = cyl;
+                    const zPos = shape.position[2]; // keep original Z (layer depth)
+
+                    if (partType === 'crank_throw') {
+                        return {
+                            ...shape,
+                            position: [crankPinPos.x * SCALE, crankPinPos.y * SCALE, zPos]
+                        };
+                    }
+                    if (partType === 'piston') {
+                        // Update color glow during power stroke
+                        const isLeft = idx < 3;
+                        const glow = cyl.combustionGlow;
+                        const baseColor = isLeft ? '#e11d48' : '#2563eb';
+                        return {
+                            ...shape,
+                            position: [pistonPos.x * SCALE, pistonPos.y * SCALE, zPos],
+                            emissiveIntensity: glow * 2.5,
+                            color: glow > 0.15
+                                ? (isLeft ? '#ff6b6b' : '#60a5fa')
+                                : baseColor,
+                        };
+                    }
+                    if (partType === 'con_rod') {
+                        // Position at midpoint of crank pin → piston
+                        const mx = (crankPinPos.x + pistonPos.x) / 2 * SCALE;
+                        const my = (crankPinPos.y + pistonPos.y) / 2 * SCALE;
+                        const dx = (pistonPos.x - crankPinPos.x) * SCALE;
+                        const dy = (pistonPos.y - crankPinPos.y) * SCALE;
+                        const len = Math.sqrt(dx * dx + dy * dy);
+                        return {
+                            ...shape,
+                            position: [mx, my, zPos],
+                            rotation: [0, 0, Math.atan2(dy, dx) + Math.PI / 2],
+                            params: { ...shape.params, height: len },
+                        };
+                    }
+                    return shape;
+                }));
+
+                setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
+
+            // ── Generic rigid / thermal loop ─────────────────────────────────
+            } else if (simulationType === 'rigid') {
                 const snapshot = mechSolver.current.step();
-                
-                // Update render state
                 const newRenderBodies = renderBodies.map(rb => {
                     const sb = snapshot.bodies.find(b => b.id === rb.id);
                     return sb ? { ...rb, position: sb.position } : rb;
                 });
                 setRenderBodies(newRenderBodies);
                 setVectors(snapshot.vectors || []);
-                setSimulationState({
-                    time: snapshot.time,
-                    energy: snapshot.energy
-                });
+                setSimulationState({ time: snapshot.time, energy: snapshot.energy });
 
             } else if (simulationType === 'thermal') {
                 const snapshot = thermSolver.current.step();
                 setColorMap(snapshot.colorMap || {});
-                setSimulationState({
-                    time: snapshot.time,
-                    thermalAnalytics: snapshot.analytics
-                });
+                setSimulationState({ time: snapshot.time, thermalAnalytics: snapshot.analytics });
             }
 
             reqRef.current = requestAnimationFrame(loop);
@@ -103,18 +197,23 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, simulationType, renderBodies]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isPlaying, simulationType, isV6Active, renderBodies]);
 
     // Handle Reset
     useEffect(() => {
         if (!isPlaying && simulationState.time === 0) {
             mechSolver.current.reset();
             thermSolver.current.reset();
+            if (isV6Active && v6SolverRef.current) {
+                v6SolverRef.current.reset();
+                setV6EngineState(v6SolverRef.current.getSnapshot());
+            }
             setRenderBodies([...shapes3D, ...objects]);
             setVectors([]);
             setColorMap({});
         }
-    }, [isPlaying, simulationState.time, shapes3D, objects]);
+    }, [isPlaying, simulationState.time, shapes3D, objects, isV6Active]);
 
     // Handle Setting changes
     const updateSetting = (key, val) => setSimulationSettings({ [key]: val });
@@ -127,12 +226,28 @@ export default function SimulateWorkspace() {
     };
 
     // Construct final objects for Viewport
-    const finalViewportObjects = renderBodies.map(b => {
+    const finalViewportObjects = renderBodies.map((b, index) => {
         let matArgs = {};
         if (simulationType === 'thermal' && analysisSettings.showHeatmap && colorMap[b.id]) {
             matArgs = { fill: colorMap[b.id], color: colorMap[b.id] };
         }
-        return { ...b, ...matArgs };
+        
+        // Phase 9: Exploded View Logic (Visually offset components without altering physics)
+        let renderState = { ...b };
+        if (analysisSettings.isExplodedView) {
+            // Apply visual offsets based on index to scatter them
+            // In a real 3D setup, we'd alter Z axis. Here we slightly fan them out.
+            const offsetMultiplier = 20;
+            const dirX = (index % 3) - 1; // -1, 0, 1
+            const dirY = Math.floor(index / 3) % 2 === 0 ? 1 : -1;
+            
+            if (renderState.x !== undefined) renderState.x += dirX * offsetMultiplier;
+            if (renderState.cx !== undefined) renderState.cx += dirX * offsetMultiplier;
+            if (renderState.y !== undefined) renderState.y += dirY * offsetMultiplier;
+            if (renderState.cy !== undefined) renderState.cy += dirY * offsetMultiplier;
+        }
+
+        return { ...renderState, ...matArgs };
     });
 
     return (
@@ -172,8 +287,17 @@ export default function SimulateWorkspace() {
                         <button onClick={() => setAnalysisSettings({ showVectors: !analysisSettings.showVectors })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showVectors ? 'border-primary bg-primary/20 text-white shadow-[0_0_10px_rgba(37,106,244,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
                             <ArrowRightCircle size={12} /> Vectors
                         </button>
+                        <button onClick={() => setAnalysisSettings({ showJoints: !analysisSettings.showJoints })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showJoints ? 'border-purple-500 bg-purple-500/20 text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
+                            <Box size={12} /> Joints
+                        </button>
+                        <button onClick={() => setAnalysisSettings({ showAnchors: !analysisSettings.showAnchors })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showAnchors ? 'border-pink-500 bg-pink-500/20 text-white shadow-[0_0_10px_rgba(236,72,153,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
+                            <Settings size={12} /> Anchors
+                        </button>
                         <button onClick={() => setAnalysisSettings({ showHeatmap: !analysisSettings.showHeatmap })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showHeatmap ? 'border-orange-500 bg-orange-500/20 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
                             <Flame size={12} /> Heatmap
+                        </button>
+                        <button onClick={() => setAnalysisSettings({ isExplodedView: !analysisSettings.isExplodedView })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.isExplodedView ? 'border-cyan-500 bg-cyan-500/20 text-white shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
+                            <Box size={12} /> Exploded View
                         </button>
                     </div>
 
@@ -185,8 +309,13 @@ export default function SimulateWorkspace() {
                         onChange={(e) => { if(e.target.value) handlePresetLoad(e.target.value); e.target.value = ''; }}
                     >
                         <option value="">+ Load Preset...</option>
-                        <option value="engineModel">Engine Mechanism Demo</option>
-                        {/* More presets will go here */}
+                        <option value="engineModel">Legacy Engine Demo</option>
+                        <option value="v6EngineModel">V6 Engine (Advanced)</option>
+                        <option value="sliderCrankModel">Slider-Crank Mechanism</option>
+                        <option value="springMassModel">Spring-Mass System</option>
+                        <option value="leverModel">Lever System</option>
+                        <option value="pulleyModel">Pulley System</option>
+                        <option value="pendulumModel">Pendulum System</option>
                     </select>
                 </div>
             </div>
@@ -195,15 +324,55 @@ export default function SimulateWorkspace() {
             <div className="flex-1 relative pt-14">
                 <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
 
-                {/* SVG Vector Overlay Layer */}
-                {analysisSettings.showVectors && simulationType === 'rigid' && (
+                {/* V6 Engine Control Panel Overlay */}
+                {isV6Active && (
+                    <V6ControlPanel
+                        solver={v6SolverRef.current}
+                        engineState={v6EngineState}
+                        isVisible={showV6Panel}
+                        onClose={() => setShowV6Panel(false)}
+                    />
+                )}
+
+                {/* SVG Vector & Debug Overlay Layer */}
+                {(analysisSettings.showVectors || analysisSettings.showJoints || analysisSettings.showAnchors) && simulationType === 'rigid' && (
                     <svg className="absolute inset-0 pointer-events-none w-full h-full z-10" style={{ perspective: '1000px' }}>
                         <defs>
                             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                                 <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
                             </marker>
                         </defs>
-                        {vectors.map((v, i) => {
+                        
+                        {/* Render Constraint Joints & Anchors */}
+                        {constraints.map((c, i) => {
+                            const bA = finalViewportObjects.find(o => o.id === c.targetA);
+                            const bB = finalViewportObjects.find(o => o.id === c.targetB);
+                            
+                            // Approximate locations if not given (Viewport coordinates mapping fallback)
+                            let pA = bA ? { x: bA.x || bA.cx, y: bA.y || bA.cy } : null;
+                            let pB = bB ? { x: bB.x || bB.cx, y: bB.y || bB.cy } : null;
+
+                            // Apply local anchors if defined
+                            if (pA && c.anchorA) { pA.x += c.anchorA.x; pA.y += c.anchorA.y; }
+                            if (pB && c.anchorB) { pB.x += c.anchorB.x; pB.y += c.anchorB.y; }
+
+                            return (
+                                <g key={`constraint-${i}`}>
+                                    {analysisSettings.showJoints && pA && pB && (
+                                        <line x1={pA.x} y1={pA.y} x2={pB.x} y2={pB.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="4 4" opacity="0.6" />
+                                    )}
+                                    {analysisSettings.showAnchors && pA && (
+                                        <circle cx={pA.x} cy={pA.y} r="4" fill="#ec4899" stroke="#fff" strokeWidth="1" opacity="0.8" />
+                                    )}
+                                    {analysisSettings.showAnchors && pB && (
+                                        <circle cx={pB.x} cy={pB.y} r="4" fill="#ec4899" stroke="#fff" strokeWidth="1" opacity="0.8" />
+                                    )}
+                                </g>
+                            );
+                        })}
+
+                        {/* Render Vectors */}
+                        {analysisSettings.showVectors && vectors.map((v, i) => {
                             // Convert 3D positions to simplified 2D screen space offsets for now (placeholder mechanism)
                             const originX = window.innerWidth / 2 + v.origin.x;
                             const originY = window.innerHeight / 2 - v.origin.y; // Y is up in 3D, down in SVG
@@ -214,7 +383,7 @@ export default function SimulateWorkspace() {
                             
                             return length > 1 ? (
                                 <line 
-                                    key={i} 
+                                    key={`vector-${i}`} 
                                     x1={originX} y1={originY} 
                                     x2={originX + (dirX/lenOrig)*length} 
                                     y2={originY + (dirY/lenOrig)*length} 
@@ -383,6 +552,9 @@ export default function SimulateWorkspace() {
                                     </p>
                                 </section>
                             )}
+                            
+                            {/* Embedded Active Model Controls */}
+                            <ModelControls />
                             
                             {/* General Solver */}
                             <section className="pt-4 border-t border-white/10 space-y-4">
