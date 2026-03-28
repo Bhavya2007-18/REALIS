@@ -2,7 +2,7 @@ export class SimulationDemoManager {
     static loadDemo(demoId, store) {
         const { clearDesign } = store;
         
-        // 1. Clear existing scene
+        
         clearDesign();
         
         switch (demoId) {
@@ -29,7 +29,7 @@ export class SimulationDemoManager {
     static setupGravityDemo(store) {
         const { addCADObject, addShape3D, setSimulationSettings } = store;
         
-        // Ground plane
+        
         addCADObject({
             id: 'ground',
             type: 'rect',
@@ -38,7 +38,7 @@ export class SimulationDemoManager {
             isStatic: true, friction: 0.5, restitution: 0.4
         });
 
-        // Stack of cubes
+        
         for (let i = 0; i < 5; i++) {
             addShape3D({
                 id: `cube_${i}`,
@@ -49,7 +49,7 @@ export class SimulationDemoManager {
             });
         }
 
-        // Falling sphere
+        
         addShape3D({
             id: 'sphere',
             type: 'sphere',
@@ -68,7 +68,7 @@ export class SimulationDemoManager {
     static setupPendulumDemo(store) {
         const { addCADObject, addShape3D, addConstraint, setSimulationSettings } = store;
 
-        // Fixed pivot
+        
         addShape3D({
             id: 'pivot',
             type: 'sphere',
@@ -77,7 +77,7 @@ export class SimulationDemoManager {
             color: '#fbbf24', isStatic: true
         });
 
-        // Pendulum mass
+        
         addShape3D({
             id: 'bob',
             type: 'sphere',
@@ -86,7 +86,7 @@ export class SimulationDemoManager {
             color: '#3b82f6', mass: 5.0
         });
 
-        // Distance constraint
+        
         addConstraint({
             type: 'distance',
             targetA: 'pivot',
@@ -134,7 +134,7 @@ export class SimulationDemoManager {
     static setupDominoDemo(store) {
         const { addCADObject, setSimulationSettings } = store;
 
-        // Ground
+        
         addCADObject({
             id: 'ground',
             type: 'rect',
@@ -143,7 +143,7 @@ export class SimulationDemoManager {
             isStatic: true, friction: 0.8
         });
 
-        // 10 Dominos
+        
         for (let i = 0; i < 10; i++) {
             addCADObject({
                 id: `domino_${i}`,
@@ -165,7 +165,7 @@ export class SimulationDemoManager {
     static setupOrbitDemo(store) {
         const { addShape3D, setSimulationSettings } = store;
 
-        // Massive central body
+        
         addShape3D({
             id: 'sun',
             type: 'sphere',
@@ -174,14 +174,14 @@ export class SimulationDemoManager {
             color: '#fbbf24', mass: 1000, isStatic: true
         });
 
-        // Planet
+        
         addShape3D({
             id: 'planet',
             type: 'sphere',
             position: [120, 0, 0],
             params: { radius: 4 },
             color: '#3b82f6', mass: 1.0,
-            initialVelocity: { x: 0, y: 0, z: 65 } // Orbiting in XZ plane
+            initialVelocity: { x: 0, y: 0, z: 65 } 
         });
 
         setSimulationSettings({ gravity: { x: 0, y: 0, z: 0 } }); 

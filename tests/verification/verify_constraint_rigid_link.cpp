@@ -15,17 +15,17 @@ using namespace realis::geometry;
 void verify_rigid_link(Integrator *integrator, float dt) {
   World world(dt);
 
-  // Two bodies linked, no gravity.
-  // Body 1 is essentially a heavy anchor (though moving).
-  // Let's spawn them 2m apart. Body A at origin, Body B at (2,0,0).
-  // We give Body B a velocity in Y, causing circular orbit.
+  
+  
+  
+  
 
   Sphere s1(0.5f);
   RigidBody b1;
   b1.mass = 1.0f;
   b1.inv_mass = 1.0f;
   b1.position = Vec3(-1.0f, 0, 0);
-  b1.velocity = Vec3(0, -1.0f, 0); // Opposing velocity for CM rest
+  b1.velocity = Vec3(0, -1.0f, 0); 
   b1.shape = &s1;
 
   Sphere s2(0.5f);
@@ -53,7 +53,7 @@ void verify_rigid_link(Integrator *integrator, float dt) {
 
   float max_drift = 0.0f;
 
-  // Simulate ~10 seconds
+  
   int steps = static_cast<int>(10.0f / dt);
   for (int i = 0; i < steps; ++i) {
     world.step();
@@ -81,7 +81,7 @@ int main() {
 
   SemiImplicitEuler semi_euler;
   verify_rigid_link(&semi_euler, 0.01f);
-  verify_rigid_link(&semi_euler, 0.005f); // Half timestep to verify convergence
+  verify_rigid_link(&semi_euler, 0.005f); 
 
   return 0;
 }

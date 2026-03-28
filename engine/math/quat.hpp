@@ -1,4 +1,4 @@
-// Quaternion for rotations
+
 #pragma once
 #include "mat3.hpp"
 #include "vec3.hpp"
@@ -22,4 +22,4 @@ struct Quat {
   Mat3 to_mat3() const;
 };
 
-} // namespace realis
+} 

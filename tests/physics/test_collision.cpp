@@ -1,4 +1,4 @@
-// Physics test: Collision
+
 #include "../engine/collision/contact.hpp"
 #include <iostream>
 

@@ -1,5 +1,5 @@
-// Versioned Result Tracker
-// Hash-based fingerprinting of simulation state with metadata
+
+
 
 #pragma once
 #include <cmath>
@@ -17,14 +17,14 @@ struct SimulationFingerprint {
   std::string solver_version;
   double timestep;
   int mesh_size;
-  std::string material_params; // Serialized key params
+  std::string material_params; 
 
-  // Hash of the final state vector (simple deterministic sum-based hash)
+  
   double state_hash;
 
   static double compute_state_hash(const std::vector<double> &state) {
-    // Deterministic hash: weighted sum with prime multipliers
-    // Not cryptographic — just for detecting any numerical change
+    
+    
     double hash = 0.0;
     for (size_t i = 0; i < state.size(); ++i) {
       hash += state[i] * (1.0 + 0.001 * static_cast<double>(i));
@@ -74,5 +74,5 @@ public:
   }
 };
 
-} // namespace verification
-} // namespace realis
+} 
+} 

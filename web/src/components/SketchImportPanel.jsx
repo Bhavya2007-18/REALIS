@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 
-// ─── Phase Step indicator ─────────────────────────────────────────────────────
+
 const PHASES = [
   { id: 2, label: 'Edge Detection'   },
   { id: 3, label: 'Object Labelling' },
@@ -32,7 +32,7 @@ function PhaseProgress({ active }) {
   );
 }
 
-// ─── Confidence Bar ──────────────────────────────────────────────────────────
+
 function ConfidenceBar({ value }) {
   const pct = Math.round(value * 100);
   const color = pct >= 75 ? '#22c55e' : pct >= 50 ? '#eab308' : '#f97316';
@@ -49,7 +49,7 @@ function ConfidenceBar({ value }) {
   );
 }
 
-// ─── Hypothesis row ──────────────────────────────────────────────────────────
+
 function HypothesisRow({ hyp, isTop }) {
   const pct = Math.round(hyp.confidence * 100);
   return (
@@ -63,7 +63,7 @@ function HypothesisRow({ hyp, isTop }) {
   );
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+
 export default function SketchImportPanel() {
   const isSketchImportOpen   = useStore(s => s.isSketchImportOpen);
   const setSketchImportOpen  = useStore(s => s.setSketchImportOpen);
@@ -73,7 +73,7 @@ export default function SketchImportPanel() {
   const [preview,    setPreview]    = useState(null);
   const [prompt,     setPrompt]     = useState('');
   const [loading,    setLoading]    = useState(false);
-  const [loadPhase,  setLoadPhase]  = useState(0);   // 0-5 step counter while loading
+  const [loadPhase,  setLoadPhase]  = useState(0);   
   const [error,      setError]      = useState(null);
   const [dragging,   setDragging]   = useState(false);
   const [showHyps,   setShowHyps]   = useState(false);
@@ -82,7 +82,7 @@ export default function SketchImportPanel() {
   const fileInputRef = useRef(null);
   const phaseTimer   = useRef(null);
 
-  // ── File handling ────────────────────────────────────────────────────────
+  
   const loadFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -97,14 +97,14 @@ export default function SketchImportPanel() {
   const handleDragOver   = (e) => { e.preventDefault(); setDragging(true);  };
   const handleDragLeave  = ()  => setDragging(false);
 
-  // ── Process ───────────────────────────────────────────────────────────────
+  
   const handleProcess = async () => {
     if (!preview) return;
     setLoading(true);
     setError(null);
     setLoadPhase(0);
 
-    // Simulate phase stepping for visual feedback
+    
     let step = 0;
     phaseTimer.current = setInterval(() => {
       step = Math.min(step + 1, PHASES.length - 1);
@@ -149,7 +149,7 @@ export default function SketchImportPanel() {
 
   if (!isSketchImportOpen) return null;
 
-  // ── Derived from draft ────────────────────────────────────────────────────
+  
   const draft      = sketchDraft;
   const sg         = draft?.scene?.scene_graph;
   const validation = draft?.scene?.validation;
@@ -161,8 +161,8 @@ export default function SketchImportPanel() {
   const nCircles   = rawGeo?.circles?.length ?? 0;
   const nPolys     = rawGeo?.polygons?.length ?? 0;
 
-  // Hypotheses sorted best first (already sorted from backend, but guard)
-  // We only show top 4
+  
+  
   const hypotheses = draft ? [...(draft.scene?.scene_graph?.nodes ?? [])].slice(0, 0) : [];
 
   return (
@@ -173,7 +173,7 @@ export default function SketchImportPanel() {
                  shadow-indigo-950/60 text-gray-100"
       style={{ boxShadow: '0 0 60px rgba(79,70,229,0.12), 0 24px 48px rgba(0,0,0,0.6)' }}
     >
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/6 bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
@@ -203,10 +203,10 @@ export default function SketchImportPanel() {
         </div>
       </div>
 
-      {/* ── Body ─────────────────────────────────────────────────────────── */}
+      {}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 flex flex-col gap-4">
 
-        {/* Upload Zone */}
+        {}
         {!preview ? (
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -230,9 +230,9 @@ export default function SketchImportPanel() {
             </div>
           </div>
         ) : (
-          /* Sketch Preview */
+          
           <div className="relative rounded-xl overflow-hidden border border-white/8 bg-black/40 group">
-            {/* Scan line animation while loading */}
+            {}
             {loading && (
               <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
                 <div className="scan-bar absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-400/60 to-transparent" />
@@ -257,10 +257,7 @@ export default function SketchImportPanel() {
 
         <input
           type="file" className="hidden" ref={fileInputRef}
-          accept="image/*" onChange={handleFileInput}
-        />
-
-        {/* Context Prompt */}
+          accept="image}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
             Describe the mechanism <span className="text-gray-700 normal-case">(optional — helps heuristics)</span>
@@ -277,7 +274,7 @@ export default function SketchImportPanel() {
           />
         </div>
 
-        {/* Loading — phase stepper */}
+        {}
         {loading && (
           <div className="flex flex-col gap-2 bg-white/[0.02] border border-white/6 rounded-xl p-3">
             <div className="flex items-center gap-2 text-xs text-indigo-400">
@@ -297,7 +294,7 @@ export default function SketchImportPanel() {
           </div>
         )}
 
-        {/* Error */}
+        {}
         {error && (
           <div className="flex gap-2 bg-red-500/8 border border-red-500/20 rounded-xl p-3">
             <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
@@ -309,11 +306,11 @@ export default function SketchImportPanel() {
           </div>
         )}
 
-        {/* Results card */}
+        {}
         {draft && !loading && (
           <div className="flex flex-col gap-3 bg-white/[0.025] border border-white/8 rounded-xl p-4">
 
-            {/* System type + confidence */}
+            {}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wider mb-0.5">System Detected</p>
@@ -330,7 +327,7 @@ export default function SketchImportPanel() {
             </div>
             <ConfidenceBar value={draft.confidence} />
 
-            {/* Stats row */}
+            {}
             <div className="grid grid-cols-5 gap-1.5 text-center">
               {[
                 { label: 'Lines',    val: nLines   },
@@ -346,7 +343,7 @@ export default function SketchImportPanel() {
               ))}
             </div>
 
-            {/* Hypotheses toggle */}
+            {}
             <button
               onClick={() => setShowHyps(v => !v)}
               className="flex items-center justify-between w-full text-xs text-gray-500 hover:text-gray-300 transition-colors"
@@ -359,7 +356,7 @@ export default function SketchImportPanel() {
                 {(draft.scene?.scene_graph?.nodes?.length === 0) ? (
                   <p className="text-xs text-gray-600 italic">No hypothesis data returned.</p>
                 ) : (
-                  /* Hypotheses come from pipeline as separate metadata — we show the system_type at top */
+                  
                   <>
                     <HypothesisRow hyp={{ system_type: draft.system_type, confidence: draft.confidence }} isTop={true} />
                     <p className="text-[10px] text-gray-700 px-1">Other candidates hidden (low confidence)</p>
@@ -368,7 +365,7 @@ export default function SketchImportPanel() {
               </div>
             )}
 
-            {/* Assumptions toggle */}
+            {}
             <button
               onClick={() => setShowAssume(v => !v)}
               className="flex items-center justify-between w-full text-xs text-gray-500 hover:text-gray-300 transition-colors"
@@ -378,14 +375,14 @@ export default function SketchImportPanel() {
             </button>
             {showAssume && (
               <div className="flex flex-col gap-1">
-                {/* Validation warnings */}
+                {}
                 {validation?.warnings?.map((w, i) => (
                   <div key={i} className="flex gap-1.5 text-xs text-amber-400 bg-amber-400/8 border border-amber-400/20 rounded-lg p-2">
                     <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     <span>{w}</span>
                   </div>
                 ))}
-                {/* Auto fixes */}
+                {}
                 {validation?.auto_fixes?.map((f, i) => (
                   <div key={i} className="flex gap-1.5 text-xs text-green-400 bg-green-400/8 border border-green-400/20 rounded-lg p-2">
                     <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
@@ -409,7 +406,7 @@ export default function SketchImportPanel() {
         )}
       </div>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      {}
       <div className="px-5 py-3.5 border-t border-white/6 bg-white/[0.01] flex gap-2">
         {!draft ? (
           <button

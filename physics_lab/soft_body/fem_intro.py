@@ -1,14 +1,10 @@
-"""
-Finite Element Method Introduction
 
-Basic FEM concepts for deformable bodies.
-"""
 
 import numpy as np
 
 
 def fem_intro():
-    """Introduction to FEM for soft bodies"""
+    
     print("=== Finite Element Method (FEM) ===\n")
     print("FEM divides continuous bodies into discrete elements.")
     print("Each element has nodes with degrees of freedom.")

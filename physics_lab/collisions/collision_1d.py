@@ -1,23 +1,11 @@
-"""
-1D Collision Experiments
 
-Elastic and inelastic collisions in one dimension.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def elastic_collision_1d(m1: float, m2: float, v1: float, v2: float) -> tuple:
-    """
-    Calculate velocities after elastic collision
     
-    Conservation of momentum: m1*v1 + m2*v2 = m1*v1' + m2*v2'
-    Conservation of energy: 0.5*m1*v1² + 0.5*m2*v2² = 0.5*m1*v1'² + 0.5*m2*v2'²
-    
-    Returns:
-        (v1_final, v2_final)
-    """
     v1_final = ((m1 - m2) * v1 + 2 * m2 * v2) / (m1 + m2)
     v2_final = ((m2 - m1) * v2 + 2 * m1 * v1) / (m1 + m2)
     
@@ -26,25 +14,17 @@ def elastic_collision_1d(m1: float, m2: float, v1: float, v2: float) -> tuple:
 
 def inelastic_collision_1d(m1: float, m2: float, v1: float, v2: float, 
                           e: float = 0.5) -> tuple:
-    """
-    Calculate velocities after inelastic collision
     
-    Args:
-        e: Coefficient of restitution (0 = perfectly inelastic, 1 = elastic)
     
-    Returns:
-        (v1_final, v2_final)
-    """
-    # Velocity of center of mass
     v_cm = (m1 * v1 + m2 * v2) / (m1 + m2)
     
-    # Relative velocity before collision
+    
     v_rel_before = v1 - v2
     
-    # Relative velocity after collision
+    
     v_rel_after = -e * v_rel_before
     
-    # Final velocities
+    
     v1_final = v_cm + (m2 / (m1 + m2)) * v_rel_after
     v2_final = v_cm - (m1 / (m1 + m2)) * v_rel_after
     
@@ -52,21 +32,21 @@ def inelastic_collision_1d(m1: float, m2: float, v1: float, v2: float,
 
 
 def validate_collision_laws():
-    """Validate conservation laws in collisions"""
+    
     print("=== 1D Collision Validation ===\n")
     
-    # Test case
-    m1, m2 = 2.0, 3.0  # kg
-    v1, v2 = 5.0, -2.0  # m/s
+    
+    m1, m2 = 2.0, 3.0  
+    v1, v2 = 5.0, -2.0  
     
     print(f"Initial state:")
     print(f"  Mass 1: {m1} kg, velocity {v1} m/s")
     print(f"  Mass 2: {m2} kg, velocity {v2} m/s\n")
     
-    # Elastic collision
+    
     v1_e, v2_e = elastic_collision_1d(m1, m2, v1, v2)
     
-    # Check momentum conservation
+    
     p_before = m1 * v1 + m2 * v2
     p_after = m1 * v1_e + m2 * v2_e
     print(f"Elastic Collision:")
@@ -75,14 +55,14 @@ def validate_collision_laws():
     print(f"  Momentum after: {p_after:.2f} kg⋅m/s")
     print(f"  Momentum conserved: {np.isclose(p_before, p_after)}")
     
-    # Check energy conservation
+    
     KE_before = 0.5 * m1 * v1**2 + 0.5 * m2 * v2**2
     KE_after = 0.5 * m1 * v1_e**2 + 0.5 * m2 * v2_e**2
     print(f"  KE before: {KE_before:.2f} J")
     print(f"  KE after: {KE_after:.2f} J")
     print(f"  Energy conserved: {np.isclose(KE_before, KE_after)}\n")
     
-    # Inelastic collision (e = 0.5)
+    
     v1_i, v2_i = inelastic_collision_1d(m1, m2, v1, v2, e=0.5)
     
     p_after_i = m1 * v1_i + m2 * v2_i
@@ -92,7 +72,7 @@ def validate_collision_laws():
     print(f"  Momentum conserved: {np.isclose(p_before, p_after_i)}")
     print(f"  Energy lost: {KE_before - KE_after_i:.2f} J ({(KE_before - KE_after_i)/KE_before*100:.1f}%)\n")
     
-    # Perfectly inelastic (e = 0)
+    
     v1_pi, v2_pi = inelastic_collision_1d(m1, m2, v1, v2, e=0.0)
     print(f"Perfectly Inelastic (e=0):")
     print(f"  Final velocities: v1'={v1_pi:.2f} m/s, v2'={v2_pi:.2f} m/s")
@@ -100,7 +80,7 @@ def validate_collision_laws():
 
 
 def plot_collision_restitution():
-    """Plot collision outcomes for different restitution coefficients"""
+    
     m1, m2 = 1.0, 1.0
     v1, v2 = 3.0, 0.0
     

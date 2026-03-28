@@ -3,20 +3,17 @@ from ..server import SimulationRequest, SceneObject, PhysicsConstraint, CadGeome
 from .models import SceneGraph, Node, Edge
 
 def compile_to_physics_request(scene_graph: SceneGraph) -> SimulationRequest:
-    """
-    Compiles the AI module's Intermediate Representation (IR) into the 
-    REALIS engine's primary SimulationRequest model.
-    """
+    
     engine_objects: List[SceneObject] = []
     engine_constraints: List[PhysicsConstraint] = []
     
-    # Map Nodes to SceneObjects
+    
     for node in scene_graph.nodes:
-        # CadGeometry: (box, sphere, extrusion)
+        
         geo_type = "sphere" if node.shape == "circle" else "box"
         
-        # Dimensions (X corresponds to radius in engine spheres)
-        dimensions = Vector3(x=1.0, y=1.0, z=1.0) # Placeholder
+        
+        dimensions = Vector3(x=1.0, y=1.0, z=1.0) 
         if geo_type == "box":
             dimensions = Vector3(x=2.0, y=2.0, z=0.5)
             
@@ -41,10 +38,10 @@ def compile_to_physics_request(scene_graph: SceneGraph) -> SimulationRequest:
             physics=physics
         ))
 
-    # Map Edges to Constraints
+    
     for edge in scene_graph.edges:
         if edge.type == "hinge_joint":
-            # Hinge joint in REALIS server uses pivot points (pivot_a, pivot_b)
+            
             engine_constraints.append(PhysicsConstraint(
                 id=edge.id,
                 type="hinge",
@@ -62,10 +59,10 @@ def compile_to_physics_request(scene_graph: SceneGraph) -> SimulationRequest:
                 distance=edge.length or 1.0
             ))
 
-    # Build the full simulation request
+    
     return SimulationRequest(
         objects=engine_objects,
         constraints=engine_constraints,
-        time_step=0.016, # Default 60Hz
+        time_step=0.016, 
         gravity=Vector3(x=0, y=-9.81, z=0)
     )

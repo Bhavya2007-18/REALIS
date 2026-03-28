@@ -63,8 +63,8 @@ const leverModel = {
             type: "revolute",
             targetA: "fulcrum",
             targetB: "lever",
-            anchorA: { x: 0, y: -25 }, // Top of fulcrum
-            anchorB: { x: 0, y: 5 },   // Middle of lever
+            anchorA: { x: 0, y: -25 }, 
+            anchorB: { x: 0, y: 5 },   
             motorEnabled: false,
             label: "Pivot Hinge"
         }

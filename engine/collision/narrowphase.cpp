@@ -11,7 +11,7 @@ static float get_radius(const RigidBody *b) {
   if (b && b->shape && b->shape->type == geometry::ShapeType::SPHERE) {
     return static_cast<const geometry::Sphere *>(b->shape)->radius;
   }
-  return 0.5f; // Fallback radius
+  return 0.5f; 
 }
 
 static void compute_tangents(const Vec3 &normal, Vec3 &t1, Vec3 &t2) {
@@ -70,15 +70,15 @@ static Contact generate_sphere_plane(RigidBody *sphere_body,
       static_cast<const geometry::Sphere *>(sphere_body->shape);
   const auto *plane = static_cast<const geometry::Plane *>(plane_body->shape);
 
-  // Distance from sphere center to plane
+  
   float dist = sphere_body->position.dot(plane->normal) - plane->d;
 
   if (dist <= sphere->radius) {
     contact.colliding = true;
-    // Normal points from A (sphere) to B (plane). We want normal from B to A
-    // for impulse application usually, but our engine expects normal from A to
-    // B. Let's make it point from Sphere OUTWARDS towards the plane? Wait,
-    // standard points from A to B. So from Sphere TO Plane is -plane->normal.
+    
+    
+    
+    
     contact.normal = plane->normal * -1.0f;
     contact.penetration = sphere->radius - dist;
     contact.point = sphere_body->position - plane->normal * sphere->radius;
@@ -99,11 +99,11 @@ static Contact generate_box_plane(RigidBody *box_body, RigidBody *plane_body) {
   const auto *box = static_cast<const geometry::Box *>(box_body->shape);
   const auto *plane = static_cast<const geometry::Plane *>(plane_body->shape);
 
-  // Box to plane. Find the deepest vertex.
-  // For Phase 2B, box orientation is used.
+  
+  
   Mat3 R = box_body->orientation.to_mat3();
 
-  // Test all 8 vertices
+  
   Vec3 deepest_point;
   float min_dist = 1e9f;
 
@@ -127,8 +127,8 @@ static Contact generate_box_plane(RigidBody *box_body, RigidBody *plane_body) {
     contact.penetration = -min_dist;
     contact.point = deepest_point;
     compute_tangents(contact.normal, contact.tangent1, contact.tangent2);
-    // std::cout << "DEBUG: Box-Plane Hit! Pen: " << contact.penetration <<
-    // "\n";
+    
+    
   }
 
   return contact;
@@ -141,13 +141,13 @@ Contact NarrowPhase::generate_contact(RigidBody *a, RigidBody *b) {
   auto type_a = a->shape->type;
   auto type_b = b->shape->type;
 
-  // Sphere - Sphere
+  
   if (type_a == geometry::ShapeType::SPHERE &&
       type_b == geometry::ShapeType::SPHERE) {
     return generate_sphere_sphere(a, b);
   }
 
-  // Sphere - Plane
+  
   if (type_a == geometry::ShapeType::SPHERE &&
       type_b == geometry::ShapeType::PLANE) {
     return generate_sphere_plane(a, b);
@@ -155,14 +155,14 @@ Contact NarrowPhase::generate_contact(RigidBody *a, RigidBody *b) {
   if (type_a == geometry::ShapeType::PLANE &&
       type_b == geometry::ShapeType::SPHERE) {
     Contact c = generate_sphere_plane(b, a);
-    // Swap A and B mathematically
+    
     std::swap(c.body_a, c.body_b);
     c.normal = c.normal * -1.0f;
     compute_tangents(c.normal, c.tangent1, c.tangent2);
     return c;
   }
 
-  // Box - Plane
+  
   if (type_a == geometry::ShapeType::BOX &&
       type_b == geometry::ShapeType::PLANE) {
     return generate_box_plane(a, b);
@@ -176,14 +176,14 @@ Contact NarrowPhase::generate_contact(RigidBody *a, RigidBody *b) {
     return c;
   }
 
-  // Box - Box (Fallback to Sphere-Sphere using bounding radius for Phase 2B)
+  
   if (type_a == geometry::ShapeType::BOX &&
       type_b == geometry::ShapeType::BOX) {
     return generate_sphere_sphere(a, b);
   }
 
-  // Fallback or unhandled combinations
+  
   return Contact();
 }
 
-} // namespace realis
+} 

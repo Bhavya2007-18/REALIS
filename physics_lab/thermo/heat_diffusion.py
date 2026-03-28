@@ -1,14 +1,10 @@
-"""
-Heat Diffusion
 
-Thermal diffusion simulation.
-"""
 
 import numpy as np
 
 
 def heat_diffusion_1d():
-    """1D heat diffusion example"""
+    
     print("=== Heat Diffusion ===\n")
     print("Heat equation: ∂T/∂t = α∇²T\n")
     print("Where:")

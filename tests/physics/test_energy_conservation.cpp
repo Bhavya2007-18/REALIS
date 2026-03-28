@@ -1,4 +1,4 @@
-// Physics test: Energy conservation
+
 #include "../engine/energy/energy_monitor.hpp"
 #include <iostream>
 

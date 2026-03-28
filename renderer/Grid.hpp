@@ -12,10 +12,7 @@ namespace realis::renderer {
 
 class Renderer;
 
-/**
- * @class Grid
- * @brief Procedural infinite-style grid on the XZ plane.
- */
+
 class Grid {
 public:
   Grid(float size = 100.0f);
@@ -32,4 +29,4 @@ private:
   float m_size;
 };
 
-} // namespace realis::renderer
+} 

@@ -33,7 +33,7 @@ void verify_chain(Integrator *integrator, float dt) {
   b3.mass = 1.0f;
   b3.inv_mass = 1.0f;
 
-  // Link bodies
+  
   b1.position = Vec3(2.0f, 0.0f, 0.0f);
   b2.position = Vec3(4.0f, 0.0f, 0.0f);
   b3.position = Vec3(6.0f, 0.0f, 0.0f);
@@ -42,7 +42,7 @@ void verify_chain(Integrator *integrator, float dt) {
   world.add_body(&b2);
   world.add_body(&b3);
 
-  // Fixed anchor at origin for b1
+  
   Vec3 anchor(0, 0, 0);
   RigidBody *static_anchor = new RigidBody();
   static_anchor->shape = &s;
@@ -67,7 +67,7 @@ void verify_chain(Integrator *integrator, float dt) {
   for (int i = 0; i < steps; ++i) {
     world.step();
 
-    // Check constraint invariant drifts
+    
     float drift0 = std::abs((b1.position - anchor).magnitude() - 2.0f);
     float drift1 = std::abs((b2.position - b1.position).magnitude() - 2.0f);
     float drift2 = std::abs((b3.position - b2.position).magnitude() - 2.0f);
@@ -93,7 +93,7 @@ void verify_chain(Integrator *integrator, float dt) {
 
 int main() {
   SemiImplicitEuler euler;
-  std::ofstream out("chain_results.txt"); // clear file
+  std::ofstream out("chain_results.txt"); 
   out.close();
 
   verify_chain(&euler, 0.01f);

@@ -5,33 +5,30 @@ import uuid
 from .models import GeomPrimitive, Vector2D, CVExtractionOutput
 
 def extract_geometry(image_bytes: bytes) -> CVExtractionOutput:
-    """
-    Takes an image, performs contour detection and shape approximation.
-    Returns a list of discovered geometric primitives.
-    """
+    
     nparr = np.frombuffer(image_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     original_height, original_width = image.shape[:2]
 
-    # Pre-processing
+    
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-    # Find contours
+    
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     primitives: List[GeomPrimitive] = []
 
     for cnt in contours:
-        # Filter very small noise contours
+        
         if cv2.contourArea(cnt) < 100:
             continue
 
         epsilon = 0.02 * cv2.arcLength(cnt, True)
         approx = cv2.approxPolyDP(cnt, epsilon, True)
         
-        # Check for circles (via circularity)
+        
         area = cv2.contourArea(cnt)
         perimeter = cv2.arcLength(cnt, True)
         if perimeter == 0: continue
@@ -47,7 +44,7 @@ def extract_geometry(image_bytes: bytes) -> CVExtractionOutput:
                 confidence=float(circularity)
             ))
         elif len(approx) == 2:
-            # Line
+            
             points = [Vector2D(x=float(p[0][0]), y=float(p[0][1])) for p in approx]
             primitives.append(GeomPrimitive(
                 id=str(uuid.uuid4()),
@@ -56,7 +53,7 @@ def extract_geometry(image_bytes: bytes) -> CVExtractionOutput:
                 confidence=0.9
             ))
         elif len(approx) == 4:
-            # Rectangle / Polygon
+            
             x, y, w, h = cv2.boundingRect(approx)
             primitives.append(GeomPrimitive(
                 id=str(uuid.uuid4()),
@@ -68,7 +65,7 @@ def extract_geometry(image_bytes: bytes) -> CVExtractionOutput:
                 confidence=0.95
             ))
         else:
-            # General Polygon
+            
             primitives.append(GeomPrimitive(
                 id=str(uuid.uuid4()),
                 type="polygon",

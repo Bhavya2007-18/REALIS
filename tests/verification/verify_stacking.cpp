@@ -13,10 +13,10 @@ using namespace realis;
 void verify_stacking(Integrator *integrator, float dt) {
   World world(dt);
 
-  // 1. Static Ground Plane
+  
   geometry::Plane ground(Vec3(0, 1, 0), 0.0f);
   RigidBody ground_body;
-  ground_body.mass = 0.0f; // Static
+  ground_body.mass = 0.0f; 
   ground_body.inv_mass = 0.0f;
   ground_body.position = Vec3(0, 0, 0);
   ground_body.shape = &ground;
@@ -24,14 +24,14 @@ void verify_stacking(Integrator *integrator, float dt) {
   ground_body.friction = 0.5f;
   world.add_body(&ground_body);
 
-  // 2. Stacked Blocks (3 Blocks of 1x1x1)
+  
   geometry::Box box(Vec3(0.5f, 0.5f, 0.5f));
   std::vector<RigidBody> blocks(3);
 
   for (int i = 0; i < 3; ++i) {
     blocks[i].mass = 1.0f;
     blocks[i].inv_mass = 1.0f;
-    // Drop them slightly separated so they fall onto each other
+    
     blocks[i].position = Vec3(0, 1.0f + i * 1.5f, 0);
     blocks[i].velocity = Vec3(0, 0, 0);
     blocks[i].shape = &box;
@@ -56,7 +56,7 @@ void verify_stacking(Integrator *integrator, float dt) {
     world.step();
     float current_energy = world.compute_energy();
 
-    // Check strict non-increase (allowing tiny float epsilons)
+    
     if (current_energy > max_energy + 1e-3f) {
       energy_increased = true;
     }

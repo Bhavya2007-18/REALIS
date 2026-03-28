@@ -12,7 +12,7 @@ export default function Navbar() {
     const isSketchImportOpen = useStore(s => s.isSketchImportOpen)
     const isPlaying = useStore(s => s.isPlaying)
 
-    // Store state for serialization
+    
     const objects = useStore(s => s.objects)
     const setObjects = useStore(s => s.setObjects)
     const layers = useStore(s => s.layers)

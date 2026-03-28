@@ -1,8 +1,4 @@
-"""
-Plotting Utilities for Physics Experiments
 
-Reusable plotting functions for kinematics visualization.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +6,7 @@ from typing import List, Tuple
 
 
 def setup_plot_style():
-    """Configure matplotlib style for physics plots"""
+    
     plt.style.use('seaborn-v0_8-darkgrid' if 'seaborn-v0_8-darkgrid' in plt.style.available else 'default')
     plt.rcParams['figure.figsize'] = (10, 6)
     plt.rcParams['font.size'] = 11
@@ -20,7 +16,7 @@ def setup_plot_style():
 def plot_trajectory_2d(x: np.ndarray, y: np.ndarray, title: str = "Trajectory",
                        xlabel: str = "x (m)", ylabel: str = "y (m)",
                        save_path: str = None):
-    """Plot 2D trajectory"""
+    
     setup_plot_style()
     
     plt.figure()
@@ -39,12 +35,12 @@ def plot_trajectory_2d(x: np.ndarray, y: np.ndarray, title: str = "Trajectory",
 
 def plot_energy_conservation(times: np.ndarray, KE: np.ndarray, PE: np.ndarray, 
                             total: np.ndarray, title: str = "Energy Conservation"):
-    """Plot kinetic, potential, and total energy"""
+    
     setup_plot_style()
     
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
     
-    # Energy components
+    
     ax1.plot(times, KE, 'r-', label='Kinetic', linewidth=2)
     ax1.plot(times, PE, 'b-', label='Potential', linewidth=2)
     ax1.plot(times, total, 'k--', label='Total', linewidth=2)
@@ -54,7 +50,7 @@ def plot_energy_conservation(times: np.ndarray, KE: np.ndarray, PE: np.ndarray,
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    # Total energy drift
+    
     energy_drift = (total - total[0]) / total[0] * 100
     ax2.plot(times, energy_drift, 'purple', linewidth=2)
     ax2.set_xlabel('Time (s)')
@@ -69,7 +65,7 @@ def plot_energy_conservation(times: np.ndarray, KE: np.ndarray, PE: np.ndarray,
 
 def plot_phase_space(positions: np.ndarray, velocities: np.ndarray,
                      title: str = "Phase Space"):
-    """Plot phase space diagram (position vs velocity)"""
+    
     setup_plot_style()
     
     plt.figure()
@@ -86,7 +82,7 @@ def plot_phase_space(positions: np.ndarray, velocities: np.ndarray,
 
 def plot_vector_field(X: np.ndarray, Y: np.ndarray, U: np.ndarray, V: np.ndarray,
                       title: str = "Vector Field"):
-    """Plot 2D vector field"""
+    
     setup_plot_style()
     
     plt.figure()
@@ -100,6 +96,6 @@ def plot_vector_field(X: np.ndarray, Y: np.ndarray, U: np.ndarray, V: np.ndarray
 
 
 if __name__ == "__main__":
-    # Demonstration
+    
     print("Plotting utilities module")
     print("Import this module to use plotting functions in experiments")

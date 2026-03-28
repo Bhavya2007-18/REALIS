@@ -1,4 +1,4 @@
-// Unit test for quaternion
+
 #include "../engine/math/quat.hpp"
 #include <iostream>
 
@@ -6,7 +6,7 @@ using namespace realis;
 
 void test_quat_identity() {
     Quat q;
-    // Test identity quaternion
+    
     std::cout << "✓ Quat identity test passed\n";
 }
 

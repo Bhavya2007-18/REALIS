@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 
-# --- Phase 1: Ingestion ---
+
 class IngestionRequest(BaseModel):
     session_id: str
-    image: str  # base64
+    image: str  
     user_prompt: Optional[str] = None
 
-# --- Phase 2: Geometry Extraction ---
+
 class ExtractedLine(BaseModel):
     id: str
     x1: float
@@ -23,32 +23,32 @@ class ExtractedCircle(BaseModel):
 
 class ExtractedPolygon(BaseModel):
     id: str
-    points: List[List[float]]  # [[x, y], [x, y], ...]
+    points: List[List[float]]  
 
 class GeometryResult(BaseModel):
     lines: List[ExtractedLine] = []
     circles: List[ExtractedCircle] = []
     polygons: List[ExtractedPolygon] = []
 
-# --- Phase 3: Semantic Detection ---
+
 class SemanticObject(BaseModel):
     id: str
-    type: str  # "rod | wheel | block | joint | unknown"
+    type: str  
     geometry_ref: str
 
 class SemanticResult(BaseModel):
     objects: List[SemanticObject] = []
 
-# --- Phase 4: Relationship Inference ---
+
 class Relationship(BaseModel):
     a: str
     b: str
-    type: str  # "connected | constrained | touching | unknown"
+    type: str  
 
 class RelationshipResult(BaseModel):
     relationships: List[Relationship] = []
 
-# --- Phase 5: Multi-Hypothesis ---
+
 class Hypothesis(BaseModel):
     system_type: str
     confidence: float
@@ -56,33 +56,33 @@ class Hypothesis(BaseModel):
 class HypothesisResult(BaseModel):
     hypotheses: List[Hypothesis] = []
 
-# --- Phase 6: Intent Fusion ---
+
 class IntentResult(BaseModel):
     system_type: str
     enhanced_objects: List[SemanticObject] = []
     assumptions: List[str] = []
     confidence: float
 
-# --- Phase 7 / 7.5: Scene Graph IR & Validation ---
+
 class NodeProp(BaseModel):
     friction: float = 0.3
     restitution: float = 0.2
 
 class IRNode(BaseModel):
     id: str
-    type: str  # "rigid_body", "static"
-    shape: str # "circle", "box", "polygon"
+    type: str  
+    shape: str 
     mass: float = 1.0
-    position: List[float] # [x, y]
-    dimensions: List[float] = [] # e.g. [radius] or [width, height]
+    position: List[float] 
+    dimensions: List[float] = [] 
     properties: NodeProp = NodeProp()
 
 class IREdge(BaseModel):
     id: str
-    type: str  # "hinge_joint", "fixed_joint", "distance_joint"
+    type: str  
     a: str
     b: str
-    anchor: List[float] # [x, y]
+    anchor: List[float] 
 
 class ValidationResult(BaseModel):
     valid: bool
@@ -99,12 +99,12 @@ class SceneGraphResult(BaseModel):
     scene_graph: SceneGraph
     validation: ValidationResult
 
-# --- Sub-models internally mapped Phase 8 to frontend compatible ---
+
 class PipelineResponse(BaseModel):
     session_id: str
     confidence: float
     system_type: str
     scene: SceneGraphResult
-    # For UI:
+    
     raw_geometry: GeometryResult
     relationships: RelationshipResult

@@ -1,17 +1,9 @@
-#!/usr/bin/env python3
-"""
-REALIS Sketch-to-Simulation — Server Startup Script
-Run from the project root (c:/foss/REALIS):
 
-    python start_server.py
 
-This launches uvicorn pointing to tools/server.py with the correct
-sys.path so the sketch_ai sub-package imports resolve regardless of CWD.
-"""
 import sys
 import os
 
-# Ensure project root is on sys.path
+
 root = os.path.dirname(os.path.abspath(__file__))
 if root not in sys.path:
     sys.path.insert(0, root)

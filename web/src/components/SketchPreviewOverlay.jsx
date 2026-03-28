@@ -2,12 +2,12 @@ import { useRef, useEffect, useCallback } from 'react';
 import { Play, Trash2, Info, AlertTriangle } from 'lucide-react';
 import useStore from '../store/useStore';
 
-// World → canvas pixel conversion.
-// The pipeline scales 800x600 canvas coords by 0.1 → world units.
-// To display on screen we reverse that: world * 10.
+
+
+
 const WORLD_TO_PX = 10;
 
-// Centre offset so the extracted shapes appear centred in the viewport.
+
 const OFFSET_X = 0;
 const OFFSET_Y = 0;
 
@@ -15,7 +15,7 @@ function toCanvas(worldCoord) {
   return worldCoord * WORLD_TO_PX;
 }
 
-// ─── Colour palette ───────────────────────────────────────────────────────────
+
 const COLORS = {
   static:           { fill: 'rgba(71,85,105,0.6)',    stroke: '#94a3b8' },
   rigid_body:       { fill: 'rgba(79,70,229,0.35)',   stroke: '#818cf8' },
@@ -30,7 +30,7 @@ const COLORS = {
   label_bg:         'rgba(9,13,22,0.85)',
 };
 
-// ─── Draw helpers ─────────────────────────────────────────────────────────────
+
 function drawGrid(ctx, w, h) {
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   ctx.lineWidth   = 1;
@@ -48,7 +48,7 @@ function drawLabel(ctx, text, x, y) {
   ctx.fillText(text, x - tw / 2, y);
 }
 
-// ─── Main Overlay ─────────────────────────────────────────────────────────────
+
 export default function SketchPreviewOverlay() {
   const sketchDraft    = useStore(s => s.sketchDraft);
   const setSketchDraft = useStore(s => s.setSketchDraft);
@@ -62,7 +62,7 @@ export default function SketchPreviewOverlay() {
   const animFrameRef   = useRef(null);
   const dashOffset     = useRef(0);
 
-  // ── Canvas rendering loop ─────────────────────────────────────────────────
+  
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const draft  = sketchDraft;
@@ -78,11 +78,11 @@ export default function SketchPreviewOverlay() {
     const { nodes = [], edges = [] } = draft.scene?.scene_graph ?? {};
     const raw = draft.raw_geometry ?? {};
 
-    // ── 1. Raw CV geometry (faint ghost layer) ──────────────────────────────
-    // Raw lines (in pixel space 0-800/600, already stored as-is by pipeline)
-    // but pipeline converts them to world by *SCALE (0.1). So to re-display:
-    // raw_coord → canvas = raw_coord  (no conversion needed, they're in 0-800 range)
-    // We clamp to canvas bounds.
+    
+    
+    
+    
+    
     const scaleRaw = Math.min(W / 800, H / 600);
     const offX = (W - 800 * scaleRaw) / 2;
     const offY = (H - 600 * scaleRaw) / 2;
@@ -108,7 +108,7 @@ export default function SketchPreviewOverlay() {
       ctx.closePath(); ctx.stroke();
     }
 
-    // ── 2. Edges (joints) ───────────────────────────────────────────────────
+    
     dashOffset.current -= 0.4;
     for (const e of edges) {
       const nA = nodes.find(n => n.id === e.a);
@@ -127,19 +127,19 @@ export default function SketchPreviewOverlay() {
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Anchor dot
+      
       const ancX = toCanvas(e.anchor[0]) + OFFSET_X;
       const ancY = toCanvas(e.anchor[1]) + OFFSET_Y;
       ctx.fillStyle = color;
       ctx.beginPath(); ctx.arc(ancX, ancY, 4, 0, Math.PI * 2); ctx.fill();
 
-      // Type label at midpoint
+      
       const mx = (ax + bx) / 2;
       const my = (ay + by) / 2 - 10;
       drawLabel(ctx, e.type.replace('_', ' '), mx, my);
     }
 
-    // ── 3. Nodes ────────────────────────────────────────────────────────────
+    
     for (const node of nodes) {
       const px = toCanvas(node.position[0]) + OFFSET_X;
       const py = toCanvas(node.position[1]) + OFFSET_Y;
@@ -149,7 +149,7 @@ export default function SketchPreviewOverlay() {
 
       if (node.shape === 'circle') {
         const r = toCanvas(node.dimensions[0] ?? 0.5);
-        // Glow
+        
         const grd = ctx.createRadialGradient(px, py, 0, px, py, r + 6);
         grd.addColorStop(0, 'rgba(99,102,241,0.3)');
         grd.addColorStop(1, 'rgba(99,102,241,0)');
@@ -162,7 +162,7 @@ export default function SketchPreviewOverlay() {
         ctx.beginPath(); ctx.arc(px, py, Math.max(r, 4), 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
 
-        // Mass label inside
+        
         if (r > 8) drawLabel(ctx, `${node.mass}kg`, px, py + 1);
       } else {
         const w = toCanvas(node.dimensions[0] ?? 1);
@@ -170,7 +170,7 @@ export default function SketchPreviewOverlay() {
         const hw = Math.max(w / 2, 4);
         const hh = Math.max(h / 2, 4);
 
-        // Glow
+        
         ctx.shadowColor = 'rgba(99,102,241,0.4)';
         ctx.shadowBlur  = 10;
         ctx.fillStyle   = col.fill;
@@ -185,7 +185,7 @@ export default function SketchPreviewOverlay() {
         drawLabel(ctx, `${node.mass}kg`, px, py + 1);
       }
 
-      // Node type badge
+      
       const badge = node.type === 'static' ? '⚓' : '⬡';
       ctx.font      = '10px Inter';
       ctx.fillStyle = node.type === 'static' ? '#94a3b8' : '#818cf8';
@@ -195,7 +195,7 @@ export default function SketchPreviewOverlay() {
     animFrameRef.current = requestAnimationFrame(render);
   }, [sketchDraft]);
 
-  // ── Resize canvas to fill parent ──────────────────────────────────────────
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -211,7 +211,7 @@ export default function SketchPreviewOverlay() {
     return () => ro.disconnect();
   }, []);
 
-  // ── Start/stop animation loop ──────────────────────────────────────────────
+  
   useEffect(() => {
     if (sketchDraft) {
       animFrameRef.current = requestAnimationFrame(render);
@@ -221,7 +221,7 @@ export default function SketchPreviewOverlay() {
     };
   }, [sketchDraft, render]);
 
-  // ── Inject into REALIS engine ─────────────────────────────────────────────
+  
   const handleInject = useCallback(() => {
     if (!sketchDraft) return;
     const { nodes = [], edges = [] } = sketchDraft.scene?.scene_graph ?? {};
@@ -235,7 +235,7 @@ export default function SketchPreviewOverlay() {
       uuidMap[n.id] = id;
 
       const isStatic = n.type === 'static';
-      // Convert world units back to canvas display (world * 10)
+      
       const px = toCanvas(n.position[0]);
       const py = toCanvas(n.position[1]);
 
@@ -302,16 +302,16 @@ export default function SketchPreviewOverlay() {
   return (
     <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
 
-      {/* Subtle tinted overlay */}
+      {}
       <div className="absolute inset-0 bg-indigo-950/[0.08]" />
 
-      {/* Canvas for real drawing */}
+      {}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* ── Top-left badge ──────────────────────────────────────────────── */}
+      {}
       <div className="absolute top-4 left-4 pointer-events-auto slide-up">
         <div className="flex items-center gap-2 bg-[#0b0f1c]/90 border border-indigo-500/30
                         rounded-xl px-3 py-2 backdrop-blur-sm shadow-[0_0_20px_rgba(79,70,229,0.2)]">
@@ -322,7 +322,7 @@ export default function SketchPreviewOverlay() {
         </div>
       </div>
 
-      {/* ── Warning badge (top-right) ──────────────────────────────────── */}
+      {}
       {nWarnings > 0 && (
         <div className="absolute top-4 right-4 pointer-events-auto slide-up">
           <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30
@@ -333,7 +333,7 @@ export default function SketchPreviewOverlay() {
         </div>
       )}
 
-      {/* ── Legend (bottom-left) ──────────────────────────────────────── */}
+      {}
       <div className="absolute bottom-[90px] left-4 pointer-events-none slide-up">
         <div className="flex flex-col gap-1 bg-[#0b0f1c]/80 border border-white/8 rounded-xl p-2.5 backdrop-blur-sm text-[10px]">
           {[
@@ -355,13 +355,13 @@ export default function SketchPreviewOverlay() {
         </div>
       </div>
 
-      {/* ── Action bar (bottom centre) ────────────────────────────────── */}
+      {}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto slide-up">
         <div className="flex items-center gap-1.5 bg-[#0b0f1c]/95 border border-indigo-500/25
                         rounded-full px-4 py-2.5 shadow-[0_0_40px_rgba(79,70,229,0.25)]
                         backdrop-blur-md">
 
-          {/* Stats */}
+          {}
           <div className="flex items-center gap-3 px-3 border-r border-white/8 mr-1">
             <span className="text-xs text-gray-500"><span className="text-white font-bold">{nNodes}</span> nodes</span>
             <span className="text-xs text-gray-500"><span className="text-white font-bold">{nEdges}</span> joints</span>

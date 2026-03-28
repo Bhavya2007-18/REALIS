@@ -1,7 +1,4 @@
-/**
- * @file Renderer.cpp
- * @brief Renderer implementation
- */
+
 #include "Renderer.hpp"
 #include <glad/glad.h>
 
@@ -35,4 +32,4 @@ void Renderer::setGLState() const {
   glFrontFace(GL_CCW);
 }
 
-} // namespace realis::renderer
+} 

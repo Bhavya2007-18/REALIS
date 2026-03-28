@@ -1,15 +1,8 @@
-/**
- * REALIS Physics Engine - Core Service Layer
- * Decoupled from UI. Used by solvers and simulation loop.
- * Supports: rigid body dynamics, thermal simulation, energy analysis.
- */
 
-// ─── Force Application ────────────────────────────────────────────────────────
 
-/**
- * Apply all forces (gravity, friction, air resistance) to bodies.
- * Mutates acceleration in-place.
- */
+
+
+
 export function applyForces(bodies, settings = {}) {
     const {
         gravity = { x: 0, y: 9.81 },
@@ -20,14 +13,14 @@ export function applyForces(bodies, settings = {}) {
     bodies.forEach(b => {
         if (b.isStatic) return;
 
-        // Gravity (F = mg)
+        
         b.acceleration = {
             x: gravity.x,
             y: gravity.y,
             z: gravity.z ?? 0
         };
 
-        // External force (e.g., motor thrust) - acceleration += F/m
+        
         if (b.externalForce) {
             const m = b.mass || 1;
             b.acceleration.x += (b.externalForce.x || 0) / m;
@@ -43,7 +36,7 @@ export function applyForces(bodies, settings = {}) {
             b.angularAcceleration.z += (b.externalTorque.z || 0) / Math.max(Iz, 1e-3);
         }
 
-        // Air resistance (drag ∝ v²·Cd)
+        
         const speed = Math.sqrt(
             (b.velocity?.x ?? 0) ** 2 +
             (b.velocity?.y ?? 0) ** 2 +
@@ -55,18 +48,16 @@ export function applyForces(bodies, settings = {}) {
             b.acceleration.y -= dragMag * (b.velocity.y / speed);
         }
 
-        // Ground friction when on ground (simplified)
+        
         if (b.onGround) {
             b.velocity.x *= (1 - frictionCoeff * 0.016);
         }
     });
 }
 
-// ─── Euler Integration ────────────────────────────────────────────────────────
 
-/**
- * Integrate positions and velocities using semi-implicit Euler.
- */
+
+
 export function integrate(bodies, dt) {
     bodies.forEach(b => {
         if (b.isStatic) return;
@@ -91,12 +82,9 @@ export function integrate(bodies, dt) {
     });
 }
 
-// ─── Collision Detection ──────────────────────────────────────────────────────
 
-/**
- * Basic AABB + circle collision detection.
- * Returns list of collision pairs: [{ a, b, normal, penetration }]
- */
+
+
 export function detectCollisions(bodies) {
     const collisions = [];
     for (let i = 0; i < bodies.length; i++) {
@@ -131,9 +119,7 @@ export function detectCollisions(bodies) {
     return collisions;
 }
 
-/**
- * Resolve collision pairs using impulse-based response.
- */
+
 export function resolveCollisions(collisions) {
     collisions.forEach(({ a, b, normal, penetration }) => {
         const correction = penetration * 0.5;
@@ -179,15 +165,9 @@ export function resolveCollisions(collisions) {
     });
 }
 
-// ─── Energy Calculations ──────────────────────────────────────────────────────
 
-/**
- * Calculate kinetic, potential, and total mechanical energy.
- * @param {Array} bodies
- * @param {number} groundY - Y position of the ground reference
- * @param {number} gravityMag
- * @returns {{ kinetic, potential, total }}
- */
+
+
 export function calculateEnergy(bodies, groundY = 600, gravityMag = 9.81) {
     let kinetic = 0;
     let potential = 0;
@@ -210,12 +190,9 @@ export function calculateEnergy(bodies, groundY = 600, gravityMag = 9.81) {
     return { kinetic, potential, total: kinetic + potential };
 }
 
-// ─── Force Vectors ────────────────────────────────────────────────────────────
 
-/**
- * Build force vector data for visualization.
- * Returns array of { origin, direction, magnitude } objects.
- */
+
+
 export function buildForceVectors(bodies, settings = {}) {
     const gravity = settings.gravity ?? { x: 0, y: 9.81 };
     return bodies
@@ -238,19 +215,14 @@ export function buildForceVectors(bodies, settings = {}) {
         });
 }
 
-// ─── Thermal Physics ──────────────────────────────────────────────────────────
 
-/**
- * Compute heat diffusion between bodies using Newton's law of cooling.
- * @param {Array} bodies - each body with { temperature, thermalConductivity, mass }
- * @param {number} dt
- * @returns {Map<string, number>} - map of id → new temperature
- */
+
+
 export function diffuseHeat(bodies, dt = 0.016) {
     const temps = new Map(bodies.map(b => [b.id, b.temperature ?? 20]));
 
     bodies.forEach(a => {
-        if (a.isHeatSource || a.isHeatSink) return; // fixed temperature anchors
+        if (a.isHeatSource || a.isHeatSink) return; 
         bodies.forEach(b => {
             if (a.id === b.id) return;
 
@@ -260,7 +232,7 @@ export function diffuseHeat(bodies, dt = 0.016) {
             const posBy = b.position?.y ?? b.cy ?? 0;
 
             const dist = Math.sqrt((posAx - posBx) ** 2 + (posAy - posBy) ** 2);
-            if (dist > 120) return; // Only adjacent bodies
+            if (dist > 120) return; 
 
             const conductivity = Math.min(
                 a.thermalConductivity ?? 50,
@@ -271,7 +243,7 @@ export function diffuseHeat(bodies, dt = 0.016) {
 
             const heatFlow = conductivity * (tempB - tempA) * dt / Math.max(dist, 1);
             const massA = a.mass || 1;
-            const specificHeat = 500; // J/(kg·K) typical for metals
+            const specificHeat = 500; 
 
             const dT = heatFlow / (massA * specificHeat);
             temps.set(a.id, tempA + dT);
@@ -281,13 +253,11 @@ export function diffuseHeat(bodies, dt = 0.016) {
     return temps;
 }
 
-/**
- * Map a temperature value [minT, maxT] to a CSS color string (blue→green→yellow→red heatmap).
- */
+
 export function tempToColor(temp, minT = 20, maxT = 500) {
     const t = Math.min(1, Math.max(0, (temp - minT) / (maxT - minT)));
 
-    // Heatmap: blue (0) → cyan (0.25) → green (0.5) → yellow (0.75) → red (1)
+    
     let r, g, bv;
     if (t < 0.25) {
         const f = t / 0.25;
@@ -306,9 +276,7 @@ export function tempToColor(temp, minT = 20, maxT = 500) {
     return `rgba(${r},${g},${bv},0.75)`;
 }
 
-/**
- * Calculate thermal insights: heat risk level, hottest body.
- */
+
 export function analyzeThermal(bodies, tempMap) {
     let maxTemp = -Infinity;
     let hottestId = null;

@@ -47,7 +47,7 @@ int main() {
     } else if (cmd == "SET_GRAVITY") {
       float gx, gy, gz;
       ss >> gx >> gy >> gz;
-      // Use gy as uniform gravity acceleration if it matches standard patterns
+      
       world.add_force_field(new UniformGravityField(std::abs(gy)));
     } else if (cmd == "ADD_POINT_GRAVITY") {
       float cx, cy, cz, strength;
@@ -196,8 +196,8 @@ int main() {
         world.add_constraint(lc);
       }
     } else if (cmd == "ADD_SLIDER_LOCK") {
-      // Locks angular DOFs and 2 linear DOFs
-      // Placeholder for complex combined joint
+      
+      
     } else if (cmd == "SET_VELOCITY") {
       std::string id;
       float vx, vy, vz, wax, way, waz;
@@ -229,13 +229,13 @@ int main() {
         if (i < steps) {
           for (int s = 0; s < sub_steps; s++) {
             world.step();
-            // For the current i-th frame, we only report the final state after
-            // sub-steps. However, we can also report all contacts that happened
-            // in the last step.
+            
+            
+            
           }
-          // Output contacts for the current frame
+          
           for (const auto &contact : world.last_contacts) {
-            // Find body IDs
+            
             std::string idA = "?", idB = "?";
             for (size_t k = 0; k < world.bodies.size(); k++) {
               if (world.bodies[k] == contact.body_a)

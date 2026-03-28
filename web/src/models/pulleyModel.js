@@ -45,17 +45,17 @@ const pulleyModel = {
         }
     ],
     constraints: [
-        // Since custom L=d1+d2 distance constraints over a pulley aren't always standard,
-        // we might use standard distance over a movable pivot or a custom "pulley" type constraint.
+        
+        
         {
             id: "rope",
-            type: "pulley", // Assuming REALIS handles custom string constraints, or will gracefully fall back
+            type: "pulley", 
             targetA: "mass_left",
             targetB: "mass_right",
             anchorA: { x: 0, y: -20 },
             anchorB: { x: 0, y: -20 },
-            groundAnchorA: { x: 370, y: 150 }, // Left side of pulley
-            groundAnchorB: { x: 430, y: 150 }, // Right side of pulley
+            groundAnchorA: { x: 370, y: 150 }, 
+            groundAnchorB: { x: 430, y: 150 }, 
             ratio: 1.0,
             length: 400,
             label: "Rope"

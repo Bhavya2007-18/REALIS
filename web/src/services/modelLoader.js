@@ -1,22 +1,19 @@
 import useStore from '../store/useStore';
 import { validateModelSchema } from '../models/schema';
 
-/**
- * Model Loader Service
- * Handles loading of pre-built simulation models into the Zustand store.
- */
+
 const modelLoader = {
     loadModel: (modelConfig) => {
         const store = useStore.getState();
 
         try {
-            // 0. Validate via new Schema
+            
             const model = validateModelSchema(modelConfig);
 
-            // 1. Clear current scene
+            
             store.clearDesign();
 
-            // 2. Add all 2D objects with sane defaults
+            
             if (model.objects) {
                 store.setObjects(model.objects.map(obj => ({
                     ...obj,
@@ -27,7 +24,7 @@ const modelLoader = {
                 })));
             }
 
-            // 3. Add native 3D shapes
+            
             if (model.shapes3D && model.shapes3D.length > 0) {
                 const shapes = model.shapes3D.map(shape => ({
                     ...shape,
@@ -82,10 +79,10 @@ const modelLoader = {
                 useStore.setState({ is3DView: true });
             }
 
-            // 4. Apply constraints if present
+            
             store.setConstraints(model.constraints || []);
 
-            // 5. Set simulation settings based on schema physics_config
+            
             if (model.physics_config) {
                 store.setSimulationSettings({
                     gravity: model.physics_config.gravity,
@@ -97,16 +94,16 @@ const modelLoader = {
                 });
             }
 
-            // 6. Set active model controls if present
+            
             const controls = model.controls?.parameters || [];
             if (store.setActiveModelControls) {
                 store.setActiveModelControls(controls);
             }
 
-            // 7. Store current active preset ID
+            
             useStore.setState({ simulationPreset: model.id });
 
-            // 8. Reset playback state
+            
             store.resetPlayback();
 
             return {

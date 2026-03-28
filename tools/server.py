@@ -6,19 +6,19 @@ import subprocess
 import os
 import sys
 
-# Support two invocation styles:
-#   1. uvicorn tools.server:app        (run from project root, 'tools' is a package)
-#   2. python server.py / uvicorn server:app  (run from inside tools/)
+
+
+
 try:
     from tools.sketch_ai.api import router as sketch_router
 except ImportError:
-    # Running from inside tools/ — add parent to sys.path
+    
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from tools.sketch_ai.api import router as sketch_router
 
 app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
 
-# ENORMOUSLY PERMISSIVE CORS FOR DEBUGGING
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,8 +29,8 @@ app.add_middleware(
 
 app.include_router(sketch_router)
 
-# --- Data Contracts (JSON Schema) ---
-# ... (rest of models)
+
+
 
 class Vector3(BaseModel):
     x: float
@@ -43,16 +43,16 @@ class Vector2(BaseModel):
 
 class CadGeometry(BaseModel):
     id: str
-    type: str # "box", "sphere", "extrusion"
+    type: str 
     position: Vector3
     rotation: Vector3
-    dimensions: Vector3 # Use varies by type (e.g. radius in x for sphere)
+    dimensions: Vector3 
     path: Optional[List[Vector2]] = None
     depth: float = 0.0
 
 class PhysicsProperties(BaseModel):
     mass: float = 1.0
-    restitution: float = 0.5 # Bounciness
+    restitution: float = 0.5 
     friction: float = 0.3
     is_static: bool = False
     initial_velocity: Vector3 = Vector3(x=0, y=0, z=0)
@@ -65,7 +65,7 @@ class SceneObject(BaseModel):
 
 class PhysicsConstraint(BaseModel):
     id: str
-    type: str # "distance", "fixed", "hinge", "slider"
+    type: str 
     target_a: str
     target_b: Optional[str] = None
     distance: Optional[float] = 0.0
@@ -73,7 +73,7 @@ class PhysicsConstraint(BaseModel):
     pivot_b: Optional[Vector3] = None
     axis: Optional[Vector3] = None
     angle_limit: Optional[float] = None
-    # Motor support
+    
     motor_enabled: bool = False
     target_velocity: float = 0.0
     max_force: float = 0.0
@@ -90,7 +90,7 @@ class SimulationRequest(BaseModel):
 class ObjectState(BaseModel):
     id: str
     position: Vector3
-    rotation: Vector3 # Or Quaternion for advanced use
+    rotation: Vector3 
     linear_velocity: Vector3
     angular_velocity: Vector3
 
@@ -109,7 +109,7 @@ class SimulationResponse(BaseModel):
     energy_drift: float
 
 class ChatMessage(BaseModel):
-    role: str # "user" or "assistant"
+    role: str 
     content: str
     
 class ChatRequest(BaseModel):
@@ -120,7 +120,7 @@ class ChatResponse(BaseModel):
     actions: Optional[List[dict]] = None
 
 
-# --- Endpoints ---
+
 
 @app.get("/")
 def read_root():
@@ -128,23 +128,20 @@ def read_root():
 
 @app.post("/simulate", response_model=SimulationResponse)
 def run_simulation(req: SimulationRequest):
-    """
-    Accepts a scene definition, runs it through the C++ engine.
-    Falls back to a Python physics engine if the C++ engine is unavailable or crashes.
-    """
+    
     import math
 
     print(f">>> Simulation request: {len(req.objects)} objects, {req.duration}s, gravity={req.gravity}")
 
-    # --- Python Physics Fallback Engine ---
+    
     def run_python_physics(req):
-        """A simple but correct rigid-body integrator in Python."""
+        
         gx, gy, gz = req.gravity.x, req.gravity.y, req.gravity.z
         dt = req.time_step
         sub = max(1, req.sub_steps)
         sub_dt = dt / sub
         
-        # Point gravity params
+        
         pg_center = None
         pg_strength = 0
         if req.point_gravity:
@@ -152,7 +149,7 @@ def run_simulation(req: SimulationRequest):
             pg_center = (c.get('x', 0), c.get('y', 0), c.get('z', 0))
             pg_strength = req.point_gravity.get('strength', 0)
 
-        # Initialize bodies
+        
         bodies = []
         for obj in req.objects:
             pos = obj.geometry.position
@@ -184,7 +181,7 @@ def run_simulation(req: SimulationRequest):
                 for b in bodies:
                     if b['is_static']: continue
                     
-                    # Gravity (uniform or point)
+                    
                     if pg_center and pg_strength > 0:
                         dx = pg_center[0] - b['px']
                         dy = pg_center[1] - b['py']
@@ -198,38 +195,38 @@ def run_simulation(req: SimulationRequest):
                     else:
                         ax, ay, az = gx, gy, gz
 
-                    # Integrate velocity
+                    
                     b['vx'] += ax * sub_dt
                     b['vy'] += ay * sub_dt
                     b['vz'] += az * sub_dt
 
-                    # Integrate position
+                    
                     b['px'] += b['vx'] * sub_dt
                     b['py'] += b['vy'] * sub_dt
                     b['pz'] += b['vz'] * sub_dt
 
-                    # Integrate rotation
+                    
                     b['rx'] += b['wx'] * sub_dt
                     b['ry'] += b['wy'] * sub_dt
                     b['rz'] += b['wz'] * sub_dt
 
-                # Simple ground plane collision (y=0 is ground if gravity is negative y)
+                
                 for b in bodies:
                     if b['is_static']: continue
                     floor_y = b['radius'] if b['geo_type'] == 'sphere' else b['half_y']
-                    # Find nearest static body as floor
+                    
                     for s in bodies:
                         if not s['is_static']: continue
-                        # If static body is below dynamic body, it's a floor candidate
+                        
                         floor_top = s['py'] + s['half_y']
                         if abs(b['px'] - s['px']) < s['half_x'] + b['half_x'] and \
                            abs(b['pz'] - s['pz']) < s['half_z'] + b['half_z']:
                             if b['py'] - floor_y < floor_top and b['vy'] < 0:
                                 b['py'] = floor_top + floor_y
                                 b['vy'] = -b['vy'] * b['restitution']
-                                b['vx'] *= 0.98  # some friction
+                                b['vx'] *= 0.98  
 
-            # Build frame
+            
             states = []
             for b in bodies:
                 states.append(ObjectState(
@@ -243,7 +240,7 @@ def run_simulation(req: SimulationRequest):
 
         return SimulationResponse(frames=frames, energy_drift=0.0001)
 
-    # --- Try C++ engine first ---
+    
     sim_path = os.getenv("REALIS_SIM_PATH")
     if not sim_path:
         binary_name = "realis_simulator.exe" if os.name == 'nt' else "realis_simulator"
@@ -255,7 +252,7 @@ def run_simulation(req: SimulationRequest):
         print(f">>> C++ engine not found at {sim_path}, using Python fallback")
         return run_python_physics(req)
 
-    # Build command list for C++ engine
+    
     input_lines = [
         f"SET_DT {req.time_step}",
         f"SET_DURATION {req.duration}",
@@ -313,7 +310,7 @@ def run_simulation(req: SimulationRequest):
             print(f">>> C++ engine error: {stderr[:500]}, falling back to Python")
             return run_python_physics(req)
 
-        # Parse C++ engine output
+        
         frames = []
         current_frame_time = None
         current_states = []
@@ -325,7 +322,7 @@ def run_simulation(req: SimulationRequest):
                 continue
             
             if parts[0] == "FRAME":
-                # Save previous frame
+                
                 if current_frame_time is not None:
                     frames.append(SimulationFrame(
                         time=current_frame_time,
@@ -337,7 +334,7 @@ def run_simulation(req: SimulationRequest):
                 current_contacts = []
 
             elif parts[0] == "OBJ" and len(parts) >= 12:
-                # OBJ [id] [px] [py] [pz] [qw] [qx] [qy] [qz] [vx] [vy] [vz] [wx] [wy] [wz]
+                
                 obj_id = parts[1]
                 px, py, pz = float(parts[2]), float(parts[3]), float(parts[4])
                 vx = float(parts[9]) if len(parts) > 9 else 0
@@ -354,7 +351,7 @@ def run_simulation(req: SimulationRequest):
                     angular_velocity=Vector3(x=wx, y=wy, z=wz)
                 ))
 
-        # Append final frame
+        
         if current_frame_time is not None and current_states:
             frames.append(SimulationFrame(
                 time=current_frame_time,
@@ -377,10 +374,7 @@ def run_simulation(req: SimulationRequest):
 
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(req: ChatRequest):
-    """
-    Extended command parser. Detects CAD creation, physics config,
-    and joint creation intents from natural language.
-    """
+    
     if not req.messages:
         raise HTTPException(status_code=400, detail="Empty messages")
 
@@ -388,17 +382,17 @@ def handle_chat(req: ChatRequest):
     actions = []
     reply = ""
 
-    # ── Physics: Make Static ──────────────────────────────────────────────────
+    
     if any(k in last_msg for k in ["make it static", "make static", "make it a floor", "ground", "fix it in place", "don't move", "make it solid"]):
         reply = "Done! I've marked the selected object as static — it will act as an immovable surface (floor, wall, etc.) during simulation."
         actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": True}})
 
-    # ── Physics: Make Dynamic ─────────────────────────────────────────────────
+    
     elif any(k in last_msg for k in ["make it dynamic", "make dynamic", "unfix", "let it move"]):
         reply = "The selected object is now dynamic — it will respond to gravity and collisions."
         actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": False}})
 
-    # ── Physics: Set Mass ─────────────────────────────────────────────────────
+    
     elif "mass" in last_msg and any(c.isdigit() for c in last_msg):
         import re
         nums = re.findall(r'\d+\.?\d*', last_msg)
@@ -409,7 +403,7 @@ def handle_chat(req: ChatRequest):
         else:
             reply = "Could you specify the mass value? For example: 'set mass to 5'."
 
-    # ── Physics: Set Friction ─────────────────────────────────────────────────
+    
     elif "friction" in last_msg and any(c.isdigit() for c in last_msg):
         import re
         nums = re.findall(r'\d+\.?\d*', last_msg)
@@ -420,7 +414,7 @@ def handle_chat(req: ChatRequest):
         else:
             reply = "Please specify a friction value between 0 and 1."
 
-    # ── Physics: Set Restitution/Bounciness ───────────────────────────────────
+    
     elif any(k in last_msg for k in ["restitution", "bounciness", "bounce", "elastic"]) and any(c.isdigit() for c in last_msg):
         import re
         nums = re.findall(r'\d+\.?\d*', last_msg)
@@ -431,17 +425,17 @@ def handle_chat(req: ChatRequest):
         else:
             reply = "Specify a bounciness value between 0 (no bounce) and 1 (fully elastic)."
 
-    # ── Joints: Pin to World (Fixed Anchor) ───────────────────────────────────
+    
     elif any(k in last_msg for k in ["pin it", "anchor", "pin to world", "pin to ground", "fixed joint", "fix to world"]):
         reply = "I've added a **Fixed Anchor** constraint — the selected object is pinned to the world. It'll stay in place but can still be affected by joints with other objects."
         actions.append({"type": "ADD_JOINT", "payload": {"type": "fixed"}})
 
-    # ── Joints: Distance Joint ────────────────────────────────────────────────
+    
     elif any(k in last_msg for k in ["link", "distance joint", "rod", "connect objects", "joint between"]):
         reply = "I'll create a **Distance Joint** between the two selected objects. Select your objects and define the target distance in the Properties panel's Joints section."
         actions.append({"type": "ADD_JOINT", "payload": {"type": "distance"}})
 
-    # ── CAD: Draw a box/cube ──────────────────────────────────────────────────
+    
     elif any(k in last_msg for k in ["cube", "box", "rectangle", "rect"]):
         import re
         nums = re.findall(r'\d+\.?\d*', last_msg)
@@ -450,7 +444,7 @@ def handle_chat(req: ChatRequest):
         reply = f"I've created a **{int(w)}×{int(h)} rectangle** for you. Select it and set physics properties in the panel."
         actions.append({"type": "CREATE_CAD", "payload": {"type": "rect", "x": 300, "y": 200, "width": w, "height": h}})
 
-    # ── CAD: Draw a circle/sphere ─────────────────────────────────────────────
+    
     elif any(k in last_msg for k in ["circle", "sphere", "disc", "ball", "cylinder"]):
         import re
         nums = re.findall(r'\d+\.?\d*', last_msg)
@@ -458,11 +452,11 @@ def handle_chat(req: ChatRequest):
         reply = f"I've drafted a **circle with radius {int(r)}** for extrusion into a cylinder."
         actions.append({"type": "CREATE_CAD", "payload": {"type": "circle", "cx": 400, "cy": 300, "r": r}})
 
-    # ── Simulation: Run ───────────────────────────────────────────────────────
+    
     elif any(k in last_msg for k in ["simulate", "run simulation", "play", "start simulation"]):
         reply = "Click the **Play button** at the bottom of the viewport to run the physics simulation. All your objects and joints are already configured!"
 
-    # ── Help / Fallback ───────────────────────────────────────────────────────
+    
     else:
         reply = (
             "I can help you configure your scene. Try commands like:\n"

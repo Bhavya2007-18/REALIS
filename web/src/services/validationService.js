@@ -1,8 +1,4 @@
-/**
- * Physics Validation Service
- * Used to snapshot, trace, and validate prebuilt models for benchmaring
- * and continuous AI correctness verification vs Ground Truth.
- */
+
 
 class ValidationService {
     constructor() {
@@ -23,7 +19,7 @@ class ValidationService {
         const trace = this.activeTraces.get(modelId);
         if (!trace) return;
 
-        // Optionally hash or checksum the positions to reduce memory footprint
+        
         trace.snapshots.push({
             time: frameTime,
             energy: { ...energyState },
@@ -37,8 +33,8 @@ class ValidationService {
 
         const duration = performance.now() - trace.startTime;
         
-        // Basic Physics Core Analysis: Energy Conservation Check
-        // Calculate max delta energy from start to finish
+        
+        
         let maxEnergyDelta = 0;
         let isStable = true;
 
@@ -48,7 +44,7 @@ class ValidationService {
                 const diff = Math.abs(snap.energy.total - initialTotal);
                 if (diff > maxEnergyDelta) maxEnergyDelta = diff;
                 
-                // If energy grows exponentially, solver exploded
+                
                 if (diff > initialTotal * 0.5 && initialTotal > 1) {
                     isStable = false;
                 }

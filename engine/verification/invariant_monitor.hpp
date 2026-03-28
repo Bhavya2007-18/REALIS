@@ -1,6 +1,6 @@
-// Invariant Monitor
-// The "Veto Power" class. Checks energy conservation.
-// Deterministic accounting.
+
+
+
 
 #pragma once
 #include <vector>
@@ -35,7 +35,7 @@ public:
         initial_total_energy = 0.0;
     }
 
-    // Capture the current system state
+    
     EnergyLedger capture_ledger(double time) {
         EnergyLedger ledger = {0};
         ledger.time = time;
@@ -47,8 +47,8 @@ public:
             ledger.dissipated_energy += s->get_dissipated_energy();
         }
         
-        // Auto-set baseline on first capture if not set (or manual set required?)
-        // Usually first frame is t=0
+        
+        
         if (!baseline_set) {
             initial_total_energy = ledger.total_energy();
             baseline_set = true;
@@ -57,7 +57,7 @@ public:
         return ledger;
     }
 
-    // Capture state and verify against baseline
+    
     InvariantReport check_invariants(double time) {
         EnergyLedger ledger = capture_ledger(time);
         double current_total = ledger.total_energy();
@@ -65,11 +65,11 @@ public:
         double diff = current_total - initial_total_energy;
         double drift = 0.0;
         
-        // Avoid div by zero
+        
         if (std::abs(initial_total_energy) > 1e-9) {
             drift = (diff / initial_total_energy) * 100.0;
         } else if (std::abs(current_total) > 1e-9) {
-            // Started at 0, now have energy -> Infinite error (Spontaneous creation)
+            
             drift = 100.0; 
         }
 
@@ -77,7 +77,7 @@ public:
         report.ledger = ledger;
         report.drift_percent = drift;
         
-        if (std::abs(drift) > 5.0) { // Gross Violation
+        if (std::abs(drift) > 5.0) { 
              report.status = InvariantStatus::VIOLATION;
              report.message = "CRITICAL: Energy Conservation Violation > 5%";
         } else if (std::abs(drift) > tolerance_percent) {
@@ -91,7 +91,7 @@ public:
         return report;
     }
     
-    // Printer helper
+    
     void print_ledger(const InvariantReport& report) {
         std::cout << std::fixed << std::setprecision(6);
         std::cout << "[T=" << report.ledger.time << "] ";
@@ -103,5 +103,5 @@ public:
     }
 };
 
-} // namespace verification
-} // namespace realis
+} 
+} 

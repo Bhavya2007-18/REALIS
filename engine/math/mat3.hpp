@@ -1,4 +1,4 @@
-// 3x3 matrix class
+
 #pragma once
 #include "vec3.hpp"
 
@@ -24,4 +24,4 @@ struct Mat3 {
     Vec3 row(int r) const;
 };
 
-} // namespace realis
+} 

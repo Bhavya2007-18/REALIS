@@ -1,9 +1,4 @@
-/**
- * Engine Model
- * A simplified piston-crank mechanism.
- * Note: Since the backend physics might not handle complex mechanical constraints
- * perfectly for a demo, we rely on a visually convincing setup.
- */
+
 
 const engineModel = {
     name: "Engine",
@@ -11,7 +6,7 @@ const engineModel = {
     category: "Mechanical",
     complexity: "High",
     objects: [
-        // Crankshaft (Central Rotating Hub)
+        
         {
             id: "crank_hub",
             type: "circle",
@@ -24,7 +19,7 @@ const engineModel = {
             isStatic: true,
             label: "Crank Hub"
         },
-        // Crank Pin 1
+        
         {
             id: "crank_pin_1",
             type: "circle",
@@ -37,7 +32,7 @@ const engineModel = {
             mass: 2,
             label: "Crank Pin 1"
         },
-        // Piston 1
+        
         {
             id: "piston_1",
             type: "circle",
@@ -50,7 +45,7 @@ const engineModel = {
             mass: 5,
             label: "Piston 1"
         },
-        // Cylinder 1 (Visual only)
+        
         {
             id: "cylinder_1",
             type: "rect",
@@ -64,7 +59,7 @@ const engineModel = {
             isStatic: true,
             label: "Cylinder 1"
         },
-        // Crank Pin 2 (180 deg offset)
+        
         {
             id: "crank_pin_2",
             type: "circle",
@@ -77,7 +72,7 @@ const engineModel = {
             mass: 2,
             label: "Crank Pin 2"
         },
-        // Piston 2
+        
         {
             id: "piston_2",
             type: "circle",
@@ -90,7 +85,7 @@ const engineModel = {
             mass: 5,
             label: "Piston 2"
         },
-         // Cylinder 2 (Visual only)
+         
          {
             id: "cylinder_2",
             type: "rect",
@@ -106,7 +101,7 @@ const engineModel = {
         },
     ],
     constraints: [
-        // Crank 1 Rotation
+        
         {
             id: "crank_joint_1",
             type: "revolute",
@@ -119,7 +114,7 @@ const engineModel = {
             maxForce: 5000,
             label: "Main Crank"
         },
-        // Connecting Rod 1
+        
         {
             id: "con_rod_1",
             type: "distance",
@@ -129,16 +124,16 @@ const engineModel = {
             stiffness: 1,
             label: "Con-Rod 1"
         },
-        // Slider Constraint 1 (Wait, does REALIS have sliders? If not, we use vertical guide points)
+        
         {
             id: "piston_guide_1",
-            type: "prismatic", // Assuming prismatic / slider is supported
+            type: "prismatic", 
             targetA: "piston_1",
-            targetB: null, // world
+            targetB: null, 
             axis: { x: 0, y: 1 },
             label: "Piston 1 Guide"
         },
-        // Connecting Rod 2
+        
         {
             id: "con_rod_2",
             type: "distance",
@@ -148,7 +143,7 @@ const engineModel = {
             stiffness: 1,
             label: "Con-Rod 2"
         },
-        // Slider Constraint 2
+        
         {
             id: "piston_guide_2",
             type: "prismatic",

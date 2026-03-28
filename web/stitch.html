@@ -38,7 +38,7 @@
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 overflow-hidden h-screen flex flex-col">
-<!-- Top Navigation Bar -->
+
 <header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-6 py-3 z-50">
 <div class="flex items-center gap-8">
 <div class="flex items-center gap-3">
@@ -79,9 +79,9 @@
 </div>
 </div>
 </header>
-<!-- Main Workspace Area -->
+
 <main class="flex-1 flex overflow-hidden">
-<!-- Left Sidebar: Project Explorer -->
+
 <aside class="w-64 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-background-dark/50 flex flex-col">
 <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
 <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Project Explorer</span>
@@ -127,9 +127,9 @@
 </div>
 </div>
 </aside>
-<!-- Center: 3D Viewport -->
+
 <section class="flex-1 relative flex flex-col bg-[#0a0f1a]">
-<!-- Toolbar Overlay -->
+
 <div class="absolute top-4 left-4 z-10 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
 <button class="p-2 text-white hover:bg-primary rounded-lg transition-colors bg-primary/20">
 <span class="material-symbols-outlined">near_me</span>
@@ -151,7 +151,7 @@
 <span class="material-symbols-outlined">architecture</span>
 </button>
 </div>
-<!-- Viewport Controls -->
+
 <div class="absolute top-4 right-4 z-10 flex flex-col gap-2">
 <div class="glass p-1.5 rounded-xl flex flex-col gap-1">
 <button class="p-2 text-slate-300 hover:text-white"><span class="material-symbols-outlined">videocam</span></button>
@@ -162,25 +162,25 @@
 <button class="p-2 text-slate-300 hover:text-white"><span class="material-symbols-outlined">remove</span></button>
 </div>
 </div>
-<!-- 3D GRID AREA -->
+
 <div class="flex-1 grid-bg flex items-center justify-center relative overflow-hidden">
-<!-- Placeholder for 3D Model -->
+
 <div class="relative w-96 h-96 flex items-center justify-center">
-<!-- Abstract 3D Representation -->
+
 <div class="absolute inset-0 border-2 border-primary/20 rounded-full animate-pulse"></div>
 <div class="w-64 h-64 border border-primary/40 rotate-45 flex items-center justify-center">
 <div class="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
 <span class="material-symbols-outlined text-6xl text-primary font-light">deployed_code</span>
 </div>
 </div>
-<!-- Axis Indicator -->
+
 <div class="absolute bottom-10 left-10 flex flex-col text-[10px] font-mono text-slate-500">
 <div class="flex items-center gap-2"><span class="w-4 h-[1px] bg-red-500"></span> X-AXIS</div>
 <div class="flex items-center gap-2"><span class="w-4 h-[1px] bg-green-500"></span> Y-AXIS</div>
 <div class="flex items-center gap-2"><span class="w-4 h-[1px] bg-primary"></span> Z-AXIS</div>
 </div>
 </div>
-<!-- Bottom Simulation Controls -->
+
 <div class="absolute bottom-6 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl">
 <div class="flex items-center gap-4">
 <button class="p-2 text-slate-400 hover:text-white"><span class="material-symbols-outlined">skip_previous</span></button>
@@ -202,7 +202,7 @@
 </div>
 </div>
 </section>
-<!-- Right Sidebar: AI Chatbot -->
+
 <aside class="w-80 border-l border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark flex flex-col">
 <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
 <div class="size-6 bg-primary rounded-md flex items-center justify-center">
@@ -252,7 +252,7 @@
 </div>
 </aside>
 </main>
-<!-- Bottom Persistent Horizontal Bar (Tabs) -->
+
 <footer class="h-14 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between z-50">
 <div class="flex h-full">
 <button class="flex items-center gap-2 px-6 h-full border-b-2 border-primary bg-primary/10 text-primary font-bold text-sm tracking-tight transition-all">

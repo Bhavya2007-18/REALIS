@@ -12,10 +12,7 @@ namespace realis::renderer {
 
 class Renderer;
 
-/**
- * @class AxisRenderer
- * @brief Renders the RGB world axis indicator and origin marker.
- */
+
 class AxisRenderer {
 public:
   AxisRenderer(float length = 2.0f);
@@ -30,4 +27,4 @@ private:
   std::unique_ptr<Shader> m_shader;
 };
 
-} // namespace realis::renderer
+} 

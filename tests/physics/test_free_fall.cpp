@@ -1,4 +1,4 @@
-// Physics test: Free fall
+
 #include "../engine/dynamics/rigid_body.hpp"
 #include <iostream>
 

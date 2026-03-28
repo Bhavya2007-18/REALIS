@@ -14,7 +14,7 @@ import ModelControls from '../components/ModelControls';
 import { stepWater } from '../utils/waterPhysics';
 
 export default function SimulateWorkspace() {
-    // Top-level store values
+    
     const objects = useStore(state => state.objects);
     const shapes3D = useStore(state => state.shapes3D);
     const setShapes3D = useStore(state => state.setShapes3D);
@@ -39,12 +39,12 @@ export default function SimulateWorkspace() {
 
     const activeLayerId = useStore(state => state.activeLayerId);
     
-    // Local Selection State (for inspector)
+    
     const [selectedObjectIds, setSelectedObjectIds] = useState([]);
 
     const [isInspectorOpen, setIsInspectorOpen] = useState(true);
     
-    // ── V6 Engine State ─────────────────────────────────────────────────────
+    
     const simulationPreset = useStore(state => state.simulationPreset);
     const isV6Active = simulationPreset === 'v6_engine_simulation';
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
@@ -56,7 +56,7 @@ export default function SimulateWorkspace() {
     const [showV6Panel, setShowV6Panel] = useState(false);
     const [isMechanicalAssemblyActive, setIsMechanicalAssemblyActive] = useState(false);
 
-    // Initialize V6 solver when V6 model is loaded
+    
     useEffect(() => {
         if (isV6Active) {
             v6SolverRef.current = new V6PhysicsSolver({
@@ -89,17 +89,17 @@ export default function SimulateWorkspace() {
         setIsMechanicalAssemblyActive(initialized);
     }, [isV6Active, isMechanicalAssemblyPreset, shapes3D]);
 
-    // Core Engine Refs
+    
     const reqRef = useRef(null);
     const mechSolver = useRef(new MechanicsSolver(simulationSettings));
     const thermSolver = useRef(new ThermalSolver(simulationSettings));
 
-    // Internal states for overlays
+    
     const [renderBodies, setRenderBodies] = useState([...shapes3D, ...objects]);
     const [vectors, setVectors] = useState([]);
     const [colorMap, setColorMap] = useState({});
 
-    // Sync bodies to solver whenever they change in Design mode
+    
     useEffect(() => {
         if (!isPlaying) {
             const allBodies = [...shapes3D, ...objects];
@@ -110,7 +110,7 @@ export default function SimulateWorkspace() {
         }
     }, [objects, shapes3D, constraints, isPlaying]);
 
-    // Apply settings changes to solvers
+    
     useEffect(() => {
         const preset = useStore.getState().simulationPreset;
         const groundY = preset === 'ashwins_workplace' ? -1000 : simulationSettings.groundY;
@@ -118,8 +118,8 @@ export default function SimulateWorkspace() {
         thermSolver.current.updateSettings(simulationSettings);
     }, [simulationSettings, simulationMode]);
     
-    // Ensure design changes reflect live in simulation.
-    // If objects or shapes change while playing, pause and resync bodies.
+    
+    
     const prevCounts = useRef({ o: objects.length, s: shapes3D.length });
     useEffect(() => {
         const changed = prevCounts.current.o !== objects.length || prevCounts.current.s !== shapes3D.length;
@@ -135,7 +135,7 @@ export default function SimulateWorkspace() {
         }
     }, [objects, shapes3D, isPlaying]);
     
-    // On entering Simulation workspace, force a resync to the latest design state.
+    
     useEffect(() => {
         if (activeWorkspace === 'simulate') {
             const allBodies = [...shapes3D, ...objects];
@@ -146,7 +146,7 @@ export default function SimulateWorkspace() {
         }
     }, [activeWorkspace]);
 
-    // ── Main Simulation Loop ───────────────────────────────────────────────────
+    
     useEffect(() => {
         if (!isPlaying) {
             cancelAnimationFrame(reqRef.current);
@@ -165,7 +165,7 @@ export default function SimulateWorkspace() {
                 return;
             }
 
-            // ── V6 Engine specialised loop ───────────────────────────────────
+            
             if (isV6Active && v6SolverRef.current) {
                 const snap = v6SolverRef.current.tick(rawDt);
                 setV6EngineState(snap);
@@ -178,7 +178,7 @@ export default function SimulateWorkspace() {
 
                 setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
 
-            // ── Mechanical Assembly loop ─────────────────────────────────────
+            
             } else if (isMechanicalAssemblyActive && mechanicalSolverRef.current) {
                 const { states, time: simTime } = mechanicalSolverRef.current.tick(rawDt);
                 if (states && states.size > 0) {
@@ -189,11 +189,11 @@ export default function SimulateWorkspace() {
                     energy: { kinetic: 0, potential: 0, total: 0 }
                 });
 
-            // ── Generic rigid / thermal loop ─────────────────────────────────
+            
             } else if (simulationType === 'rigid') {
                 const bodies = mechSolver.current.bodies || [];
                 
-                // Special boat/water logic
+                
                 bodies.forEach(b => {
                     if ((b.id || '').startsWith('ship_')) {
                         b.isStatic = false;
@@ -228,7 +228,7 @@ export default function SimulateWorkspace() {
                 
                 const snapshot = mechSolver.current.step();
                 
-                // Find the main hull to sync other ship parts
+                
                 const hull = snapshot.bodies.find(b => b.id === 'ship_hull_bottom');
                 const hullOffset = hull ? {
                     x: (Array.isArray(hull.position) ? hull.position[0] : hull.position.x) - (shapes3D.find(s => s.id === 'ship_hull_bottom')?.position?.[0] || 0),
@@ -266,7 +266,7 @@ export default function SimulateWorkspace() {
         return () => cancelAnimationFrame(reqRef.current);
     }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, renderBodies, setShapes3D, setSimulationState]);
 
-    // Handle Reset
+    
     useEffect(() => {
         if (!isPlaying && simulationState.time === 0) {
             mechSolver.current.reset();
@@ -281,7 +281,7 @@ export default function SimulateWorkspace() {
         }
     }, [isPlaying, simulationState.time, shapes3D, objects, isV6Active]);
 
-    // Handle Setting changes
+    
     const updateSetting = (key, val) => setSimulationSettings({ [key]: val });
     const updateGravity = (axis, val) => setSimulationSettings({ gravity: { ...simulationSettings.gravity, [axis]: parseFloat(val) } });
 
@@ -291,20 +291,20 @@ export default function SimulateWorkspace() {
         });
     };
 
-    // Construct final objects for Viewport
+    
     const finalViewportObjects = renderBodies.map((b, index) => {
         let matArgs = {};
         if (simulationType === 'thermal' && analysisSettings.showHeatmap && colorMap[b.id]) {
             matArgs = { fill: colorMap[b.id], color: colorMap[b.id] };
         }
         
-        // Phase 9: Exploded View Logic (Visually offset components without altering physics)
+        
         let renderState = { ...b };
         if (analysisSettings.isExplodedView) {
-            // Apply visual offsets based on index to scatter them
-            // In a real 3D setup, we'd alter Z axis. Here we slightly fan them out.
+            
+            
             const offsetMultiplier = 20;
-            const dirX = (index % 3) - 1; // -1, 0, 1
+            const dirX = (index % 3) - 1; 
             const dirY = Math.floor(index / 3) % 2 === 0 ? 1 : -1;
             
             if (renderState.x !== undefined) renderState.x += dirX * offsetMultiplier;
@@ -319,10 +319,10 @@ export default function SimulateWorkspace() {
     return (
         <div className="flex flex-col h-full bg-[#0a0f1a] relative overflow-hidden font-sans">
             
-            {/* Top Toolbar (ANSYS Style) */}
+            {}
             <div className="absolute top-0 left-0 right-0 h-14 bg-slate-950/80 backdrop-blur-md border-b border-white/10 z-30 flex items-center justify-between px-6">
                 
-                {/* Domain Selection */}
+                {}
                 <div className="flex bg-black/40 p-1 rounded-xl shadow-inner border border-white/5">
                     {[{ id: 'rigid', icon: <Box size={14}/>, label: 'Mechanical' },
                       { id: 'thermal', icon: <Flame size={14}/>, label: 'Thermal' },
@@ -337,7 +337,7 @@ export default function SimulateWorkspace() {
                     ))}
                 </div>
 
-                {/* Mode & Overlays */}
+                {}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         {useStore.getState().simulationPreset === 'ashwins_workplace' && (
@@ -394,7 +394,7 @@ export default function SimulateWorkspace() {
 
                     <div className="h-6 w-px bg-white/10 mx-2"></div>
 
-                    {/* Presets */}
+                    {}
                     <select 
                         className="bg-black/40 border border-white/10 text-slate-300 text-[10px] uppercase font-bold tracking-wider rounded-lg px-3 py-1.5 outline-none cursor-pointer focus:border-primary/50"
                         onChange={(e) => { if(e.target.value) handlePresetLoad(e.target.value); e.target.value = ''; }}
@@ -412,7 +412,7 @@ export default function SimulateWorkspace() {
                 </div>
             </div>
 
-            {/* Main Viewport Area */}
+            {}
             <div className="flex-1 relative pt-14">
                 {is3DView ? (
                     <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
@@ -442,7 +442,7 @@ export default function SimulateWorkspace() {
                     </div>
                 )}
 
-                {/* V6 Engine Control Panel Overlay */}
+                {}
                 {isV6Active && (
                     <V6ControlPanel
                         solver={v6SolverRef.current}
@@ -452,7 +452,7 @@ export default function SimulateWorkspace() {
                     />
                 )}
 
-                {/* SVG Vector & Debug Overlay Layer */}
+                {}
                 {(analysisSettings.showVectors || analysisSettings.showJoints || analysisSettings.showAnchors) && simulationType === 'rigid' && (
                     <svg className="absolute inset-0 pointer-events-none w-full h-full z-10" style={{ perspective: '1000px' }}>
                         <defs>
@@ -461,16 +461,16 @@ export default function SimulateWorkspace() {
                             </marker>
                         </defs>
                         
-                        {/* Render Constraint Joints & Anchors */}
+                        {}
                         {constraints.map((c, i) => {
                             const bA = finalViewportObjects.find(o => o.id === c.targetA);
                             const bB = finalViewportObjects.find(o => o.id === c.targetB);
                             
-                            // Approximate locations if not given (Viewport coordinates mapping fallback)
+                            
                             let pA = bA ? { x: bA.x || bA.cx, y: bA.y || bA.cy } : null;
                             let pB = bB ? { x: bB.x || bB.cx, y: bB.y || bB.cy } : null;
 
-                            // Apply local anchors if defined
+                            
                             if (pA && c.anchorA) { pA.x += c.anchorA.x; pA.y += c.anchorA.y; }
                             if (pB && c.anchorB) { pB.x += c.anchorB.x; pB.y += c.anchorB.y; }
 
@@ -489,14 +489,14 @@ export default function SimulateWorkspace() {
                             );
                         })}
 
-                        {/* Render Vectors */}
+                        {}
                         {analysisSettings.showVectors && vectors.map((v, i) => {
-                            // Convert 3D positions to simplified 2D screen space offsets for now (placeholder mechanism)
+                            
                             const originX = window.innerWidth / 2 + v.origin.x;
-                            const originY = window.innerHeight / 2 - v.origin.y; // Y is up in 3D, down in SVG
+                            const originY = window.innerHeight / 2 - v.origin.y; 
                             const length = Math.min(100, v.magnitude * analysisSettings.vectorScale); 
                             const dirX = v.velocity.x || v.gravityForce.x || 0;
-                            const dirY = -(v.velocity.y || v.gravityForce.y || 0); // invert Y
+                            const dirY = -(v.velocity.y || v.gravityForce.y || 0); 
                             const lenOrig = Math.sqrt(dirX*dirX + dirY*dirY) || 1;
                             
                             return length > 1 ? (
@@ -514,7 +514,7 @@ export default function SimulateWorkspace() {
                     </svg>
                 )}
 
-                {/* Real-time Analytics Overlay (Left side) */}
+                {}
                 <div className="absolute top-20 left-6 z-20 w-64 space-y-4 pointer-events-none">
                     
                     {simulationType === 'rigid' && (
@@ -581,7 +581,7 @@ export default function SimulateWorkspace() {
 
                 </div>
 
-                {/* Right Side Physics Inspector */}
+                {}
                 <div className={`absolute top-20 right-6 bottom-28 z-20 transition-all duration-300 ${isInspectorOpen ? 'translate-x-0 w-72' : 'translate-x-[calc(100%+24px)] w-0'}`}>
                     <div className="h-full glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                         <div className="px-5 py-3 flex items-center justify-between border-b border-white/10 bg-white/5">
@@ -596,7 +596,7 @@ export default function SimulateWorkspace() {
 
                         <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                             
-                            {/* Rigid Body Controls */}
+                            {}
                             {simulationType === 'rigid' && (
                                 <>
                                     <section>
@@ -648,7 +648,7 @@ export default function SimulateWorkspace() {
                                 </>
                             )}
 
-                            {/* Thermal Controls */}
+                            {}
                             {simulationType === 'thermal' && (
                                 <section className="space-y-4">
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Flame size={10}/> Thermal Settings</label>
@@ -671,10 +671,10 @@ export default function SimulateWorkspace() {
                                 </section>
                             )}
                             
-                            {/* Embedded Active Model Controls */}
+                            {}
                             <ModelControls />
                             
-                            {/* General Solver */}
+                            {}
                             <section className="pt-4 border-t border-white/10 space-y-4">
                                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Solver Precision</label>
                                 <div className="space-y-1">
@@ -713,9 +713,9 @@ export default function SimulateWorkspace() {
                 )}
             </div>
 
-            {/* Bottom Playback Timeline */}
+            {}
             <div className="h-20 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-8 flex items-center gap-12 z-30 shrink-0">
-                {/* Transport Controls */}
+                {}
                 <div className="flex items-center gap-3">
                     <button onClick={() => { resetPlayback(); useStore.setState({ simulationState: { ...simulationState, time: 0 }}) }} className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg">
                         <SkipBack size={16} />
@@ -731,7 +731,7 @@ export default function SimulateWorkspace() {
                     </button>
                 </div>
 
-                {/* Timeline display */}
+                {}
                 <div className="flex-1 flex flex-col gap-1.5">
                     <div className="flex justify-between items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest hover:text-primary transition-colors cursor-pointer font-mono">

@@ -1,6 +1,6 @@
-// Phase 4 Demonstration: Collision Response & Impulse Resolution
-// Validates C++ implementation against Python reference
-// Reference: physics_lab/collisions/collision_1d.py
+
+
+
 
 #include "../engine/collision/narrowphase.hpp"
 #include "../engine/core/world.hpp"
@@ -18,14 +18,14 @@ void run_collision_test() {
             << std::endl;
   std::cout << "Scenario: Two spheres colliding head-on" << std::endl;
 
-  // Body A: Moving right
+  
   RigidBody body_a;
   body_a.position = Vec3(-2.0f, 0.0f, 0.0f);
   body_a.velocity = Vec3(2.0f, 0.0f, 0.0f);
   body_a.mass = 1.0f;
   body_a.inv_mass = 1.0f;
 
-  // Body B: Stationary
+  
   RigidBody body_b;
   body_b.position = Vec3(2.0f, 0.0f, 0.0f);
   body_b.velocity = Vec3(0.0f, 0.0f, 0.0f);
@@ -47,7 +47,7 @@ void run_collision_test() {
   bool collision_occurred = false;
 
   for (int i = 0; i < steps; ++i) {
-    // 1. Detection
+    
     Contact contact = NarrowPhase::generate_contact(&body_a, &body_b);
 
     if (contact.colliding) {
@@ -56,11 +56,11 @@ void run_collision_test() {
                   << "s" << std::endl;
         collision_occurred = true;
       }
-      // 2. Resolution
+      
       ContactResolver::resolve_contact(body_a, body_b, contact);
     }
 
-    // 3. Integration
+    
     body_a.position = body_a.position + body_a.velocity * dt;
     body_b.position = body_b.position + body_b.velocity * dt;
   }
@@ -73,13 +73,13 @@ void run_collision_test() {
                 body_b.mass * body_b.velocity.x)
             << std::endl;
 
-  // Validation
-  // For e=0.5 (as set in resolver) and m1=m2=1, v1=2, v2=0:
-  // v_cm = (1*2 + 1*0) / 2 = 1.0
-  // v_rel_before = 2 - 0 = 2.0
-  // v_rel_after = -0.5 * 2 = -1.0
-  // v1' = v_cm + (0.5)*v_rel_after = 1.0 - 0.5 = 0.5
-  // v2' = v_cm - (0.5)*v_rel_after = 1.0 + 0.5 = 1.5
+  
+  
+  
+  
+  
+  
+  
 
   float expected_v1 = 0.5f;
   float expected_v2 = 1.5f;

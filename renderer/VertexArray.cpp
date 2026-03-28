@@ -1,7 +1,4 @@
-/**
- * @file VertexArray.cpp
- * @brief VertexArray implementation
- */
+
 #include "VertexArray.hpp"
 #include <glad/glad.h>
 
@@ -49,4 +46,4 @@ void VertexArray::bind() const { glBindVertexArray(m_rendererID); }
 
 void VertexArray::unbind() { glBindVertexArray(0); }
 
-} // namespace realis::renderer
+} 

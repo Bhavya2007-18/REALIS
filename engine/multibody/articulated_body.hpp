@@ -1,4 +1,4 @@
-// Articulated body
+
 #pragma once
 
 namespace realis {
@@ -8,4 +8,4 @@ public:
     void update(float dt);
 };
 
-} // namespace realis
+} 

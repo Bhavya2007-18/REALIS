@@ -10,7 +10,7 @@ static float get_radius(const RigidBody *b) {
   if (b && b->shape && b->shape->type == geometry::ShapeType::SPHERE) {
     return static_cast<const geometry::Sphere *>(b->shape)->radius;
   }
-  return 0.5f; // Fallback
+  return 0.5f; 
 }
 
 std::vector<BroadPhasePair>
@@ -25,7 +25,7 @@ BroadPhase::detect(const std::vector<RigidBody *> &bodies) {
       if (a->inv_mass == 0.0f && b->inv_mass == 0.0f)
         continue;
 
-      // Special case: Infinite Plane bounding volume
+      
       if ((a->shape && a->shape->type == geometry::ShapeType::PLANE) ||
           (b->shape && b->shape->type == geometry::ShapeType::PLANE)) {
         pairs.emplace_back(a, b);
@@ -45,4 +45,4 @@ BroadPhase::detect(const std::vector<RigidBody *> &bodies) {
   return pairs;
 }
 
-} // namespace realis
+} 

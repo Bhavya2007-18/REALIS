@@ -22,7 +22,7 @@ SimResult run_gravity_sim(Integrator *integrator, float dt, float total_time) {
   RigidBody mass;
   mass.mass = 1.0f;
   mass.inv_mass = 1.0f;
-  mass.position = Vec3(0, 10.0f, 0); // initial height = 10.0
+  mass.position = Vec3(0, 10.0f, 0); 
   mass.velocity = Vec3(0, 0, 0);
 
   UniformGravityField gravity(9.81f);
@@ -41,7 +41,7 @@ SimResult run_gravity_sim(Integrator *integrator, float dt, float total_time) {
   for (int i = 0; i <= steps; ++i) {
     float current_time = i * dt;
 
-    // Analytical solution: x(t) = x0 + v0*t - 0.5*g*t^2
+    
     float y_ana = 10.0f - 0.5f * 9.81f * current_time * current_time;
 
     float current_energy = world.compute_energy();
@@ -72,21 +72,21 @@ int main() {
   ForwardEuler fwd_euler;
   SemiImplicitEuler semi_euler;
 
-  // Test 1: Forward Euler dt=0.01
+  
   std::cout << "[Test 1: Forward Euler, dt = 0.01]\n";
   auto res_fwd_01 = run_gravity_sim(&fwd_euler, 0.01f, total_time);
   std::cout << "Max Energy Drift: " << res_fwd_01.max_drift << " J\n";
   std::cout << "Max Position Error: " << res_fwd_01.max_pos_error << " m\n";
   std::cout << "L2 Norm Error: " << res_fwd_01.l2_norm << "\n\n";
 
-  // Test 2: Semi-Implicit Euler dt=0.01
+  
   std::cout << "[Test 2: Semi-Implicit Euler, dt = 0.01]\n";
   auto res_semi_01 = run_gravity_sim(&semi_euler, 0.01f, total_time);
   std::cout << "Max Energy Drift: " << res_semi_01.max_drift << " J\n";
   std::cout << "Max Position Error: " << res_semi_01.max_pos_error << " m\n";
   std::cout << "L2 Norm Error: " << res_semi_01.l2_norm << "\n\n";
 
-  // Test 3: Convergence Test dt=0.005
+  
   std::cout << "[Test 3: Convergence Test (Semi-Implicit Euler), dt = 0.005]\n";
   auto res_semi_005 = run_gravity_sim(&semi_euler, 0.005f, total_time);
   std::cout << "Max Energy Drift: " << res_semi_005.max_drift << " J\n";

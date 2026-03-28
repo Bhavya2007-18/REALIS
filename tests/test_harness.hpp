@@ -1,4 +1,4 @@
-// Simple Testing Harness for REALIS
+
 #pragma once
 #include <iostream>
 #include <vector>
@@ -53,5 +53,5 @@ public:
 #define ASSERT_TRUE(condition) if (!(condition)) return false;
 #define ASSERT_VEC_NEAR(v1, v2, eps) if ((v1 - v2).magnitude() > eps) return false;
 
-} // namespace test
-} // namespace realis
+} 
+} 

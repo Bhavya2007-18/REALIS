@@ -1,5 +1,5 @@
-// Convex Hull
-// Generic physics shape form for arbitrary meshes
+
+
 #pragma once
 #include "shape.hpp"
 #include <vector>
@@ -11,10 +11,10 @@ namespace geometry {
 class ConvexHull : public Shape {
 public:
     std::vector<Vec3> vertices;
-    // Potentially store planes/edges for optimizations, but vertices suffice for GJK support
+    
 
     ConvexHull(const std::vector<Vec3>& verts) : Shape(ShapeType::CONVEX_HULL), vertices(verts) {
-        // Compute AABB
+        
         aabb_min = Vec3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
         aabb_max = Vec3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
         
@@ -43,16 +43,16 @@ public:
         return distinct_point;
     }
 
-    Mat3 compute_inertia_tensor(float /*mass*/) const override {
-        // Placeholder: For Phase 6A, we assume box approximation for generic hulls
-        // In a real implementation, we would integrate over the simplexes.
-        // Returning identity * 0.1 for safety to avoid singular matrices
+    Mat3 compute_inertia_tensor(float ) const override {
+        
+        
+        
         Mat3 identity;
         identity.data[0] = 1.0f; identity.data[4] = 1.0f; identity.data[8] = 1.0f;
-        // Scale simplified (assuming standard size)
+        
         return identity; 
     }
 };
 
-} // namespace geometry
-} // namespace realis
+} 
+} 

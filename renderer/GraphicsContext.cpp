@@ -1,21 +1,9 @@
-/**
- * @file GraphicsContext.cpp
- * @brief GLAD init + OpenGL state setup — REALIS Renderer
- *
- * Construction sequence:
- *   1. Load all GL function pointers with gladLoadGLLoader
- *   2. Verify GL version >= 4.5
- *   3. Install the KHR_debug callback (debug builds)
- *   4. Configure initial render state
- *
- * Every step is followed by a glGetError() assertion.
- * On ANY failure the constructor throws std::runtime_error.
- */
+
 
 #include "GraphicsContext.hpp"
 #include "DebugCallback.hpp"
 
-// IMPORTANT: glad.h MUST be included before any header that pulls in gl.h.
+
 #include <glad/glad.h>
 
 #define GLFW_INCLUDE_NONE
@@ -27,11 +15,11 @@
 
 namespace realis::renderer {
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Internal helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
-/** Asserts no pending GL error, throws describing the failed step. */
+
+
+
+
 static void requireNoGLError(const char *step) {
   GLenum err = glGetError();
   if (err != GL_NO_ERROR) {
@@ -45,9 +33,9 @@ static void requireNoGLError(const char *step) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constructor
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 GraphicsContext::GraphicsContext(GLFWwindow *window) {
   if (!window) {
@@ -55,16 +43,16 @@ GraphicsContext::GraphicsContext(GLFWwindow *window) {
                              "cannot load GL functions.");
   }
 
-  // ── 1. Load OpenGL function pointers ─────────────────────────────────────
-  // glfwMakeContextCurrent must have been called before this point.
-  // gladLoadGLLoader returns 1 on success.
+  
+  
+  
   if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
     throw std::runtime_error("[GraphicsContext] gladLoadGLLoader failed — "
                              "OpenGL 4.5 is not available on this system.");
   }
 
-  // ── 2. Version verification ───────────────────────────────────────────────
-  // GLVersion is populated by gladLoadGLLoader
+  
+  
   if (GLVersion.major < 4 || (GLVersion.major == 4 && GLVersion.minor < 5)) {
     std::string msg = "[GraphicsContext] OpenGL 4.5 required, got ";
     msg +=
@@ -72,9 +60,9 @@ GraphicsContext::GraphicsContext(GLFWwindow *window) {
     throw std::runtime_error(msg);
   }
 
-  // ── 3. Debug callback (debug builds only) ─────────────────────────────────
-  // Check the debug context bit before installing the callback.
-  // On release builds the driver may not have created a debug context.
+  
+  
+  
 #if !defined(NDEBUG)
   GLint contextFlags = 0;
   glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
@@ -93,9 +81,9 @@ GraphicsContext::GraphicsContext(GLFWwindow *window) {
   std::fprintf(stdout, "[GraphicsContext] Initialised successfully.\n");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// printInfo
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 void GraphicsContext::printInfo() const noexcept {
   const GLubyte *vendor = glGetString(GL_VENDOR);
@@ -118,27 +106,27 @@ void GraphicsContext::printInfo() const noexcept {
   std::fflush(stdout);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// applyInitialState
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 void GraphicsContext::applyInitialState(int fbWidth, int fbHeight) const {
-  // Viewport — must match the actual framebuffer dimensions
+  
   glViewport(0, 0, fbWidth, fbHeight);
   requireNoGLError("glViewport");
 
-  // Depth testing
+  
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   requireNoGLError("depth test");
 
-  // Face culling — cull back faces, CCW winding = front face
+  
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
   requireNoGLError("face culling");
 
-  // Clear color — professional "Dark Charcoal" for CAD-style UI
+  
   glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
   requireNoGLError("glClearColor");
 
@@ -148,15 +136,15 @@ void GraphicsContext::applyInitialState(int fbWidth, int fbHeight) const {
   std::fflush(stdout);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VSync
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 bool GraphicsContext::setVSync(bool enabled) noexcept {
-  // 1 = VSync on, 0 = VSync off
+  
   glfwSwapInterval(enabled ? 1 : 0);
   std::fprintf(stdout, "[GraphicsContext] VSync %s.\n", enabled ? "ON" : "OFF");
   return true;
 }
 
-} // namespace realis::renderer
+} 

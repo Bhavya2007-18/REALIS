@@ -64,18 +64,18 @@ export default function LayerPanel() {
                         className={`group flex items-center gap-2 px-3 py-2 border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors cursor-pointer ${activeLayerId === layer.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
                         onClick={() => setActiveLayerId(layer.id)}
                     >
-                        {/* Color dot */}
+                        {}
                         <span className="size-3 rounded-full shrink-0 border border-white/20" style={{ background: layer.color }} />
 
-                        {/* Name */}
+                        {}
                         <span className={`text-[11px] flex-1 truncate ${layer.visible ? 'text-slate-300' : 'text-slate-600'}`}>
                             {layer.name}
                         </span>
 
-                        {/* Active indicator */}
+                        {}
                         {activeLayerId === layer.id && <Check size={10} className="text-primary shrink-0" />}
 
-                        {/* Visibility */}
+                        {}
                         <button
                             onClick={e => { e.stopPropagation(); toggle(layer.id, 'visible') }}
                             className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-all cursor-pointer"
@@ -83,7 +83,7 @@ export default function LayerPanel() {
                             {layer.visible ? <Eye size={11} /> : <EyeOff size={11} className="text-slate-700" />}
                         </button>
 
-                        {/* Lock */}
+                        {}
                         <button
                             onClick={e => { e.stopPropagation(); toggle(layer.id, 'locked') }}
                             className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 transition-all cursor-pointer"

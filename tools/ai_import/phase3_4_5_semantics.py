@@ -3,18 +3,14 @@ import uuid
 from .models import GeomPrimitive, SemanticObject, Relationship, CVExtractionOutput, Hypothesis
 
 def infer_semantics_and_relationships(cv_items: List[GeomPrimitive], user_prompt: str = "") -> Dict[str, any]:
-    """
-    Heuristically maps geometric primitives to physics-aware semantic labels.
-    In a production version, this would call an LLM (e.g., Vision model) with the 
-    CV metadata + User Prompt to generate a refined hypothesis.
-    """
+    
     semantic_objects: List[SemanticObject] = []
     relationships: List[Relationship] = []
 
-    # Simple heuristic-based mapping for demo/v1
-    # - Small circles -> Joints
-    # - Large circles -> Wheels
-    # - Rectangles -> Blocks/Rods
+    
+    
+    
+    
     
     for item in cv_items:
         obj_id = f"sem_{item.id}"
@@ -42,8 +38,8 @@ def infer_semantics_and_relationships(cv_items: List[GeomPrimitive], user_prompt
             label=f"{obj_type}_{obj_id[:4]}"
         ))
 
-    # Infer relationships (Phase 4)
-    # Heuristic: Check for proximity (bounding box overlap)
+    
+    
     for i in range(len(semantic_objects)):
         for j in range(i + 1, len(semantic_objects)):
             obj_a = semantic_objects[i]
@@ -51,15 +47,15 @@ def infer_semantics_and_relationships(cv_items: List[GeomPrimitive], user_prompt
             geom_a = next(it for it in cv_items if it.id == obj_a.geometry_ref)
             geom_b = next(it for it in cv_items if it.id == obj_b.geometry_ref)
 
-            # Check overlap of centers for simplicity 
+            
             if geom_a.center and geom_b.center:
                 dx = geom_a.center.x - geom_b.center.x
                 dy = geom_a.center.y - geom_b.center.y
                 dist = (dx*dx + dy*dy)**0.5
                 
-                # If a small circle (joint) is near a block/rod, define a constraint
+                
                 if obj_a.type == "joint" or obj_b.type == "joint":
-                    if dist < 50: # proximity threshold
+                    if dist < 50: 
                         relationships.append(Relationship(
                             a=obj_a.id,
                             b=obj_b.id,
@@ -67,8 +63,8 @@ def infer_semantics_and_relationships(cv_items: List[GeomPrimitive], user_prompt
                             confidence=0.9
                         ))
 
-    # Generate a hypothesis (Phase 5)
-    # If "wheel" or "rod" is present, hypothesize a mechanism
+    
+    
     types = [o.type for o in semantic_objects]
     if "wheel" in types and "rod" in types:
         main_hypothesis = Hypothesis(

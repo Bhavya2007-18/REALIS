@@ -1,27 +1,4 @@
-"""
-pipeline/verify.py -- Energy Verification Gate
-===============================================
 
-Loads an exported JSON file and checks whether total mechanical energy
-was conserved within a specified tolerance.
-
-If the gate fails, no downstream visualization should proceed.
-
-Tolerance Justification
------------------------
-Default tolerance = 1e-3 (absolute, in energy units).
-
-For a harmonic oscillator with E(0) = 5 J:
-  - RK4 at dt=0.01 produces drift ~ 1e-14 J  (machine epsilon)
-  - Forward Euler at dt=0.01 over 1000 steps drifts ~ 0.05 J
-
-The tolerance 1e-3 is chosen to:
-  1. Pass any well-behaved solver (RK4, Verlet, symplectic Euler).
-  2. Catch gross physics violations or implementation bugs.
-  3. Be tight enough that significant energy non-conservation is flagged.
-
-No physics computation happens here -- only reading exported values.
-"""
 
 from __future__ import annotations
 
@@ -30,20 +7,7 @@ import sys
 
 
 def verify_energy(json_path: str, tolerance: float = 1e-3) -> bool:
-    """Check energy conservation in an exported simulation file.
-
-    Parameters
-    ----------
-    json_path : str
-        Path to the JSON file produced by ``pipeline.export``.
-    tolerance : float
-        Maximum allowed absolute energy drift ``max(|E(t) - E(0)|)``.
-
-    Returns
-    -------
-    bool
-        ``True`` if drift <= tolerance (PASS), ``False`` otherwise.
-    """
+    
     with open(json_path, "r") as fp:
         data = json.load(fp)
 

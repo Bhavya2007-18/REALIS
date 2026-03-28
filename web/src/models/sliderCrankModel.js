@@ -82,13 +82,13 @@ const sliderCrankModel = {
             id: "piston_prismatic",
             type: "prismatic",
             targetA: "piston",
-            targetB: null, // world
+            targetB: null, 
             axis: { x: 0, y: 1 },
             label: "Piston Guide"
         }
     ],
     physics_config: {
-        gravity: { x: 0, y: 0, z: 0 }, // Often run horizontal or vertical without Gravity interfering for pure mechanisms
+        gravity: { x: 0, y: 0, z: 0 }, 
         timeStep: 0.016,
         solverIterations: 20
     },

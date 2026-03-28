@@ -13,23 +13,23 @@ using namespace realis;
 void verify_sliding_block(Integrator *integrator, float dt) {
   World world(dt);
 
-  // 1. Static Ground Plane
+  
   geometry::Plane ground(Vec3(0, 1, 0), 0.0f);
   RigidBody ground_body;
-  ground_body.mass = 0.0f; // Static
+  ground_body.mass = 0.0f; 
   ground_body.inv_mass = 0.0f;
   ground_body.position = Vec3(0, 0, 0);
   ground_body.shape = &ground;
   ground_body.restitution = 0.0f;
-  ground_body.friction = 0.3f; // mu = 0.3
+  ground_body.friction = 0.3f; 
 
-  // 2. Sliding Block
+  
   geometry::Box box(Vec3(0.5f, 0.5f, 0.5f));
   RigidBody block;
   block.mass = 2.0f;
   block.inv_mass = 0.5f;
-  block.position = Vec3(0, 0.501f, 0); // Barely resting
-  block.velocity = Vec3(5.0f, 0, 0);   // Initial sliding velocity
+  block.position = Vec3(0, 0.501f, 0); 
+  block.velocity = Vec3(5.0f, 0, 0);   
   block.shape = &box;
   block.inertia_tensor = box.compute_inertia_tensor(block.mass);
   block.inv_inertia_tensor = block.inertia_tensor.inverse();
@@ -47,11 +47,11 @@ void verify_sliding_block(Integrator *integrator, float dt) {
   std::cout << "--- Sliding Block Test (dt=" << dt << ", mu=0.3) ---\n";
   std::cout << "Initial Velocity X: " << block.velocity.x << " m/s\n";
 
-  // Expected deceleration: a = -mu * g = -0.3 * 9.81 = -2.943 m/s^2
+  
   float expected_accel = -0.3f * 9.81f;
   std::cout << "Expected Deceleration: " << expected_accel << " m/s^2\n";
 
-  // Expected stop time: v = v0 + at => t = -v0/a = 5.0 / 2.943 = 1.698s
+  
   float expected_stop_time = 5.0f / 2.943f;
   std::cout << "Expected Stop Time: ~" << expected_stop_time << " s\n\n";
 

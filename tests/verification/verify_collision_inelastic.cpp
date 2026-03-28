@@ -51,7 +51,7 @@ void verify_1d_collision(Integrator *integrator, float dt) {
   for (int i = 0; i < 1000; ++i) {
     world.step();
 
-    // Check if velocities have changed indicating a collision resolved
+    
     if (!collided && (std::abs(b1.velocity.x - 2.0f) > 0.001f)) {
       collided = true;
       std::cout << "Collision occurred around t = " << world.get_time()

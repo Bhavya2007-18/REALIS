@@ -62,7 +62,7 @@ const Shape3DNode = React.memo(({ shape }) => {
     const profile = useStore(state => shape.type === 'extruded_solid' ? state.objects.find(o => o.id === (shape.params?.profileId || shape.profileId)) : null);
     const isV6Active = useStore(state => state.simulationPreset === 'v6_engine_simulation');
 
-    // Simulation state
+    
     const simulationFrames = useStore(state => state.simulationFrames);
     const currentFrameIndex = useStore(state => state.currentFrameIndex);
     const isPlaying = useStore(state => state.isPlaying);
@@ -70,12 +70,12 @@ const Shape3DNode = React.memo(({ shape }) => {
     const isSelected = selected3DIds.includes(shape.id);
     const isTransforming = isSelected && ['translate', 'rotate', 'scale'].includes(active3DTool);
 
-    // Get simulated state if playing
+    
     const simState = (!isV6Active && !shape.isStatic && isPlaying && simulationFrames[currentFrameIndex])
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === shape.id)
         : null;
 
-    // Helper to safely format vectors for R3F
+    
     const formatVec = (vec, def) => {
         if (!vec) return def;
         if (Array.isArray(vec)) return vec;
@@ -106,10 +106,10 @@ const Shape3DNode = React.memo(({ shape }) => {
         setTrailPositions([...trailRef.current]);
     });
 
-    // Use a hash of params for more stable memoization
+    
     const paramsKey = JSON.stringify(shape.params || {});
 
-    // Better geometry management to avoid leaks
+    
     const geometry = React.useMemo(() => {
         if (shape.type === 'obj') return null;
         let geo;
@@ -142,7 +142,7 @@ const Shape3DNode = React.memo(({ shape }) => {
         return geo;
     }, [shape.type, paramsKey, profile]);
 
-    // Cleanup geometry on unmount
+    
     useEffect(() => {
         return () => {
             if (geometry) geometry.dispose();
@@ -237,7 +237,7 @@ const JointMarker = ({ constraint }) => {
     const shapes3D = useStore(state => state.shapes3D);
     const objects = useStore(state => state.objects);
 
-    // Find targets to position the marker
+    
     const allEntities = [...shapes3D, ...objects];
     const targetA = allEntities.find(e => e.id === constraint.targetA);
 
@@ -245,7 +245,7 @@ const JointMarker = ({ constraint }) => {
 
     const posA = targetA.position ? (Array.isArray(targetA.position) ? targetA.position : [targetA.position.x, targetA.position.y, targetA.position.z]) : [targetA.x + (targetA.width || 0) / 2, targetA.y_override || 0, targetA.y + (targetA.height || 0) / 2];
 
-    // Marker position is usually at the pivot, for now just at targetA + pivotA
+    
     const markerPos = [
         posA[0] + (constraint.pivotA?.x || 0),
         posA[1] + (constraint.pivotA?.y || 0),
@@ -253,7 +253,7 @@ const JointMarker = ({ constraint }) => {
     ];
 
     if (constraint.type === 'hinge') {
-        // Render a cylinder along the axis
+        
         const axis = constraint.axis || { x: 0, y: 1, z: 0 };
         return (
             <group position={markerPos}>
@@ -377,10 +377,10 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
         const o = groupRef.current;
         setObjects(objs => objs.map(item => {
             if (item.id === obj.id) {
-                // In 2D map, x,y match x,z in 3D.
+                
                 let update = { ...item };
                 
-                // Map the new 3D positions back to the 2D schema structure (since REALIS models use cx/cy or x/y)
+                
                 if (item.cx !== undefined) {
                     update.cx = o.position.x;
                     update.cy = o.position.z;
@@ -390,7 +390,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
                 }
 
                 if (active3DTool === 'rotate') {
-                    // Approximate rotation back to 2D
+                    
                     update.rotation = -(o.rotation.y * 180 / Math.PI);
                 }
                 
@@ -536,7 +536,7 @@ export default function Viewport3D({ objects }) {
     const showGrid = useStore(state => state.showGrid);
     const toggleGrid = useStore(state => state.toggleGrid);
 
-    // Simulation state
+    
     const simulationFrames = useStore(state => state.simulationFrames);
     const currentFrameIndex = useStore(state => state.currentFrameIndex);
     const isPlaying = useStore(state => state.isPlaying);
@@ -544,7 +544,7 @@ export default function Viewport3D({ objects }) {
 
     return (
         <div className="w-full h-full relative group">
-            {/* Viewport UI Overlay */}
+            {}
             <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                 <button
                     onClick={toggleGrid}
@@ -579,7 +579,7 @@ export default function Viewport3D({ objects }) {
                 <Environment preset="city" />
                 {useStore.getState().water?.enabled && <WaterSurface />}
 
-                {/* Engineering Grid */}
+                {}
                 {showGrid && (
                     <Grid
                         infiniteGrid
@@ -592,7 +592,7 @@ export default function Viewport3D({ objects }) {
                     />
                 )}
 
-                {/* Creation tool helper plane */}
+                {}
             {['cube', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'capsule'].includes(active3DTool) && (
                 <mesh
                     rotation={[-Math.PI / 2, 0, 0]}
@@ -628,7 +628,7 @@ export default function Viewport3D({ objects }) {
             )}
 
             <Suspense fallback={<Loader />}>
-                {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
+                {}
                 {objects.map((obj) => (
                     <Extrudable2DShape 
                         key={`ext-${obj.id}`} 
@@ -639,7 +639,7 @@ export default function Viewport3D({ objects }) {
                     />
                 ))}
 
-                {/* Native 3D Objects */}
+                {}
                 {shapes3D.map(shape => (
                     <Shape3DNode key={shape.id} shape={shape} />
                 ))}
@@ -647,12 +647,12 @@ export default function Viewport3D({ objects }) {
                 <ExtrudePreview />
             </Suspense>
 
-            {/* Constraints / Joints */}
+            {}
             {constraints.map(c => (
                 <JointMarker key={c.id} constraint={c} />
             ))}
 
-            {/* Collisions for current frame */}
+            {}
             {simulationFrames[currentFrameIndex]?.contacts?.map((contact, idx) => (
                 <CollisionMarker key={`contact-${idx}`} contact={contact} />
             ))}

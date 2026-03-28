@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Literal, Union
 
-# --- Common Primitives ---
+
 
 class Vector2D(BaseModel):
     x: float
@@ -13,7 +13,7 @@ class Color(BaseModel):
     b: int
     a: float = 1.0
 
-# --- Phase 2: Geometry Extraction (CV) ---
+
 
 class GeomPrimitive(BaseModel):
     id: str
@@ -30,31 +30,31 @@ class CVExtractionOutput(BaseModel):
     image_width: int
     image_height: int
 
-# --- Phase 3 & 4: Semantic Objects & Relationships ---
+
 
 class SemanticObject(BaseModel):
     id: str
     type: Literal["rod", "wheel", "block", "joint", "motor", "spring", "unknown"]
-    geometry_ref: str  # ID of the GeomPrimitive it's derived from
+    geometry_ref: str  
     confidence: float = 0.0
     label: Optional[str] = None
 
 class Relationship(BaseModel):
-    a: str  # Object ID A
-    b: str  # Object ID B
+    a: str  
+    b: str  
     type: Literal["connected", "constrained", "touching", "anchored", "unknown"]
     offset_a: Optional[Vector2D] = None
     offset_b: Optional[Vector2D] = None
     confidence: float = 0.0
 
-# --- Phase 5: Multi-Hypothesis ---
+
 
 class Hypothesis(BaseModel):
-    system_type: str # e.g., "piston_engine", "crank_mechanism"
+    system_type: str 
     confidence: float
     description: str
 
-# --- Phase 7: Scene Graph (IR) ---
+
 
 class Node(BaseModel):
     id: str
@@ -74,7 +74,7 @@ class Edge(BaseModel):
     target_b: Optional[str] = None
     anchor_a: Vector2D
     anchor_b: Optional[Vector2D] = None
-    length: Optional[float] = None # For distance joints
+    length: Optional[float] = None 
 
 class SceneGraph(BaseModel):
     nodes: List[Node]
@@ -82,7 +82,7 @@ class SceneGraph(BaseModel):
     units_per_pixel: float = 1.0
     origin: Vector2D = Vector2D(x=0, y=0)
 
-# --- Final Output / Feedback ---
+
 
 class AIImportResponse(BaseModel):
     session_id: str

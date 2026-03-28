@@ -107,7 +107,7 @@ const componentLibrary = [
         restitution: 0.1,
         roughness: 0.7,
         metalness: 0.8,
-        color: '#eab308', /* Yellow painted warning color */
+        color: '#eab308', 
         material: 'structural_steel',
         position: [0, 0, 0],
         rotation: [0, 0, 0],

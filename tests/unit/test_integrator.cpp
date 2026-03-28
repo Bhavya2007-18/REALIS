@@ -1,4 +1,4 @@
-// Unit test for integrator
+
 #include "../engine/core/integrator.hpp"
 #include <iostream>
 

@@ -13,27 +13,27 @@ using namespace realis;
 void verify_resting_block(Integrator *integrator, float dt) {
   World world(dt);
 
-  // 1. Static Ground Plane
+  
   geometry::Plane ground(Vec3(0, 1, 0), 0.0f);
   RigidBody ground_body;
-  ground_body.mass = 0.0f; // Static
+  ground_body.mass = 0.0f; 
   ground_body.inv_mass = 0.0f;
   ground_body.position = Vec3(0, 0, 0);
   ground_body.shape = &ground;
-  ground_body.restitution = 0.0f; // No bounce
+  ground_body.restitution = 0.0f; 
   ground_body.friction = 0.5f;
 
-  // 2. Falling Block
+  
   geometry::Box box(Vec3(1.0f, 1.0f, 1.0f));
   RigidBody block;
   block.mass = 1.0f;
   block.inv_mass = 1.0f;
-  block.position = Vec3(0, 5.0f, 0); // Drop from 5m
+  block.position = Vec3(0, 5.0f, 0); 
   block.velocity = Vec3(0, 0, 0);
   block.shape = &box;
   block.inertia_tensor = box.compute_inertia_tensor(block.mass);
   block.inv_inertia_tensor = block.inertia_tensor.inverse();
-  block.restitution = 0.0f; // Inelastic collision with ground
+  block.restitution = 0.0f; 
   block.friction = 0.5f;
 
   world.add_body(&ground_body);
@@ -63,7 +63,7 @@ void verify_resting_block(Integrator *integrator, float dt) {
     }
     max_energy = std::max(max_energy, current_energy);
 
-    // Check if settled (velocity near zero, resting on ground)
+    
     if (std::abs(block.position.y - 0.5f) < 1e-3f &&
         block.velocity.dot(block.velocity) < 1e-6f) {
       settling_steps++;

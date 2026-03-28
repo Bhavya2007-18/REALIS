@@ -24,7 +24,7 @@ public:
   void unlock() { LeaveCriticalSection(&cs); }
 };
 
-// Minimal once_flag for pybind11
+
 struct once_flag {
   long state = 0;
 };
@@ -41,6 +41,6 @@ void call_once(once_flag &flag, Callable &&f, Args &&...args) {
   }
 }
 
-} // namespace std
+} 
 
 #endif

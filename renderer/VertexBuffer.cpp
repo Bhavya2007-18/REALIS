@@ -1,7 +1,4 @@
-/**
- * @file VertexBuffer.cpp
- * @brief VertexBuffer implementation
- */
+
 #include "VertexBuffer.hpp"
 #include <glad/glad.h>
 
@@ -39,4 +36,4 @@ void VertexBuffer::bind() const { glBindBuffer(GL_ARRAY_BUFFER, m_rendererID); }
 
 void VertexBuffer::unbind() { glBindBuffer(GL_ARRAY_BUFFER, 0); }
 
-} // namespace realis::renderer
+} 

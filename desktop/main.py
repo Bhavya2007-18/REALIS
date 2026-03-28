@@ -3,12 +3,12 @@ from PyQt5.QtWidgets import QApplication
 from ui.main_window import MainWindow
 
 def main():
-    # Enable High DPI scaling for modern displays
-    QApplication.setAttribute(1, True) # AA_EnableHighDpiScaling
-    QApplication.setAttribute(10, True) # AA_UseHighDpiPixmaps
+    
+    QApplication.setAttribute(1, True) 
+    QApplication.setAttribute(10, True) 
 
     app = QApplication(sys.argv)
-    app.setStyle("Fusion") # Consistent cross-platform look
+    app.setStyle("Fusion") 
 
     window = MainWindow()
     window.show()

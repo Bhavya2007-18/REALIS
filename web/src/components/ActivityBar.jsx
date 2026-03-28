@@ -28,7 +28,7 @@ export default function ActivityBar() {
     return (
         <nav className="w-12 flex flex-col items-center py-4 bg-slate-100 dark:bg-[#0d1117] border-r border-slate-200 dark:border-slate-800 shrink-0 z-50">
             <div className="flex-1 flex flex-col gap-4 w-full items-center">
-                {ACTIONS.map(({ id, icon: Icon, label }) => { // eslint-disable-line no-unused-vars
+                {ACTIONS.map(({ id, icon: Icon, label }) => { 
                     const isActive = sidebarView === id && isSidebarOpen
                     return (
                         <button

@@ -11,7 +11,7 @@ const thermalModel = {
         gravity: { x: 0, y: -9.81, z: 0 },
         frictionCoeff: 0.3,
         airResistance: 0.05,
-        ambientTemp: 293.15, // 20 C
+        ambientTemp: 293.15, 
         thermalSteps: 5,
         thermalConductivity: 0.8
     },
@@ -22,10 +22,10 @@ const thermalModel = {
             type: 'rect',
             x: 200, y: 300, width: 80, height: 80,
             isStatic: true,
-            temperature: 800, // Very hot
+            temperature: 800, 
             fixedTemperature: true,
             material: 'titanium',
-            color: '#ef4444' // Red
+            color: '#ef4444' 
         },
         {
             id: 'cooling_plate',
@@ -33,10 +33,10 @@ const thermalModel = {
             type: 'rect',
             x: 500, y: 300, width: 80, height: 80,
             isStatic: true,
-            temperature: 200, // Cold
+            temperature: 200, 
             fixedTemperature: true,
             material: 'aluminum',
-            color: '#3b82f6' // Blue
+            color: '#3b82f6' 
         },
         {
             id: 'conductor_bar',
@@ -45,7 +45,7 @@ const thermalModel = {
             x: 280, y: 320, width: 220, height: 40,
             isStatic: false,
             mass: 5,
-            temperature: 293.15, // Room temp
+            temperature: 293.15, 
             material: 'structural_steel',
             color: '#9ca3af'
         }

@@ -1,11 +1,4 @@
-/**
- * @file DebugCallback.cpp
- * @brief OpenGL KHR_debug structured message callback — REALIS Renderer
- *
- * All HIGH severity messages are treated as fatal in debug builds.
- * NOTIFICATION severity is suppressed via glDebugMessageControl so this
- * callback should only fire for meaningful events.
- */
+
 
 #include "DebugCallback.hpp"
 
@@ -16,9 +9,9 @@
 
 namespace realis::renderer {
 
-// ─────────────────────────────────────────────────────────────────────────────
-// String helpers
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 static const char *sourceString(GLenum source) noexcept {
   switch (source) {
@@ -79,21 +72,21 @@ static const char *severityString(GLenum severity) noexcept {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Callback
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 static void APIENTRY onGLDebugMessage(GLenum source, GLenum type, GLuint id,
-                                      GLenum severity, GLsizei /*length*/,
+                                      GLenum severity, GLsizei ,
                                       const GLchar *message,
-                                      const void * /*userParam*/) noexcept {
-  // Notifications are suppressed by glDebugMessageControl, but guard anyway.
+                                      const void * ) noexcept {
+  
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
     return;
 
   const char *sev = severityString(severity);
 
-  // Choose output prefix based on severity
+  
   const char *prefix = "[INFO]";
   if (severity == GL_DEBUG_SEVERITY_MEDIUM)
     prefix = "[WARN]";
@@ -108,7 +101,7 @@ static void APIENTRY onGLDebugMessage(GLenum source, GLenum type, GLuint id,
                message);
   std::fflush(stderr);
 
-  // Fatal halt on HIGH severity in debug builds — never silently continue
+  
 #if !defined(NDEBUG)
   if (severity == GL_DEBUG_SEVERITY_HIGH) {
     std::fprintf(stderr, "[GL DEBUG] FATAL: HIGH severity OpenGL error "
@@ -118,26 +111,26 @@ static void APIENTRY onGLDebugMessage(GLenum source, GLenum type, GLuint id,
 #endif
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Public interface
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 void installDebugCallback() {
-  // Synchronous delivery ensures the callback fires exactly at the
-  // offending call, making stack traces useful.
+  
+  
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
   glDebugMessageCallback(onGLDebugMessage, nullptr);
 
-  // Suppress NOTIFICATION spam; we only care about LOW and above
-  glDebugMessageControl(GL_DONT_CARE,                   // source
-                        GL_DONT_CARE,                   // type
-                        GL_DEBUG_SEVERITY_NOTIFICATION, // severity
+  
+  glDebugMessageControl(GL_DONT_CARE,                   
+                        GL_DONT_CARE,                   
+                        GL_DEBUG_SEVERITY_NOTIFICATION, 
                         0, nullptr,
-                        GL_FALSE); // disable notifications
+                        GL_FALSE); 
 
-  // Ensure all other severities are enabled
+  
   glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0,
                         nullptr, GL_TRUE);
   glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0,
@@ -146,4 +139,4 @@ void installDebugCallback() {
                         nullptr, GL_TRUE);
 }
 
-} // namespace realis::renderer
+} 

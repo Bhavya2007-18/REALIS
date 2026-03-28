@@ -4,12 +4,12 @@ import useStore from '../store/useStore';
 
 export default function ModelControls() {
     const simulationPreset = useStore(state => state.simulationPreset);
-    // Since models are usually dynamic loaded, we'd need a robust way to fetch the schema controls.
-    // For this implementation, we will fetch the active preset's model object if we maintain a registry.
-    // However, REALIS model loading updates `useStore.setState({ simulationPreset: model.id })`.
-    // It's ideal to keep controls in `useStore` when a model is loaded. 
-    // Let's assume the store has `activeModelControls` or we just rely on the fact that for prebuilt models we only alter global gravity/mass right now.
-    // To implement perfectly per the schema, we need the `modelLoader` to drop `model.controls` into `useStore`. 
+    
+    
+    
+    
+    
+    
 
     const activeModelControls = useStore(state => state.activeModelControls) || [];
     const updateModelControl = useStore(state => state.updateModelControl);

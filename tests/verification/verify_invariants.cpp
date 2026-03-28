@@ -1,6 +1,6 @@
-// Invariant Verification Suite
-// Validates the foundational energy framework.
-// Runs a managed simulation and proves energy conservation.
+
+
+
 
 #include "../../engine/core/integrator.hpp"
 #include "../../engine/core/world.hpp"
@@ -19,33 +19,33 @@ using namespace realis::verification;
 int main() {
   std::cout << "=== REALIS Invariant Framework Verification ===" << std::endl;
 
-  // 1. Setup Simulation
+  
   RigidBody mass;
   mass.mass = 2.0f;
   mass.inv_mass = 0.5f;
-  mass.position = Vec3(2.0, 0, 0); // 2m displacement
+  mass.position = Vec3(2.0, 0, 0); 
   mass.velocity = Vec3(0, 0, 0);
 
-  // Spring (K=10, Rest=0)
-  // PE = 0.5 * 10 * 2^2 = 20 J
+  
+  
   SpringModel spring(&mass, Vec3(0, 0, 0), 10.0f, 0.0f);
 
   ForceRegistry forces;
   forces.add(&mass, &spring);
 
-  // 2. Setup Invariant Monitor
-  InvariantMonitor monitor(0.1); // 0.1% tolerance
-  monitor.add_source(&spring); // Spring knows about the mass and the potential
-  // Wait, kinetic energy is usually tracked by the body itself?
-  // SpringModel::get_kinetic_energy() reads the body.
-  // So adding the spring covers both K (from mass) and U (from spring).
-  // This assumes SpringModel "owns" the mass for energy reporting.
-  // In a complex scene, we might add Bodies and Forces separately as sources.
-  // But SpringModel encapsulates the SYSTEM here. Correct.
+  
+  InvariantMonitor monitor(0.1); 
+  monitor.add_source(&spring); 
+  
+  
+  
+  
+  
+  
 
-  // 3. Run Simulation
+  
   float dt = 0.01f;
-  int steps = 200; // 2 seconds
+  int steps = 200; 
 
   std::ofstream ledger_csv("invariant_ledger.csv");
   ledger_csv << "time,total,kinetic,potential,drift,status\n";
@@ -58,10 +58,10 @@ int main() {
   for (int i = 0; i <= steps; ++i) {
     float time = i * dt;
 
-    // A. Verify BEFORE Step (Pre-Integration State)
+    
     InvariantReport report = monitor.check_invariants(time);
 
-    // Log to CSV
+    
     ledger_csv << std::fixed << std::setprecision(6) << report.ledger.time
                << "," << report.ledger.total_energy() << ","
                << report.ledger.kinetic_energy << ","
@@ -79,7 +79,7 @@ int main() {
       break;
     }
 
-    // B. Step Physics
+    
     forces.update_forces(dt);
 
     std::vector<RigidBody *> sim_bodies = {&mass};

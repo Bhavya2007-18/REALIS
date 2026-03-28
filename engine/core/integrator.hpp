@@ -1,4 +1,4 @@
-// Numerical integrators
+
 #pragma once
 #include "../dynamics/rigid_body.hpp"
 #include "../math/vec3.hpp"
@@ -11,7 +11,7 @@ class Integrator {
 public:
   virtual ~Integrator() = default;
 
-  // Abstract step on generic state vector
+  
   virtual void step(System &sys, float dt) = 0;
 };
 
@@ -30,4 +30,4 @@ public:
   void step(System &sys, float dt) override;
 };
 
-} // namespace realis
+} 

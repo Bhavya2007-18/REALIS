@@ -1,36 +1,17 @@
-/**
- * V6ControlPanel — REALIS
- * ════════════════════════════════════════════════════════════════════════════
- * Phase 6 & 7: User controls + real-time debug visualization
- * Renders as a floating overlay when V6 simulation is active.
- *
- * Controls:
- *  - RPM slider + numeric input
- *  - Load torque slider
- *  - V-angle toggle (60° / 90°)
- *  - Crank radius & rod length inputs
- *  - Physics ON/OFF toggle
- *  - Debug vectors toggle
- *  - Wireframe toggle
- *
- * Debug Graphs:
- *  - Piston 0 position over time (SVG sparkline)
- *  - Active cylinder indicator (6 LED dots)
- *  - Live RPM & torque readout
- */
+
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import useStore from '../store/useStore';
 
 const STROKE_COLORS = {
-    INTAKE:      '#60a5fa', // Blue
-    COMPRESSION: '#facc15', // Yellow
-    POWER:       '#ef4444', // Red
-    EXHAUST:     '#6b7280', // Gray
+    INTAKE:      '#60a5fa', 
+    COMPRESSION: '#facc15', 
+    POWER:       '#ef4444', 
+    EXHAUST:     '#6b7280', 
 };
 const STROKE_NAMES = ['INTAKE', 'COMPRESSION', 'POWER', 'EXHAUST'];
 
-// ─── Sparkline SVG chart ──────────────────────────────────────────────────────
+
 function Sparkline({ data, width = 220, height = 44, color = '#22c55e', label }) {
     if (!data || data.length < 2) return (
         <div className="w-full bg-slate-900 rounded" style={{ width, height }}>
@@ -52,7 +33,7 @@ function Sparkline({ data, width = 220, height = 44, color = '#22c55e', label })
             {label && <div className="text-[9px] text-slate-500 mb-0.5 pl-1">{label}</div>}
             <svg width={width} height={height} className="rounded overflow-hidden bg-slate-900">
                 <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-                {/* Current value dot */}
+                {}
                 {data.length > 0 && (() => {
                     const last = data[data.length - 1];
                     const y = height - ((last - min) / range) * (height - 6) - 3;
@@ -63,26 +44,26 @@ function Sparkline({ data, width = 220, height = 44, color = '#22c55e', label })
     );
 }
 
-// ─── RPM Gauge ────────────────────────────────────────────────────────────────
+
 function RPMGauge({ rpm }) {
     const MAX = 8000;
     const pct = Math.min(rpm / MAX, 1);
     const isRedline = rpm > 6500;
-    const arcLen = pct * 220; // 220deg sweep
+    const arcLen = pct * 220; 
 
     return (
         <div className="relative flex flex-col items-center">
             <svg width="90" height="55" viewBox="0 0 90 60">
-                {/* Background arc */}
+                {}
                 <path d="M 10 50 A 35 35 0 0 1 80 50" stroke="#1e293b" strokeWidth="7" fill="none" strokeLinecap="round" />
-                {/* Active arc */}
+                {}
                 <path d="M 10 50 A 35 35 0 0 1 80 50"
                     stroke={isRedline ? '#ef4444' : '#22c55e'}
                     strokeWidth="7" fill="none" strokeLinecap="round"
                     strokeDasharray={`${arcLen} 220`}
                     style={{ transition: 'stroke-dasharray 0.1s ease' }}
                 />
-                {/* Needle indicator dot */}
+                {}
                 <circle
                     cx={45 + 32 * Math.cos(Math.PI - pct * Math.PI)}
                     cy={50 - 32 * Math.sin(pct * Math.PI)}
@@ -97,7 +78,7 @@ function RPMGauge({ rpm }) {
     );
 }
 
-// ─── Cylinder Status LEDs ─────────────────────────────────────────────────────
+
 function CylinderMatrix({ cylinders }) {
     return (
         <div className="grid grid-cols-3 gap-1.5">
@@ -129,7 +110,7 @@ function CylinderMatrix({ cylinders }) {
     );
 }
 
-// ─── Main Panel Component ─────────────────────────────────────────────────────
+
 export default function V6ControlPanel({ solver, engineState, isVisible, onClose }) {
     const updateModelControl = useStore(s => s.updateModelControl);
 
@@ -143,7 +124,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
     const [gravityEnabled, setGravityEnabled] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
 
-    // Piston position history for sparkline
+    
     const pistonHistory = engineState?.history?.map(h => h.piston0) ?? [];
     const rpmHistory    = engineState?.history?.map(h => h.rpm)     ?? [];
     const torqueHistory = engineState?.history?.map(h => h.torque / 1000).map(v => Math.abs(v)) ?? [];
@@ -182,7 +163,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
             className="absolute bottom-4 left-4 z-50 rounded-xl border border-emerald-500/20 bg-slate-950/95 backdrop-blur-sm shadow-2xl shadow-black/60 select-none"
             style={{ width: 280, fontFamily: "'Inter', sans-serif" }}
         >
-            {/* Header */}
+            {}
             <div
                 className="flex items-center justify-between px-3 py-2 border-b border-slate-800 cursor-pointer"
                 onClick={() => setCollapsed(c => !c)}
@@ -206,7 +187,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
             {!collapsed && (
                 <div className="p-3 space-y-3">
 
-                    {/* RPM Gauge + Cylinder Matrix */}
+                    {}
                     <div className="flex items-start gap-3">
                         <RPMGauge rpm={engineState?.RPM ?? 0} />
                         <div className="flex-1">
@@ -215,7 +196,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         </div>
                     </div>
 
-                    {/* Live stats */}
+                    {}
                     <div className="grid grid-cols-3 gap-1.5 text-center">
                         {[
                             { label: 'Torque', val: `${Math.abs(engineState?.totalTorque ?? 0).toFixed(0)} N·m` },
@@ -229,10 +210,10 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         ))}
                     </div>
 
-                    {/* Divider */}
+                    {}
                     <div className="border-t border-slate-800" />
 
-                    {/* RPM Control */}
+                    {}
                     <div className="space-y-1">
                         <div className="flex items-center justify-between">
                             <label className="text-[10px] text-slate-400">Engine Speed</label>
@@ -252,7 +233,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                             onChange={e => handleRPMChange(e.target.value)}
                             className="w-full h-1.5 appearance-none bg-slate-800 rounded-full cursor-pointer accent-emerald-500"
                         />
-                        {/* Redline indicator */}
+                        {}
                         <div className="flex justify-between text-[8px] text-slate-600">
                             <span>IDLE</span>
                             <span className="text-yellow-600">6500 REDLINE</span>
@@ -260,7 +241,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         </div>
                     </div>
 
-                    {/* Load Torque */}
+                    {}
                     <div className="space-y-1">
                         <div className="flex items-center justify-between">
                             <label className="text-[10px] text-slate-400">Load Torque</label>
@@ -274,7 +255,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         />
                     </div>
 
-                    {/* Engine Config */}
+                    {}
                     <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                             <label className="text-[9px] text-slate-500">Crank Radius (mm)</label>
@@ -296,7 +277,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         </div>
                     </div>
 
-                    {/* V-Angle Toggle */}
+                    {}
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-400">V-Angle:</span>
                         {[60, 90].map(deg => (
@@ -310,7 +291,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         ))}
                     </div>
 
-                    {/* Toggle Switches */}
+                    {}
                     <div className="grid grid-cols-3 gap-1.5">
                         {[
                             { label: 'Debug', val: showDebug, set: setShowDebug },
@@ -327,7 +308,7 @@ export default function V6ControlPanel({ solver, engineState, isVisible, onClose
                         ))}
                     </div>
 
-                    {/* Graphs */}
+                    {}
                     <div className="space-y-2 border-t border-slate-800 pt-2">
                         <Sparkline data={pistonHistory} width={254} height={36} color="#22c55e" label="Piston 1 Position" />
                         <Sparkline data={rpmHistory}    width={254} height={32} color="#60a5fa" label="RPM History" />

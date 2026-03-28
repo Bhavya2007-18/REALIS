@@ -22,7 +22,7 @@ export default function BottomBar() {
     return (
         <footer className="h-14 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between z-50 shrink-0">
             <div className="flex h-full">
-                {TABS.map(({ id, label, icon: Icon }) => { // eslint-disable-line no-unused-vars
+                {TABS.map(({ id, label, icon: Icon }) => { 
                     const isActive = activeWorkspace === id
                     return (
                         <button

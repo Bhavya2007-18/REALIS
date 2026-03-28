@@ -1,6 +1,6 @@
-// Phase 8: Formal Verification & Validation Master Suite
-// Proves every solver with error quantification, regression detection, and
-// stability mapping
+
+
+
 
 #include "../engine/fluids/compressible_1d.hpp"
 #include "../engine/verification/benchmark_library.hpp"
@@ -21,19 +21,19 @@ using namespace realis;
 using namespace realis::verification;
 using namespace realis::fluids;
 
-// ═══════════════════════════════════════════
-// Test 1: Convergence Order Verification
-// ═══════════════════════════════════════════
+
+
+
 void test_convergence_order() {
   std::cout << "\n=== Test 1: Convergence Order Verification ===\n";
 
-  // Problem: Integrate y'' = -g (free-fall) with explicit Euler at two timestep
-  // sizes. Euler is O(dt^1). Observed convergence rate p should be ~1.0.
+  
+  
   double g = 9.81;
   double t_end = 1.0;
   double y_exact = 0.5 * g * t_end * t_end;
 
-  // Coarse: dt = 0.1
+  
   double dt_coarse = 0.1;
   int n_coarse = static_cast<int>(t_end / dt_coarse);
   double v_c = 0.0, y_c = 0.0;
@@ -43,7 +43,7 @@ void test_convergence_order() {
   }
   double err_coarse = std::abs(y_c - y_exact);
 
-  // Fine: dt = 0.01
+  
   double dt_fine = 0.01;
   int n_fine = static_cast<int>(t_end / dt_fine);
   double v_f = 0.0, y_f = 0.0;
@@ -63,7 +63,7 @@ void test_convergence_order() {
   std::cout << "  Observed convergence order p = " << std::fixed
             << std::setprecision(3) << p << "\n";
 
-  // Symplectic Euler for constant acceleration is exactly O(1) in position
+  
   if (std::abs(p - 1.0) < 0.15) {
     std::cout << "  [PASS] Convergence order matches theoretical prediction "
                  "(p~1 for Euler).\n";
@@ -72,16 +72,16 @@ void test_convergence_order() {
   }
 }
 
-// ═══════════════════════════════════════════
-// Test 2: Regression Failure Detection
-// ═══════════════════════════════════════════
+
+
+
 void test_regression_detection() {
   std::cout << "\n=== Test 2: Regression Failure Detection ===\n";
 
   RegressionHarness harness;
   double g_correct = 9.81;
 
-  // Register correct baseline
+  
   harness.register_test(
       "Free-Fall y(1s)",
       [g_correct]() {
@@ -94,7 +94,7 @@ void test_regression_detection() {
       },
       4.91405, 1e-3);
 
-  // Register WITH intentional perturbation (1% gravity change)
+  
   double g_perturbed = 9.81 * 1.01;
   harness.register_test(
       "Free-Fall PERTURBED (should FAIL)",
@@ -106,11 +106,11 @@ void test_regression_detection() {
         }
         return y;
       },
-      4.91405, 1e-3); // Same baseline, but perturbed physics
+      4.91405, 1e-3); 
 
   auto results = harness.run_all();
 
-  // Verify: first should pass, second should fail
+  
   if (results[0].passed && !results[1].passed) {
     std::cout << "\n  [PASS] Regression harness correctly detected intentional "
                  "perturbation.\n";
@@ -119,13 +119,13 @@ void test_regression_detection() {
   }
 }
 
-// ═══════════════════════════════════════════
-// Test 3: Conservation Residual Reporting
-// ═══════════════════════════════════════════
+
+
+
 void test_conservation_reporting() {
   std::cout << "\n=== Test 3: Conservation Residual Reporting ===\n";
 
-  // Run Sod shock tube with PERIODIC boundaries (closed system)
+  
   FluidDomain1D fluid(50, 1.0);
   FVMSolver1D solver;
   solver.boundary_condition = FVMSolver1D::BoundaryCondition::PERIODIC;
@@ -173,9 +173,9 @@ void test_conservation_reporting() {
   }
 }
 
-// ═══════════════════════════════════════════
-// Test 4: Timestep Stability Map
-// ═══════════════════════════════════════════
+
+
+
 void test_stability_map() {
   std::cout << "\n=== Test 4: Timestep Stability Map ===\n";
 
@@ -195,7 +195,7 @@ void test_stability_map() {
     for (int i = 0; i < fluid.num_cells; ++i)
       init_energy += fluid.cells[i].E * fluid.dx;
 
-    // Run 50 steps at this dt
+    
     for (int step = 0; step < 50; ++step) {
       try {
         solver.step(fluid, dt);
@@ -209,10 +209,10 @@ void test_stability_map() {
       final_energy += fluid.cells[i].E * fluid.dx;
 
     double drift = std::abs(final_energy - init_energy) / init_energy;
-    return {drift, drift}; // Use drift as both metrics for uniform flow
+    return {drift, drift}; 
   };
 
-  // CFL-safe dt for this setup is about 0.03 (dx=0.05, c~1.3)
+  
   std::vector<StabilityPoint> map = StabilityMapper::sweep(fluid_runner, 0.005, 0.05, 8, 1e-4);
   StabilityMapper::print_table(map, "Compressible Fluid Solver");
 
@@ -220,13 +220,13 @@ void test_stability_map() {
   std::cout << "  Critical dt (stability boundary): " << critical << "\n";
 }
 
-// ═══════════════════════════════════════════
-// Test 5: Versioned Result Tracking
-// ═══════════════════════════════════════════
+
+
+
 void test_version_tracking() {
   std::cout << "\n=== Test 5: Versioned Result Tracking ===\n";
 
-  // Simulate V1 result
+  
   std::vector<double> state_v1 = {4.905, 9.81, 0.0, 1.0};
   SimulationFingerprint fp_v1;
   fp_v1.solver_version = "REALIS v0.8.0";
@@ -235,16 +235,16 @@ void test_version_tracking() {
   fp_v1.material_params = "g=9.81,rho=1.0";
   fp_v1.state_hash = SimulationFingerprint::compute_state_hash(state_v1);
 
-  // V2: identical run (should match)
+  
   SimulationFingerprint fp_v2 = fp_v1;
   auto cmp1 = VersionTracker::compare(fp_v1, fp_v2);
   std::cout << "  [Identical Run]\n";
   cmp1.report();
 
-  // V3: solver version bumped, slight numerical change
+  
   SimulationFingerprint fp_v3 = fp_v1;
   fp_v3.solver_version = "REALIS v0.8.1";
-  std::vector<double> state_v3 = {4.905001, 9.81, 0.0, 1.0}; // Tiny drift
+  std::vector<double> state_v3 = {4.905001, 9.81, 0.0, 1.0}; 
   fp_v3.state_hash = SimulationFingerprint::compute_state_hash(state_v3);
 
   auto cmp2 = VersionTracker::compare(fp_v1, fp_v3);

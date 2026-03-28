@@ -40,7 +40,7 @@ export default function Sidebar() {
             className="relative flex flex-col shrink-0 bg-slate-50 dark:bg-[#0d1117] border-r border-slate-200 dark:border-slate-800"
             style={{ width: `${size}px` }}
         >
-            {/* Sidebar Header */}
+            {}
             <div className="px-4 py-2.5 flex justify-between items-center bg-slate-100 dark:bg-[#0d1117] shrink-0">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     {sidebarView === 'explorer' ? 'Explorer' : sidebarView.toUpperCase()}
@@ -51,10 +51,10 @@ export default function Sidebar() {
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col">
-                {/* Explorer Sections */}
+                {}
                 {sidebarView === 'explorer' && (
                     <>
-                        {/* Open Editors Section */}
+                        {}
                         <div className="border-b border-slate-200 dark:border-slate-800">
                             <div onClick={() => toggleSection('editors')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
                                 {expanded.editors ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -82,7 +82,7 @@ export default function Sidebar() {
                             </div>
                         </div>
 
-                        {/* Project Folder Section */}
+                        {}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.hierarchy ? 'flex-1 overflow-hidden' : ''}`}>
                             <div onClick={() => toggleSection('hierarchy')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
                                 {expanded.hierarchy ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -95,7 +95,7 @@ export default function Sidebar() {
                             )}
                         </div>
 
-                        {/* Layers Section */}
+                        {}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.layers ? 'overflow-hidden' : ''}`} style={expanded.layers ? { minHeight: '140px', maxHeight: '200px' } : {}}>
                             <div onClick={() => toggleSection('layers')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50">
                                 {expanded.layers ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -108,7 +108,7 @@ export default function Sidebar() {
                             )}
                         </div>
                         
-                        {/* Demo Models Section */}
+                        {}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.models ? 'overflow-hidden' : ''}`} style={expanded.models ? { minHeight: '180px' } : {}}>
                             <div onClick={() => toggleSection('models')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
                                 {expanded.models ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -140,7 +140,7 @@ export default function Sidebar() {
                             )}
                         </div>
 
-                        {/* Pre-made Simulations Section */}
+                        {}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.prebuilt ? 'overflow-hidden' : ''}`} style={expanded.prebuilt ? { minHeight: '140px' } : {}}>
                             <div onClick={() => toggleSection('prebuilt')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
                                 {expanded.prebuilt ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -172,7 +172,7 @@ export default function Sidebar() {
                             )}
                         </div>
 
-                        {/* Component Library Section */}
+                        {}
                         <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.library ? 'overflow-hidden' : ''}`} style={expanded.library ? { minHeight: '180px' } : {}}>
                             <div onClick={() => toggleSection('library')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
                                 {expanded.library ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
@@ -209,7 +209,7 @@ export default function Sidebar() {
                     </>
                 )}
 
-                {/* Other views placeholders */}
+                {}
                 {sidebarView !== 'explorer' && (
                     <div className="flex-1 flex items-center justify-center p-8 text-center">
                         <div className="flex flex-col items-center gap-4 text-slate-500">
@@ -220,7 +220,7 @@ export default function Sidebar() {
                 )}
             </div>
 
-            {/* GPU Load Indicator (Stitch carry-over) */}
+            {}
             <div className="p-4 bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function Sidebar() {
                 </div>
             </div>
 
-            {/* Resize Handle */}
+            {}
             <div
                 className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors z-10"
                 onMouseDown={onMouseDown}

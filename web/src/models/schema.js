@@ -1,19 +1,16 @@
-/**
- * Prebuilt Model Schema Validator
- * Validates physics models against the REALIS internal standard schema.
- */
+
 
 export const validateModelSchema = (model) => {
     if (!model.id || !model.name) {
         throw new Error("Model must have an 'id' and 'name'.");
     }
 
-    // objects is optional for pure-3D models (V6 engine, etc.) 
+    
     if (model.objects !== undefined && !Array.isArray(model.objects)) {
         throw new Error("Model 'objects' must be an array if provided.");
     }
 
-    // Default structural enforcement
+    
     const validatedModel = {
         id:          model.id,
         name:        model.name,
@@ -34,7 +31,7 @@ export const validateModelSchema = (model) => {
             };
         }),
 
-        // Native 3D shapes (passed through as-is — Viewport3D owns validation)
+        
         shapes3D: Array.isArray(model.shapes3D) ? model.shapes3D : [],
 
         constraints: Array.isArray(model.constraints) ? model.constraints.map(c => {
@@ -55,7 +52,7 @@ export const validateModelSchema = (model) => {
             parameters: Array.isArray(model.controls?.parameters) ? model.controls.parameters : []
         },
 
-        // Pass through V6-specific config block
+        
         v6Config: model.v6Config || null,
 
         metadata: {
@@ -64,7 +61,7 @@ export const validateModelSchema = (model) => {
             simplifyShapes:    model.metadata?.simplifyShapes    || false,
             zoom:              model.metadata?.zoom              || 1,
             center:            model.metadata?.center            || { x: typeof window !== 'undefined' ? window.innerWidth / 2 : 500, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400 },
-            // V6/3D model flags
+            
             isV6Simulation:    model.metadata?.isV6Simulation    || false,
             engineType:        model.metadata?.engineType        || null,
         }

@@ -1,42 +1,31 @@
-/**
- * V6 Engine Model — REALIS
- * ════════════════════════════════════════════════════════════════════════════
- * Generates a geometrically accurate 3D V6 engine block for the 3D Viewport.
- *
- * Architecture:
- *  - All components are native shapes3D (Three.js primitives)
- *  - Positioned in world-space centered at origin
- *  - V-bank at 60° total angle (±30° from vertical)
- *  - 6 cylinders staggered 60mm apart along Z-axis
- *  - Hierarchy: Block → Crankshaft → Crank Throws → ConRods → Pistons
- */
 
-// ─── Engine Geometry Constants ────────────────────────────────────────────────
-const CRANK_RADIUS      = 0.045;  // meters (45mm throw)
-const ROD_LENGTH        = 0.130;  // meters (130mm)
-const PISTON_RADIUS     = 0.042;  // meters (42mm bore)
-const PISTON_HEIGHT     = 0.060;  // meters (60mm piston height)
-const BORE              = 0.089;  // meters (89mm bore diameter)
-const STROKE            = 0.090;  // meters (90mm stroke)
-const CYLINDER_LENGTH   = 0.200;  // meters
+
+
+const CRANK_RADIUS      = 0.045;  
+const ROD_LENGTH        = 0.130;  
+const PISTON_RADIUS     = 0.042;  
+const PISTON_HEIGHT     = 0.060;  
+const BORE              = 0.089;  
+const STROKE            = 0.090;  
+const CYLINDER_LENGTH   = 0.200;  
 const ROD_RADIUS        = 0.012;
-const CRANK_JOURNAL_R   = 0.025;  // main journal radius
-const CRANK_TOTAL_LEN   = 0.400;  // full crankshaft length
+const CRANK_JOURNAL_R   = 0.025;  
+const CRANK_TOTAL_LEN   = 0.400;  
 
-// V-bank: 60° total → ±30° each bank from vertical
-const BANK_ANGLE_RAD    = Math.PI / 6; // 30 degrees
-const CYLINDER_SPACING  = 0.085; // 85mm between cylinder centers (z-axis)
-const SCALE             = 200;   // Scale to REALIS units (internal 1 unit ≈ 1px/mm)
 
-function s(m) { return m * SCALE; } // meters → REALIS units
+const BANK_ANGLE_RAD    = Math.PI / 6; 
+const CYLINDER_SPACING  = 0.085; 
+const SCALE             = 200;   
+
+function s(m) { return m * SCALE; } 
 
 function generateV6Engine() {
     const shapes3D   = [];
     const objects    = [];
     const constraints = [];
 
-    // ── 1. ENGINE BLOCK (Static housing) ─────────────────────────────────────
-    // A large static box representing the cast-iron block
+    
+    
     shapes3D.push({
         id:       'v6_block',
         type:     'cube',
@@ -50,15 +39,15 @@ function generateV6Engine() {
         isStatic:  true,
         mass:      65,
         label:     'Cylinder Block',
-        opacity:   0.35,  // Semi-transparent so internals are visible
+        opacity:   0.35,  
     });
 
-    // ── 2. CRANKSHAFT (Single central rotating shaft) ────────────────────────
+    
     shapes3D.push({
         id:       'v6_crankshaft',
         type:     'cylinder',
         position: [0, 0, 0],
-        rotation: [Math.PI / 2, 0, 0], // Rotate to lie along Z-axis
+        rotation: [Math.PI / 2, 0, 0], 
         scale:    [1, 1, 1],
         params: {
             radiusTop:    s(CRANK_JOURNAL_R),
@@ -74,7 +63,7 @@ function generateV6Engine() {
         label:     'Crankshaft',
     });
 
-    // ── 3. FLYWHEEL (at +Z end of crankshaft) ────────────────────────────────
+    
     shapes3D.push({
         id:       'v6_flywheel',
         type:     'cylinder',
@@ -95,22 +84,22 @@ function generateV6Engine() {
         label:     'Flywheel',
     });
 
-    // ── 4. PER-CYLINDER COMPONENTS (6 cylinders) ─────────────────────────────
-    // 6 cylinders: 3 left bank (index 0-2), 3 right bank (index 3-5)
-    // Each offset along Z-axis by CYLINDER_SPACING
-    // Left/Right bank cylinders interleave: z[0]=0, z[1]=85, z[2]=170 (left)
-    //                                       z[3]=42, z[4]=127, z[5]=212 (right, offset)
+    
+    
+    
+    
+    
 
     const phaseOffsets = [0, 2.094, 4.189, 1.047, 3.141, 5.236];
 
-    // Z positions for each cylinder pair
+    
     const zPositions = [
-        s(-0.17),  // Cyl 1 (Left)
-        s(-0.085), // Cyl 3 (Left)
-        s(0),      // Cyl 5 (Left)
-        s(-0.127), // Cyl 2 (Right) — offset by half pitch
-        s(-0.042), // Cyl 4 (Right)
-        s(0.043),  // Cyl 6 (Right)
+        s(-0.17),  
+        s(-0.085), 
+        s(0),      
+        s(-0.127), 
+        s(-0.042), 
+        s(0.043),  
     ];
 
     for (let i = 0; i < 6; i++) {
@@ -120,17 +109,17 @@ function generateV6Engine() {
         const phase     = phaseOffsets[i];
         const zPos      = zPositions[i];
 
-        // Initial crank angle for this cylinder (at TDC start)
-        // Crank throw position:
+        
+        
         const crankThrowX = s(CRANK_RADIUS) * Math.sin(phase);
         const crankThrowY = -s(CRANK_RADIUS) * Math.cos(phase);
 
-        // Piston TDC position (top-dead-center initial position)
+        
         const totalDist = s(CRANK_RADIUS + ROD_LENGTH);
         const pistonBaseX = Math.sin(bankRad) * totalDist;
         const pistonBaseY = -Math.cos(bankRad) * totalDist;
 
-        // ── a. Cylinder bore (static tube) ───────────────────────────────────
+        
         shapes3D.push({
             id:       `v6_cylinder_bore_${i}`,
             type:     'cylinder',
@@ -139,7 +128,7 @@ function generateV6Engine() {
                 -Math.cos(bankRad) * s(CRANK_RADIUS + ROD_LENGTH * 0.7),
                 zPos,
             ],
-            rotation: [0, 0, bankRad], // Tilt along bank angle
+            rotation: [0, 0, bankRad], 
             scale:    [1, 1, 1],
             params: {
                 radiusTop:    s(BORE / 2),
@@ -153,10 +142,10 @@ function generateV6Engine() {
             isStatic:  true,
             mass:      4.5,
             label:     `Cylinder ${i + 1} Bore`,
-            opacity:   0.25, // Transparent to see piston inside
+            opacity:   0.25, 
         });
 
-        // ── b. Crank throw / crank pin ────────────────────────────────────────
+        
         shapes3D.push({
             id:       `v6_crank_throw_${i}`,
             type:     'cylinder',
@@ -177,8 +166,8 @@ function generateV6Engine() {
             label:     `Crank Throw ${i + 1}`,
         });
 
-        // ── c. Connecting rod ─────────────────────────────────────────────────
-        // Con-rod stretches between crank pin and piston pin
+        
+        
         const midX = (crankThrowX + pistonBaseX) / 2;
         const midY = (crankThrowY + pistonBaseY) / 2;
         const rodAngle = Math.atan2(pistonBaseY - crankThrowY, pistonBaseX - crankThrowX);
@@ -190,7 +179,7 @@ function generateV6Engine() {
             id:       `v6_con_rod_${i}`,
             type:     'cylinder',
             position: [midX, midY, zPos],
-            rotation: [0, 0, rodAngle + Math.PI / 2], // align along rod axis
+            rotation: [0, 0, rodAngle + Math.PI / 2], 
             scale:    [1, 1, 1],
             params: {
                 radiusTop:    s(ROD_RADIUS),
@@ -206,12 +195,12 @@ function generateV6Engine() {
             label:     `Con Rod ${i + 1}`,
         });
 
-        // ── d. Piston ─────────────────────────────────────────────────────────
+        
         shapes3D.push({
             id:       `v6_piston_${i}`,
             type:     'cylinder',
             position: [pistonBaseX, pistonBaseY, zPos],
-            rotation: [0, 0, bankRad], // Aligned with bank angle
+            rotation: [0, 0, bankRad], 
             scale:    [1, 1, 1],
             params: {
                 radiusTop:    s(PISTON_RADIUS),
@@ -219,7 +208,7 @@ function generateV6Engine() {
                 height:       s(PISTON_HEIGHT),
                 segments:     24,
             },
-            color:    isLeft ? '#e11d48' : '#2563eb',  // Red=left, Blue=right
+            color:    isLeft ? '#e11d48' : '#2563eb',  
             roughness: 0.4,
             metalness: 0.7,
             isStatic:  false,
@@ -230,7 +219,7 @@ function generateV6Engine() {
         });
     }
 
-    // ── 5. CYLINDER HEADS (per bank) ──────────────────────────────────────────
+    
     const headLength = s(0.30);
     for (const bank of ['left', 'right']) {
         const bankSign = bank === 'left' ? -1 : +1;
@@ -261,7 +250,7 @@ function generateV6Engine() {
     return { shapes3D, objects, constraints };
 }
 
-// ─── Generate Model ───────────────────────────────────────────────────────────
+
 const engineGeometry = generateV6Engine();
 
 const v6EngineModel = {
@@ -271,29 +260,29 @@ const v6EngineModel = {
     category:    'Automotive',
     complexity:  'Extreme',
 
-    // No 2D objects — pure 3D
+    
     objects:     [],
     shapes3D:    engineGeometry.shapes3D,
     constraints: engineGeometry.constraints,
 
     physics_config: {
-        gravity:          { x: 0, y: 0, z: 0 }, // Gravity toggle in V6ControlPanel
-        timeStep:         1 / 240,  // 240Hz V6 solver internal rate
+        gravity:          { x: 0, y: 0, z: 0 }, 
+        timeStep:         1 / 240,  
         solverIterations: 30,
         subSteps:         4,
         airResistance:    0.001,
         frictionCoeff:    0.02,
     },
 
-    // V6PhysicsSolver parameters (read by modelLoader → V6ControlPanel)
+    
     v6Config: {
-        crankRadius:      45,    // mm
-        rodLength:        130,   // mm
-        pistonMass:       0.45,  // kg
-        crankInertia:     0.35,  // kg·m²
+        crankRadius:      45,    
+        rodLength:        130,   
+        pistonMass:       0.45,  
+        crankInertia:     0.35,  
         initialRPM:       800,
-        combustionForce:  30000, // N
-        frictionTorque:   20,    // N·m
+        combustionForce:  30000, 
+        frictionTorque:   20,    
         vAngleDeg:        60,
     },
 
@@ -308,7 +297,7 @@ const v6EngineModel = {
     },
 
     metadata: {
-        isV6Simulation: true, // Flag for modelLoader to activate V6PhysicsSolver
+        isV6Simulation: true, 
         engineType:     'V6',
         displacement:   '3.5L',
         configuration:  '60° V-Bank',

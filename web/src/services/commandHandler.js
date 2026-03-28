@@ -3,15 +3,12 @@ import pendulumModel from '../models/pendulumModel';
 import projectileModel from '../models/projectileModel';
 import thermalModel from '../models/thermalModel';
 
-/**
- * AI Command Handler (Simulated)
- * Processes natural language input and identifies model loading intent or simulation commands.
- */
+
 const commandHandler = {
     handleCommand: (input) => {
         const lowerInput = input.toLowerCase();
 
-        // 1. Model Loading Commands
+        
         if (lowerInput.includes('engine')) {
             return {
                 type: 'LOAD_MODEL',
@@ -48,7 +45,7 @@ const commandHandler = {
             };
         }
 
-        // 2. Simulation Trigger Commands
+        
         if (lowerInput.includes('run thermal') || (lowerInput.includes('run') && lowerInput.includes('simulation'))) {
             return {
                 type: 'TRIGGER_SIMULATION',
@@ -56,7 +53,7 @@ const commandHandler = {
             };
         }
 
-        // 3. Insight / Efficiency Commands
+        
         if (lowerInput.includes('increase efficiency') || lowerInput.includes('optimize')) {
             return {
                 type: 'AI_INSIGHT',
@@ -71,7 +68,7 @@ const commandHandler = {
             };
         }
 
-        // 4. Material Commands
+        
         const materials = [
             { key: 'steel', name: 'steel' },
             { key: 'aluminum', name: 'aluminum' },
@@ -90,7 +87,7 @@ const commandHandler = {
             }
         }
 
-        return null; // No match found
+        return null; 
     }
 };
 

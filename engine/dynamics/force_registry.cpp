@@ -1,4 +1,4 @@
-// ForceRegistry implementation
+
 #include "force_registry.hpp"
 #include <algorithm>
 
@@ -27,4 +27,4 @@ void ForceRegistry::update_forces(float dt) {
     }
 }
 
-} // namespace realis
+} 

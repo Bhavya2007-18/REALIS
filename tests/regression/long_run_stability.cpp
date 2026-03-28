@@ -1,4 +1,4 @@
-// Regression test: Long-term stability
+
 #include <iostream>
 
 void long_run_stability_test() {

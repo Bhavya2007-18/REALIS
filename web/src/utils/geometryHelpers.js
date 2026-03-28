@@ -38,8 +38,8 @@ export function createThreeShapeFrom2D(obj) {
     }
     
     if ((obj.type === 'path' || obj.type === 'pencil') && obj.points && obj.points.length > 1) {
-        // Points are in absolute canvas coordinates. 
-        // The mesh position will be [0, y, 0], so these absolute coords work perfectly.
+        
+        
         shape.moveTo(obj.points[0].x, obj.points[0].y);
         for (let i = 1; i < obj.points.length; i++) {
             shape.lineTo(obj.points[i].x, obj.points[i].y);

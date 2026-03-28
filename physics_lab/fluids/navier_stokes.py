@@ -1,14 +1,10 @@
-"""
-Navier-Stokes Equations
 
-Grid-based fluid simulation.
-"""
 
 import numpy as np
 
 
 def navier_stokes_intro():
-    """Introduction to Navier-Stokes equations"""
+    
     print("=== Navier-Stokes Equations ===\n")
     print("Governing equations for fluid flow:")
     print("∂u/∂t + (u·∇)u = -∇p/ρ + ν∇²u + f\n")

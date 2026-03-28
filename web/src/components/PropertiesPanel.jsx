@@ -34,7 +34,7 @@ export default function PropertiesPanel() {
 
     const [selectedObject, setSelectedObject] = useState(null)
 
-    // Joint form state
+    
     const [jointType, setJointType] = useState('distance')
     const [jointTargetA, setJointTargetA] = useState('')
     const [jointTargetB, setJointTargetB] = useState('')
@@ -55,7 +55,7 @@ export default function PropertiesPanel() {
         }
     }, [activeFileId, objects, shapes3D])
 
-    const Layers = Maximize // placeholder for missing icon
+    const Layers = Maximize 
 
     if (!selectedObject) {
         return (
@@ -68,7 +68,7 @@ export default function PropertiesPanel() {
                     <p className="text-xs">Select an object to view its properties.</p>
                 </div>
 
-                {/* Global Joints List */}
+                {}
                 {constraints.length > 0 && (
                     <div className="p-4 border-t border-slate-200 dark:border-slate-800">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-2">
@@ -116,7 +116,7 @@ export default function PropertiesPanel() {
                         return { ...o, params: newParams }
                     }
 
-                    // Handle Boolean fields like isStatic
+                    
                     if (field === 'isStatic') {
                         return { ...o, [field]: !!value }
                     }
@@ -192,7 +192,7 @@ export default function PropertiesPanel() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
 
-                {/* Advanced Extrude Setup */}
+                {}
                 {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && isClosedProfile(selectedObject) && (
                     <div className="space-y-3 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
@@ -267,7 +267,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* General Info */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Settings size={12} /> General
@@ -301,7 +301,7 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* 3D Transform */}
+                {}
                 {selectedObject.is3D && (
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -363,7 +363,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* 2D Transform */}
+                {}
                 {!selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -641,7 +641,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* 3D Parameters */}
+                {}
                 {selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -664,7 +664,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* Appearance */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Palette size={12} /> Appearance
@@ -736,7 +736,7 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* Physics */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Activity size={12} /> Physics
@@ -792,14 +792,14 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* Joints & Constraints */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Link size={12} /> Joints & Constraints
                     </h4>
 
                     <div className="space-y-2 pt-1 p-3 bg-slate-800/30 rounded-xl border border-slate-700/40">
-                        {/* Joint Type */}
+                        {}
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Constraint Type</label>
                             <select
@@ -812,7 +812,7 @@ export default function PropertiesPanel() {
                             </select>
                         </div>
 
-                        {/* Body A */}
+                        {}
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Body A</label>
                             <select
@@ -827,7 +827,7 @@ export default function PropertiesPanel() {
                             </select>
                         </div>
 
-                        {/* Body B (only for distance joint) */}
+                        {}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Body B</label>
@@ -844,7 +844,7 @@ export default function PropertiesPanel() {
                             </div>
                         )}
 
-                        {/* Distance parameter */}
+                        {}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Target Distance</label>
@@ -866,7 +866,7 @@ export default function PropertiesPanel() {
                         </button>
                     </div>
 
-                    {/* Existing Joints */}
+                    {}
                     {constraints.length > 0 && (
                         <div className="space-y-1">
                             {constraints.map(c => (
@@ -891,4 +891,3 @@ export default function PropertiesPanel() {
         </aside>
     )
 }
-

@@ -13,13 +13,13 @@ export default function AnalyzeWorkspace() {
     const clearEnergyHistory = useStore(state => state.clearEnergyHistory);
     
     const canvasRef = useRef(null);
-    const engineRef = useRef(new SimulationEngine({ gravity: { x: 0, y: 500 } })); // Higher gravity for visual impact
+    const engineRef = useRef(new SimulationEngine({ gravity: { x: 0, y: 500 } })); 
     const [isPlaying, setIsPlaying] = useState(false);
     const [stats, setStats] = useState({ kinetic: 0, potential: 0, total: 0 });
     const [selectedId, setSelectedId] = useState(null);
     const [selectedBodyInfo, setSelectedBodyInfo] = useState({ velocity: 0, mass: 0 });
 
-    // Initialize Engine with current CAD objects
+    
     useEffect(() => {
         const engine = engineRef.current;
         engine.bodies = [];
@@ -43,9 +43,9 @@ export default function AnalyzeWorkspace() {
         });
 
         clearEnergyHistory();
-    }, [objects, constraints, clearEnergyHistory]); // Added clearEnergyHistory to dependencies
+    }, [objects, constraints, clearEnergyHistory]); 
 
-    // Animation Loop
+    
     useEffect(() => {
         let raf;
         const engine = engineRef.current;
@@ -78,7 +78,7 @@ export default function AnalyzeWorkspace() {
 
             ctx.clearRect(0, 0, width, height);
 
-            // Draw Grid
+            
             ctx.strokeStyle = 'rgba(255,255,255,0.03)';
             ctx.lineWidth = 1;
             for (let x = 0; x < width; x += 50) {
@@ -88,7 +88,7 @@ export default function AnalyzeWorkspace() {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
             }
 
-            // Draw Constraints
+            
             ctx.strokeStyle = 'rgba(255,255,255,0.2)';
             ctx.setLineDash([5, 5]);
             engine.constraints.forEach(c => {
@@ -103,12 +103,12 @@ export default function AnalyzeWorkspace() {
             });
             ctx.setLineDash([]);
 
-            // Draw Bodies
+            
             engine.bodies.forEach(b => {
                 const isSelected = selectedId === b.id;
                 const speed = Math.sqrt(b.velocity.x**2 + b.velocity.y**2);
                 
-                // Heatmap Color Calculation
+                
                 const speedFactor = Math.min(1, speed / 500);
                 const color = analysisSettings.showHeatmap 
                     ? `rgb(${Math.floor(speedFactor * 255)}, 100, ${Math.floor((1 - speedFactor) * 255)})`
@@ -126,14 +126,14 @@ export default function AnalyzeWorkspace() {
                     ctx.fillRect(b.position.x - b.radius, b.position.y - b.radius, b.radius*2, b.radius*2);
                 }
                 
-                // Highlight Selection
+                
                 if (isSelected) {
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                 }
 
-                // Velocity Vectors
+                
                 if (analysisSettings.showVectors && !b.isStatic) {
                     const vx = b.velocity.x * 0.1 * analysisSettings.vectorScale;
                     const vy = b.velocity.y * 0.1 * analysisSettings.vectorScale;
@@ -144,7 +144,7 @@ export default function AnalyzeWorkspace() {
                         ctx.moveTo(b.position.x, b.position.y);
                         ctx.lineTo(b.position.x + vx, b.position.y + vy);
                         ctx.stroke();
-                        // Arrow head
+                        
                         const angle = Math.atan2(vy, vx);
                         ctx.beginPath();
                         ctx.moveTo(b.position.x + vx, b.position.y + vy);
@@ -161,7 +161,7 @@ export default function AnalyzeWorkspace() {
 
         raf = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(raf);
-    }, [isPlaying, analysisSettings, selectedId, addEnergySnapshot, setSelectedBodyInfo]); // Added addEnergySnapshot to dependencies
+    }, [isPlaying, analysisSettings, selectedId, addEnergySnapshot, setSelectedBodyInfo]); 
 
     const handleCanvasClick = (e) => {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -183,7 +183,7 @@ export default function AnalyzeWorkspace() {
 
     return (
         <div className="flex h-full bg-[#0a0f1a] overflow-hidden">
-            {/* Main simulation area */}
+            {}
             <div className="flex-1 relative border-r border-white/5">
                 <canvas
                     ref={canvasRef}
@@ -193,7 +193,7 @@ export default function AnalyzeWorkspace() {
                     className="w-full h-full cursor-crosshair"
                 />
 
-                {/* HUD Overlays */}
+                {}
                 <div className="absolute top-8 left-8 space-y-4 pointer-events-none">
                     <div className="glass p-5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md min-w-64">
                          <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-3">
@@ -223,7 +223,7 @@ export default function AnalyzeWorkspace() {
                     </div>
                 </div>
 
-                {/* Playback controls */}
+                {}
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 glass p-2 rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl">
                     <button onClick={() => setIsPlaying(false)} className="p-3 text-slate-400 hover:text-white transition-all cursor-pointer">
                         <SkipBack size={20} />
@@ -240,7 +240,7 @@ export default function AnalyzeWorkspace() {
                 </div>
             </div>
 
-            {/* Analysis Panel */}
+            {}
             <div className="w-96 glass bg-slate-950/20 backdrop-blur-xl flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-white/5 bg-white/5">
                     <div className="flex items-center gap-3">
@@ -252,7 +252,7 @@ export default function AnalyzeWorkspace() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                    {/* Visual Toggles */}
+                    {}
                     <section>
                          <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                              <Settings2 size={12} /> Visualization Layers
@@ -278,13 +278,13 @@ export default function AnalyzeWorkspace() {
                          </div>
                     </section>
 
-                    {/* Energy vs Time Graph */}
+                    {}
                     <section>
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                              <Zap size={12} /> Energy Flux
                          </h4>
                          <div className="bg-black/40 rounded-2xl p-4 border border-white/5 h-48 relative overflow-hidden group">
-                             {/* Energy Graph Lines */}
+                             {}
                              <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
                                 <polyline
                                     fill="none"
@@ -311,7 +311,7 @@ export default function AnalyzeWorkspace() {
                          <p className="text-[9px] text-center text-slate-600 mt-2 font-mono italic">Phase-space conservation active</p>
                     </section>
 
-                    {/* Selected Body Inspector */}
+                    {}
                     {selectedId && (
                         <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Object Analysis</h4>
@@ -339,7 +339,7 @@ export default function AnalyzeWorkspace() {
                     )}
                 </div>
 
-                {/* Footer Analysis Summary */}
+                {}
                 <div className="p-6 bg-white/5 border-t border-white/5">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-[10px] font-black text-slate-500 uppercase">Solver Iterations</span>

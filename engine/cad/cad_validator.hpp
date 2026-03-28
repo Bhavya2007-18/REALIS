@@ -1,5 +1,5 @@
-// CAD Integrity Validator
-// Enforces geometric truth before physics
+
+
 #pragma once
 #include "cad_types.hpp"
 #include <vector>
@@ -18,7 +18,7 @@ struct ValidationResult {
 
 class CADValidator {
 public:
-    // Main validation entry point
+    
     static ValidationResult validate_solid(const Solid& solid);
     
 private:
@@ -28,5 +28,5 @@ private:
     static void check_tolerances(const Solid& solid, ValidationResult& result);
 };
 
-} // namespace cad
-} // namespace realis
+} 
+} 

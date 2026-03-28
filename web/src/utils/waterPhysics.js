@@ -61,7 +61,7 @@ export function stepWater(dt, bodies) {
                         if (gi < 0) continue;
                         const r2 = ox * ox + oz * oz;
                         const falloff = Math.exp(-r2 / 6);
-                        // Only inject wake behind the boat (ox < 0 is behind if +X is forward)
+                        
                         const dirBias = ox < 0 ? 1.0 : -0.3;
                         const impulse = vJet * 0.01 * falloff * dirBias;
                         const newH = (heights[gi] || 0) + impulse;
@@ -87,7 +87,7 @@ export function stepWater(dt, bodies) {
     }
 
     const nextVel = velocities.slice();
-    // Local wave propagation around the boat for performance
+    
     let centerX = 0, centerZ = 0;
     const boatForWindow = bodies?.find(b => b.id === 'ship_hull_bottom') || null;
     if (boatForWindow) {
@@ -179,7 +179,7 @@ export function applyWaterForces(bodies, water, gravity) {
             const displaced = volume * fraction;
             const Fb = rho * g * displaced * 0.00015;
             const mInv = 1 / Math.max(b.mass || 1, 1e-6);
-            b.acceleration.y -= Fb * mInv; // upward (y is down)
+            b.acceleration.y -= Fb * mInv; 
             if (b.acceleration.y < -(g * 0.6)) b.acceleration.y = -(g * 0.6);
 
             const v = b.velocity || { x: 0, y: 0, z: 0 };

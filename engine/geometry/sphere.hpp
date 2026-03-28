@@ -1,7 +1,7 @@
-// Sphere Primitive
+
 #pragma once
 #include "shape.hpp"
-#include "../dynamics/inertia.hpp" // Utilizing existing helper if possible
+#include "../dynamics/inertia.hpp" 
 
 namespace realis {
 namespace geometry {
@@ -16,8 +16,8 @@ public:
     }
 
     Vec3 support(const Vec3& direction) const override {
-        // Furthest point on a sphere is just radius * direction
-        // Safe normalization
+        
+        
         Vec3 dir = direction;
         float len = dir.magnitude();
         if (len > 1e-6f) {
@@ -29,7 +29,7 @@ public:
     }
 
     Mat3 compute_inertia_tensor(float mass) const override {
-        // I = 2/5 * m * r^2 * Identity
+        
         float i = (2.0f / 5.0f) * mass * radius * radius;
         Mat3 tensor;
         tensor.data[0] = i; tensor.data[4] = i; tensor.data[8] = i;
@@ -37,5 +37,5 @@ public:
     }
 };
 
-} // namespace geometry
-} // namespace realis
+} 
+} 

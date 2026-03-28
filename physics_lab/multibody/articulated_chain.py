@@ -1,25 +1,21 @@
-"""
-Articulated Chain
 
-Multi-body chain simulation (simple forward kinematics).
-"""
 
 import numpy as np
 
 
 class ArticulatedChain:
-    """Simple 2D articulated chain"""
+    
     
     def __init__(self, link_lengths, masses):
         self.link_lengths = np.array(link_lengths)
         self.masses = np.array(masses)
         self.num_links = len(link_lengths)
-        self.angles = np.zeros(self.num_links)  # Joint angles
+        self.angles = np.zeros(self.num_links)  
         self.angular_vels = np.zeros(self.num_links)
     
     def forward_kinematics(self):
-        """Compute end positions of all links"""
-        positions = [np.array([0.0, 0.0])]  # Base
+        
+        positions = [np.array([0.0, 0.0])]  
         cumulative_angle = 0
         
         for i in range(self.num_links):

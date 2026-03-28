@@ -14,10 +14,10 @@ public:
         Vec3 r = center - body.position;
         float distSq = r.dot(r);
         float dist = std::sqrt(distSq);
-        if (dist < 0.1f) return Vec3(0, 0, 0); // Avoid singularity
+        if (dist < 0.1f) return Vec3(0, 0, 0); 
         
-        // F = G * m1 * m2 / r^2
-        // We use a simplified 'strength' parameter instead of G*M
+        
+        
         return r * (strength * body.mass / (distSq * dist));
     }
 
@@ -25,7 +25,7 @@ public:
         Vec3 r = center - body.position;
         float dist = std::sqrt(r.dot(r));
         if (dist < 0.1f) return 0.0f;
-        // U = -strength * body.mass / dist
+        
         return -strength * body.mass / dist;
     }
 
@@ -34,4 +34,4 @@ private:
     float strength;
 };
 
-} // namespace realis
+} 

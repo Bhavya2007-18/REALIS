@@ -1,5 +1,5 @@
-// Deterministic Regression Harness
-// Baseline comparison with automatic failure detection on solver drift
+
+
 
 #pragma once
 #include <cmath>
@@ -26,9 +26,9 @@ class RegressionHarness {
 public:
   struct TestCase {
     std::string name;
-    std::function<double()> runner; // Returns the key observable
-    double baseline;                // Expected value
-    double tolerance;               // Max allowed relative deviation
+    std::function<double()> runner; 
+    double baseline;                
+    double tolerance;               
   };
 
   void register_test(const std::string &name, std::function<double()> runner,
@@ -85,5 +85,5 @@ private:
   std::vector<TestCase> tests_;
 };
 
-} // namespace verification
-} // namespace realis
+} 
+} 

@@ -42,10 +42,10 @@ export default function AIChatBot({ toggleAIPanel }) {
         setInputValue('')
         setIsTyping(true)
 
-        // ── 1. Check for local Command Handler (Demo Models & Sim Commands) ───────────────
+        
         const localAction = commandHandler.handleCommand(msg)
         if (localAction) {
-            // Update memory
+            
             useStore.setState(s => ({ aiMemory: [msg, ...(s.aiMemory || [])].slice(0, 3) }));
 
             setTimeout(() => {
@@ -72,7 +72,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                     actionType: actionColor
                 }])
                 setIsTyping(false)
-            }, 800) // Small delay for "AI thinking" feel
+            }, 800) 
             return
         }
 
@@ -86,11 +86,11 @@ export default function AIChatBot({ toggleAIPanel }) {
             if (!req.ok) throw new Error("API Error")
             const res = await req.json()
 
-            // ── Execute AI actions ─────────────────────────────────────────
+            
             if (res.actions && res.actions.length > 0) {
                 res.actions.forEach(action => {
 
-                    // Create CAD geometry
+                    
                     if (action.type === 'CREATE_CAD') {
                         addCADObject({
                             id: Math.random().toString(36).substring(2, 9),
@@ -102,7 +102,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                         })
                     }
 
-                    // Set physics property on selected object
+                    
                     if (action.type === 'SET_PHYSICS' && activeFileId) {
                         const { field, value } = action.payload
                         setObjects(prev => prev.map(o =>
@@ -110,7 +110,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                         ))
                     }
 
-                    // Add a joint constraint
+                    
                     if (action.type === 'ADD_JOINT' && activeFileId) {
                         const { type } = action.payload
                         setConstraints(prev => [...prev, {
@@ -127,7 +127,7 @@ export default function AIChatBot({ toggleAIPanel }) {
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: res.reply,
-                actionType: res.actions?.[0]?.type // for color coding
+                actionType: res.actions?.[0]?.type 
             }])
 
         } catch (err) {
@@ -165,7 +165,7 @@ export default function AIChatBot({ toggleAIPanel }) {
 
     return (
         <aside className="w-80 border-l border-slate-800 bg-slate-950/80 backdrop-blur-xl flex flex-col shrink-0">
-            {/* Header */}
+            {}
             <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-gradient-to-r from-primary/10 to-violet-500/5">
                 <div className="size-7 bg-gradient-to-br from-primary to-violet-500 rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
                     <Sparkles size={14} className="text-white" />
@@ -188,7 +188,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                 </div>
             </div>
 
-            {/* Insights & Memory */}
+            {}
             <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/40 text-[10px] space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px]">AI Insights</span>
@@ -208,7 +208,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                 )}
             </div>
 
-            {/* Messages */}
+            {}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -238,7 +238,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Prompts */}
+            {}
             <div className="px-4 pt-3 pb-2 border-t border-slate-800/60">
                 <p className="text-[9px] text-slate-600 uppercase tracking-wider font-bold mb-2">Quick Commands</p>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -256,7 +256,7 @@ export default function AIChatBot({ toggleAIPanel }) {
                 </div>
             </div>
 
-            {/* Input */}
+            {}
             <div className="p-4 bg-slate-900/50 border-t border-slate-800">
                 {activeFileId && (
                     <div className="text-[9px] text-slate-500 mb-2 flex items-center gap-1.5 px-1">

@@ -4,28 +4,28 @@ const useStore = create((set) => ({
     activeWorkspace: 'design',
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
 
-    activeTool: 'select', // 'select', 'move', 'rotate', 'rect', 'ruler', 'pencil'
+    activeTool: 'select', 
     setActiveTool: (tool) => set({ activeTool: tool }),
 
-    // Global view mode (persist across workspaces)
+    
     is3DView: true,
     setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
 
-    // Sidebar/Activity Bar state
-    sidebarView: 'explorer', // 'explorer', 'search', 'git', 'debug'
+    
+    sidebarView: 'explorer', 
     setSidebarView: (view) => set({ sidebarView: view }),
 
     isSidebarOpen: true,
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-    // Typed coordinates from CommandLine (e.g. user typed "100,200")
+    
     typedCoordinates: null,
     setTypedCoordinates: (coords) => set({ typedCoordinates: coords }),
 
-    // Global CAD Objects state
+    
     objects: [],
 
-    // Global 3D Modeler Objects state
+    
     shapes3D: [],
     setShapes3D: (shapes) => set({ shapes3D: typeof shapes === 'function' ? shapes(useStore.getState().shapes3D) : shapes }),
     addShape3D: (shape) => set((state) => {
@@ -38,7 +38,7 @@ const useStore = create((set) => ({
         };
         return { shapes3D: [...state.shapes3D, { ...physicsDefaults, ...shape }] };
     }),
-    active3DTool: 'select', // 'select', 'translate', 'rotate', 'scale', 'cube', 'sphere', etc.
+    active3DTool: 'select', 
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
     water: {
@@ -52,38 +52,38 @@ const useStore = create((set) => ({
     },
     setWater: (cfg) => set(state => ({ water: { ...state.water, ...cfg } })),
 
-    // Boat Motor (only for Ashwin's Workplace)
+    
     boatControl: {
         enabled: false,
-        thrust: 0,      // Newton equivalent (scaled)
-        steer: 0        // -1 left .. +1 right
+        thrust: 0,      
+        steer: 0        
     },
     setBoatControl: (update) => set(state => ({
         boatControl: { ...state.boatControl, ...update }
     })),
-    // Advanced Extrude State
+    
     extrudeOperation: {
         profileId: null,
         distance: 20,
-        direction: 'positive', // 'positive', 'negative', 'symmetric'
-        type: 'new' // 'new', 'join', 'cut'
+        direction: 'positive', 
+        type: 'new' 
     },
     setExtrudeOperation: (op) => set(state => ({ extrudeOperation: { ...state.extrudeOperation, ...op } })),
     
-    // Demo Overlay State
+    
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
 
-    // Grid State
+    
     showGrid: true,
     toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
-    // History State
+    
     history: [],
     historyIndex: -1,
 
     saveHistorySnapshot: () => set((state) => {
-        // Prune any "redo" future if we are performing a new action
+        
         const nextHistory = state.history.slice(0, state.historyIndex + 1);
 
         const snapshot = {
@@ -94,7 +94,7 @@ const useStore = create((set) => ({
             activeLayerId: state.activeLayerId
         };
 
-        // Don't save identical consecutive snapshots
+        
         if (nextHistory.length > 0) {
             const last = nextHistory[nextHistory.length - 1];
             if (JSON.stringify(last.objects) === JSON.stringify(snapshot.objects) &&
@@ -125,7 +125,7 @@ const useStore = create((set) => ({
             activeLayerId
         };
 
-        // If at current head, save current as "future" if not same as last snapshot
+        
         let currentHistory = [...history];
         let cIdx = historyIndex;
 
@@ -178,7 +178,7 @@ const useStore = create((set) => ({
         selected3DIds: []
     }),
 
-    // Override setObjects to automatically capture history if requested, or manual
+    
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
     addCADObject: (obj) => set((state) => {
         state.saveHistorySnapshot();
@@ -191,7 +191,7 @@ const useStore = create((set) => ({
         return { objects: [...state.objects, { ...physicsDefaults, ...obj }] };
     }),
 
-    // Layer System
+    
     layers: [
         { id: 'default', name: 'Layer 0', color: '#3b82f6', visible: true, locked: false },
         { id: 'layer1', name: 'Layer 1', color: '#10b981', visible: true, locked: false },
@@ -199,7 +199,7 @@ const useStore = create((set) => ({
     ],
     activeLayerId: 'default',
 
-    // Material presets
+    
     materials: {
         steel: { density: 7850, restitution: 0.2, friction: 0.4 },
         rubber: { density: 1100, restitution: 0.8, friction: 0.9 },
@@ -211,8 +211,8 @@ const useStore = create((set) => ({
         if (!mat) return state;
         const updateShapeOrObject = (list) => list.map(o => {
             if (o.id !== objectId) return o;
-            // Mass calculation could happen here if we had volume,
-            // for now just update properties.
+            
+            
             return { ...o, restitution: mat.restitution, friction: mat.friction };
         });
         return {
@@ -225,7 +225,7 @@ const useStore = create((set) => ({
     addLayer: (layer) => set((state) => ({ layers: [...state.layers, layer] })),
     setActiveLayerId: (id) => set({ activeLayerId: id }),
 
-    // Delete selected objects
+    
     deleteObjects: () => set((state) => {
         const { selectedIds, objects, selected3DIds, shapes3D } = state;
         if (selectedIds.length === 0 && selected3DIds.length === 0) return state;
@@ -238,14 +238,14 @@ const useStore = create((set) => ({
         };
     }),
 
-    // Duplicate selected objects (offset slightly so they don't exactly overlap)
+    
     duplicateObjects: () => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
         state.saveHistorySnapshot();
         const clones = objects.filter(o => selectedIds.includes(o.id)).map(obj => {
             const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) };
-            const offset = 20; // 20px offset
+            const offset = 20; 
             if (clone.type === 'rect') { clone.x += offset; clone.y += offset; }
             else if (clone.type === 'circle' || clone.type === 'polygon' || clone.type === 'arc') { clone.cx += offset; clone.cy += offset; }
             else if (clone.type === 'path' && clone.points) { clone.points = clone.points.map(p => ({ ...p, x: p.x + offset, y: p.y + offset })); }
@@ -254,11 +254,11 @@ const useStore = create((set) => ({
         });
         return {
             objects: [...objects, ...clones],
-            selectedIds: clones.map(c => c.id) // Automatically select the new clones
+            selectedIds: clones.map(c => c.id) 
         };
     }),
 
-    // Mirror selected objects over X or Y axis
+    
     mirrorObjects: (axis) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -281,7 +281,7 @@ const useStore = create((set) => ({
         return { objects: [...objects, ...clones] };
     }),
 
-    // Offset (expand/shrink) selected rect or circle by amount
+    
     offsetObject: (amount) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -300,7 +300,7 @@ const useStore = create((set) => ({
         };
     }),
 
-    // Rectangular array: duplicate selected objects in a grid
+    
     arrayObjects: (rows, cols, spacingX, spacingY) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -309,7 +309,7 @@ const useStore = create((set) => ({
         const clones = [];
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                if (r === 0 && c === 0) continue; // skip original
+                if (r === 0 && c === 0) continue; 
                 selected.forEach(obj => {
                     const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) };
                     const dx = c * spacingX, dy = r * spacingY;
@@ -341,8 +341,8 @@ const useStore = create((set) => ({
         state.saveHistorySnapshot();
         return { constraints: state.constraints.filter(c => c.id !== id) };
     }),
-    // Right Panel state
-    rightPanelView: 'properties', // 'ai' or 'properties'
+    
+    rightPanelView: 'properties', 
     setRightPanelView: (view) => set({ rightPanelView: view }),
 
     isRightPanelOpen: true,
@@ -351,8 +351,8 @@ const useStore = create((set) => ({
     isAIPanelOpen: false,
     toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
 
-    // File Tree state
-    // Selection state
+    
+    
     selectedIds: [],
     setSelectedIds: (ids) => set({ selectedIds: typeof ids === 'function' ? ids(useStore.getState().selectedIds) : ids }),
 
@@ -362,7 +362,7 @@ const useStore = create((set) => ({
     selectedJointId: null,
     setSelectedJointId: (id) => set({ selectedJointId: id }),
 
-    activeFileId: null, // Still used for primary inspector focus
+    activeFileId: null, 
     setActiveFileId: (id) => set({ activeFileId: id }),
 
     groupObjects: () => set((state) => {
@@ -419,9 +419,9 @@ const useStore = create((set) => ({
     simTime: 0,
     setSimTime: (time) => set({ simTime: time }),
 
-    // --- Simulation Settings ---
-    simulationMode: 'preview', // 'preview' | 'accurate'
-    simulationType: 'rigid', // 'rigid' | 'thermal' | 'fluid'
+    
+    simulationMode: 'preview', 
+    simulationType: 'rigid', 
     simulationPreset: null,
     
     simulationSettings: {
@@ -438,16 +438,16 @@ const useStore = create((set) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
 
-    // --- Active Model Controls ---
+    
     activeModelControls: [],
     setActiveModelControls: (controls) => set({ activeModelControls: controls }),
     updateModelControl: (controlId, value) => set((state) => {
-        // Update the control value
+        
         const newControls = state.activeModelControls.map(c => 
             c.id === controlId ? { ...c, current: value } : c
         );
         
-        // Also map this to the actual object/constraint inside the engine
+        
         const { objects, constraints } = state;
         const [targetId, property] = controlId.split('.');
 
@@ -461,7 +461,7 @@ const useStore = create((set) => ({
         };
     }),
 
-    // --- Simulation State ───────────────────────────────────────────────────
+    
     simulationState: {
         time: 0,
         energy: { kinetic: 0, potential: 0, total: 0 },
@@ -471,7 +471,7 @@ const useStore = create((set) => ({
         simulationState: { ...state.simulationState, ...stateUpdate }
     })),
 
-    // Used for backend-dependent playback, though we are shifting to client-side
+    
     simulationFrames: [], 
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
@@ -479,11 +479,11 @@ const useStore = create((set) => ({
     currentFrameIndex: 0,
     setCurrentFrameIndex: (index) => set({ currentFrameIndex: index }),
 
-    // Helper to control playback
+    
     togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
     resetPlayback: () => set({ currentFrameIndex: 0, isPlaying: false, simTime: 0 }),
 
-    // --- Analysis & Visualization (ANSYS Upgrade) ---
+    
     analysisSettings: {
         showVectors: false,
         showHeatmap: false,
@@ -497,7 +497,7 @@ const useStore = create((set) => ({
         analysisSettings: { ...state.analysisSettings, ...settings }
     })),
 
-    energyHistory: [], // [{ time, kinetic, potential, total }, ...]
+    energyHistory: [], 
     addEnergySnapshot: (snapshot) => set((state) => {
         const nextHistory = [...state.energyHistory, snapshot];
         if (nextHistory.length > 200) nextHistory.shift();
@@ -505,19 +505,19 @@ const useStore = create((set) => ({
     }),
     clearEnergyHistory: () => set({ energyHistory: [] }),
 
-    // --- AI Chatbot Context ─────────────────────────────────────────────────
-    aiMemory: [], // Track user actions
+    
+    aiMemory: [], 
     addAIMemory: (action) => set(state => {
         const memory = [...state.aiMemory, action];
         if (memory.length > 10) memory.shift();
         return { aiMemory: memory };
     }),
 
-    // --- Sketch Import State ────────────────────────────────────────────────
+    
     isSketchImportOpen: false,
     toggleSketchImport: () => set(state => ({ isSketchImportOpen: !state.isSketchImportOpen })),
     setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
-    sketchDraft: null, // Holds the interpreted draft
+    sketchDraft: null, 
     setSketchDraft: (draft) => set({ sketchDraft: draft })
 }))
 

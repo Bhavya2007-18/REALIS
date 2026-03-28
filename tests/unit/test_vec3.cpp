@@ -1,4 +1,4 @@
-// Unit test for Vec3
+
 #include "../engine/math/vec3.hpp"
 #include <cassert>
 #include <cmath>

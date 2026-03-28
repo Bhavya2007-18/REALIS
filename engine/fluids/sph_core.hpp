@@ -1,4 +1,4 @@
-// SPH fluid simulation
+
 #pragma once
 
 namespace realis {
@@ -8,4 +8,4 @@ public:
     void step(float dt);
 };
 
-} // namespace realis
+} 

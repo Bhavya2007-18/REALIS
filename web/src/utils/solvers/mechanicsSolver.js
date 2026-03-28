@@ -1,8 +1,4 @@
-/**
- * REALIS Mechanics Solver
- * Rigid body dynamics: gravity, constraints, collisions, integration.
- * Uses physicsEngine service functions.
- */
+
 
 import {
     applyForces,
@@ -23,7 +19,7 @@ export default class MechanicsSolver {
             frictionCoeff: settings.frictionCoeff ?? 0.3,
             timeStep: settings.timeStep ?? 0.016,
             subSteps: settings.subSteps ?? 1,
-            mode: settings.mode ?? 'preview', // 'preview' | 'accurate'
+            mode: settings.mode ?? 'preview', 
             groundY: settings.groundY ?? 600
         };
         this.bodies = [];
@@ -32,7 +28,7 @@ export default class MechanicsSolver {
     }
 
     setBodies(rawBodies) {
-        // Normalize all bodies to have position, velocity, acceleration
+        
         this.bodies = rawBodies.map(b => {
             let pos = { x: 0, y: 0, z: 0 };
             if (b.position) {
@@ -72,9 +68,7 @@ export default class MechanicsSolver {
         this.settings = { ...this.settings, ...settings };
     }
 
-    /**
-     * Run one simulation step. Returns snapshot of bodies + analytics.
-     */
+    
     step() {
         const subSteps = this.settings.mode === 'accurate' ? 
             Math.max(4, this.settings.subSteps ?? 1) : 
@@ -82,25 +76,25 @@ export default class MechanicsSolver {
         const dt = this.settings.timeStep / subSteps;
 
         for (let s = 0; s < subSteps; s++) {
-            // 1. Apply forces
+            
             applyForces(this.bodies, this.settings);
             if (this.settings.water?.enabled && useStore.getState().simulationPreset === 'ashwins_workplace') {
                 applyWaterForces(this.bodies, this.settings.water, this.settings.gravity);
             }
 
-            // 2. Resolve constraints (distance/rod relaxation)
+            
             this._resolveConstraints(5);
 
-            // 3. Detect & resolve collisions
+            
             if (this.settings.mode === 'accurate') {
                 const pairs = detectCollisions(this.bodies);
                 resolveCollisions(pairs);
             }
 
-            // 4. Integrate
+            
             integrate(this.bodies, dt);
 
-            // 5. Ground plane
+            
             this._applyGroundPlane(this.settings.groundY ?? 600);
         }
 

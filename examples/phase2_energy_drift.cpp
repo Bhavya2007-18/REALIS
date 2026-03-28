@@ -1,6 +1,6 @@
-// Phase 2 Demonstration: Energy Drift and Force Superposition
-// Validates C++ implementation against Python reference
-// Reference: physics_lab/integration/energy_drift.py and forces/gravity.py
+
+
+
 
 #include "../engine/core/integrator.hpp"
 #include "../engine/core/world.hpp"
@@ -16,23 +16,23 @@
 
 using namespace realis;
 
-// Simple Gravity Force Generator for Phase 2
+
 class ConstantGravity : public ForceGenerator {
   Vec3 gravity;
 
 public:
   ConstantGravity(const Vec3 &g) : gravity(g) {}
-  void update_force(RigidBody *body, float /*dt*/) override {
-    // F = m * g
+  void update_force(RigidBody *body, float ) override {
+    
     body->apply_force(gravity * body->mass);
   }
 };
 
-// Simple mass on a spring in C++
-// F = -k * x
+
+
 struct SpringForce : public ForceGenerator {
   float k = 1.0f;
-  void update_force(RigidBody *body, float /*dt*/) override {
+  void update_force(RigidBody *body, float ) override {
     body->apply_force(body->position * -k);
   }
 };
@@ -48,7 +48,7 @@ void run_drift_analysis() {
 
   SpringForce spring;
 
-  // 1. Semi-Implicit Euler
+  
   RigidBody body_semi;
   body_semi.position = Vec3(1.0f, 0.0f, 0.0f);
   body_semi.velocity = Vec3(0.0f, 0.0f, 0.0f);
@@ -90,8 +90,8 @@ void run_drift_analysis() {
     std::cout << "✗ FAIL: Energy drift too high" << std::endl;
   }
 
-  // Comparison with Forward Euler logic (implemented manually here to avoid
-  // changing core for now)
+  
+  
   std::cout << std::endl
             << "--- Comparison: Forward Euler (Explicit) ---" << std::endl;
 
@@ -104,13 +104,13 @@ void run_drift_analysis() {
   float e_initial_f = calc_osc_energy(body_forward);
 
   for (int i = 0; i < steps; ++i) {
-    // F = -k * x
+    
     Vec3 force = body_forward.position * -1.0f;
-    Vec3 accel = force; // mass = 1
+    Vec3 accel = force; 
 
-    // Forward Euler: x first, then v using OLD a
-    // OR v using OLD a, then x using OLD v
-    // The Python forward_euler does: x_new = x + v*dt; v_new = v + a*dt
+    
+    
+    
     Vec3 x_new = body_forward.position + body_forward.velocity * dt;
     Vec3 v_new = body_forward.velocity + accel * dt;
 

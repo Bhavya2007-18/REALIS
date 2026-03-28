@@ -1,7 +1,4 @@
-/**
- * Ashwins Workplace (Roblox Pirate Map Template)
- * A detailed reconstruction of the classic Roblox Pirate Island scene with an enhanced Pirate Ship.
- */
+
 
 const ashwinsWorkplace = {
     id: "ashwins_workplace",
@@ -19,7 +16,7 @@ const ashwinsWorkplace = {
     },
     shapes3D: [
 
-        // --- SMALL ROCK WITH TREE ---
+        
         {
             id: "rock_small",
             type: "sphere",
@@ -31,8 +28,8 @@ const ashwinsWorkplace = {
             isStatic: true
         },
 
-        // --- ENHANCED PIRATE SHIP ---
-        // Ship Hull - Bottom Section
+        
+        
         {
             id: "ship_hull_bottom",
             type: "cube",
@@ -44,7 +41,7 @@ const ashwinsWorkplace = {
             mass: 150,
             isStatic: false
         },
-        // Ship Hull - Bow (Front)
+        
         {
             id: "ship_bow",
             type: "cube",
@@ -55,7 +52,7 @@ const ashwinsWorkplace = {
             color: "#4d342c",
             isStatic: false
         },
-        // Ship Hull - Stern (Back)
+        
         {
             id: "ship_stern",
             type: "cube",
@@ -66,7 +63,7 @@ const ashwinsWorkplace = {
             color: "#3e2723",
             isStatic: false
         },
-        // Main Deck
+        
         {
             id: "ship_deck_main",
             type: "cube",
@@ -77,7 +74,7 @@ const ashwinsWorkplace = {
             color: "#795548",
             isStatic: false
         },
-        // Main Mast (Front)
+        
         {
             id: "ship_mast_front",
             type: "cylinder",
@@ -88,7 +85,7 @@ const ashwinsWorkplace = {
             color: "#2d1b15",
             isStatic: false
         },
-        // Main Mast (Center)
+        
         {
             id: "ship_mast_main",
             type: "cylinder",
@@ -99,7 +96,7 @@ const ashwinsWorkplace = {
             color: "#2d1b15",
             isStatic: false
         },
-        // Fore Sail
+        
         {
             id: "ship_sail_fore",
             type: "cube",
@@ -110,7 +107,7 @@ const ashwinsWorkplace = {
             color: "#f5f5f5",
             isStatic: false
         },
-        // Main Sail
+        
         {
             id: "ship_sail_main",
             type: "cube",
@@ -121,7 +118,7 @@ const ashwinsWorkplace = {
             color: "#ffffff",
             isStatic: false
         },
-        // Ship Railing (Left)
+        
         {
             id: "ship_rail_l",
             type: "cube",
@@ -132,7 +129,7 @@ const ashwinsWorkplace = {
             color: "#3e2723",
             isStatic: false
         },
-        // Ship Railing (Right)
+        
         {
             id: "ship_rail_r",
             type: "cube",
@@ -165,7 +162,7 @@ const ashwinsWorkplace = {
             isStatic: true
         },
 
-        // --- TREASURE & DECOR ---
+        
         {
             id: "treasure_chest",
             type: "cube",

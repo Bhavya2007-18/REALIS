@@ -65,7 +65,7 @@ export default function CommandLine() {
     const handleInput = (e) => {
         const val = e.target.value.toUpperCase()
         setInput(e.target.value)
-        // Show hint
+        
         const first = val.split(' ')[0]
         const match = COMMANDS.find(c => c.startsWith(first))
         setHint(match ? HINTS[match] || match : '')
@@ -103,12 +103,12 @@ export default function CommandLine() {
 
         const parseNum = (i, def = 0) => parseFloat(args[i] ?? def)
 
-        // Check if user is typing raw coordinates (e.g., "100,50" or "100 50") while a drawing tool is active
+        
         const isDrawingTool = ['rect', 'circle', 'line', 'polygon', 'arc', 'pencil', 'ruler', 'dimension'].includes(activeTool);
         if (isDrawingTool && /^[-+]?\d*\.?\d+(?:[,\s]+[-+]?\d*\.?\d+)?$/.test(raw)) {
             const coordsSplit = raw.split(/[,\s]+/)
             const px = parseFloat(coordsSplit[0]);
-            const py = parseFloat(coordsSplit[1] ?? coordsSplit[0]); // If only one number, use for both or assume Y=0 (standard CAD is usually X,Y)
+            const py = parseFloat(coordsSplit[1] ?? coordsSplit[0]); 
             if (!isNaN(px) && !isNaN(py)) {
                 setTypedCoordinates({ x: px, y: py });
                 log(`Input: ${px}, ${py}`, 'success');
@@ -296,21 +296,21 @@ export default function CommandLine() {
 
     return (
         <div className="border-t border-slate-800 bg-slate-950 flex flex-col" style={{ height: '120px' }}>
-            {/* History */}
+            {}
             <div ref={historyRef} className="flex-1 overflow-y-auto px-3 py-1 font-mono text-[10px] space-y-0.5 custom-scrollbar">
                 {history.slice(-30).map((h, i) => (
                     <div key={i} className={colorMap[h.type] || 'text-slate-300'}>{h.text}</div>
                 ))}
             </div>
 
-            {/* Hint */}
+            {}
             {hint && (
                 <div className="px-3 py-0.5 text-[9px] font-mono text-slate-600 bg-slate-900/50 border-t border-slate-800/50">
                     {hint}
                 </div>
             )}
 
-            {/* Input */}
+            {}
             <div className="flex items-center gap-2 px-3 py-2 border-t border-slate-800 bg-slate-900/80">
                 <Terminal size={12} className="text-primary shrink-0" />
                 <span className="text-primary font-mono text-[11px] font-bold shrink-0">Command:</span>

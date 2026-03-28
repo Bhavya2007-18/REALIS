@@ -18,14 +18,14 @@ void verify_2d_collision(Integrator *integrator, float dt) {
   RigidBody b1;
   b1.mass = 2.0f;
   b1.inv_mass = 0.5f;
-  b1.position = Vec3(-5.0f, 0.5f, 0); // Offset in Y
+  b1.position = Vec3(-5.0f, 0.5f, 0); 
   b1.velocity = Vec3(2.0f, 0, 0);
   b1.shape = &s1;
 
   RigidBody b2;
   b2.mass = 3.0f;
   b2.inv_mass = 1.0f / 3.0f;
-  b2.position = Vec3(5.0f, -0.5f, 0); // Offset in Y
+  b2.position = Vec3(5.0f, -0.5f, 0); 
   b2.velocity = Vec3(-1.0f, 0, 0);
   b2.shape = &s2;
 
@@ -52,7 +52,7 @@ void verify_2d_collision(Integrator *integrator, float dt) {
   for (int i = 0; i < 1000; ++i) {
     world.step();
 
-    // When velocity in Y changes, collision has occurred
+    
     if (!collided && (std::abs(b1.velocity.y) > 0.001f)) {
       collided = true;
       std::cout << "Collision occurred around t = " << world.get_time()

@@ -1,21 +1,4 @@
-/**
- * GLAD - Multi-Language GL/GLES/EGL/GLX/WGL Loader-Generator
- * Language/Generator: C/glad
- * Specification: gl
- * APIs: gl=4.5
- * Profile: core
- * Extensions: GL_KHR_debug
- * Loader: True
- * Local files: False
- * Reproducible: False
- *
- * Commandline:
- *    --profile="core" --api="gl=4.5" --generator="c" --spec="gl"
- * --extensions="GL_KHR_debug"
- *
- * Online:
- *    http://glad.dav1d.de/#profile=core&language=c&specification=gl&loader=on&api=gl%3D4.5&extensions=GL_KHR_debug
- */
+
 
 #ifndef __glad_h_
 #define __glad_h_
@@ -122,7 +105,7 @@ typedef unsigned short GLhalfNV;
 typedef GLintptr GLvdpauSurfaceNV;
 typedef void(APIENTRY *GLVULKANPROCNV)(void);
 
-/* OpenGL 1.0 */
+
 #define GL_DEPTH_BUFFER_BIT 0x00000100
 #define GL_STENCIL_BUFFER_BIT 0x00000400
 #define GL_COLOR_BUFFER_BIT 0x00004000
@@ -297,7 +280,7 @@ typedef void(APIENTRY *GLVULKANPROCNV)(void);
 #define GL_TEXTURE_WRAP_T 0x2803
 #define GL_REPEAT 0x2901
 
-/* OpenGL 1.1 */
+
 #define GL_COLOR_LOGIC_OP 0x0BF2
 #define GL_POLYGON_OFFSET_UNITS 0x2A00
 #define GL_POLYGON_OFFSET_POINT 0x2A01
@@ -330,7 +313,7 @@ typedef void(APIENTRY *GLVULKANPROCNV)(void);
 #define GL_RGBA16 0x805B
 #define GL_VERTEX_ARRAY 0x8074
 
-/* OpenGL 1.2 */
+
 #define GL_UNSIGNED_BYTE_3_3_2 0x8032
 #define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
 #define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
@@ -368,7 +351,7 @@ typedef void(APIENTRY *GLVULKANPROCNV)(void);
 #define GL_SMOOTH_LINE_WIDTH_GRANULARITY 0x0B23
 #define GL_ALIASED_LINE_WIDTH_RANGE 0x846E
 
-/* Key debug defines */
+
 #define GL_DEBUG_OUTPUT 0x92E0
 #define GL_DEBUG_OUTPUT_SYNCHRONOUS 0x8242
 #define GL_DEBUG_SEVERITY_HIGH 0x9146
@@ -405,7 +388,7 @@ typedef void(APIENTRY *GLVULKANPROCNV)(void);
 #define GL_SAMPLER 0x82E6
 #define GL_MAX_LABEL_LENGTH 0x82E8
 
-/* OpenGL 4.5 specific defines */
+
 #define GL_CONTEXT_FLAGS 0x821E
 #define GL_CONTEXT_FLAG_DEBUG_BIT 0x00000002
 
@@ -465,7 +448,7 @@ GLAPI PFNGLPOLYGONMODEPROC glad_glPolygonMode;
 #define glGetIntegerv glad_glGetIntegerv
 #define glPolygonMode glad_glPolygonMode
 
-/* Missing OpenGL 4.5 Symbols and Functions */
+
 #define GL_ARRAY_BUFFER 0x8892
 #define GL_ELEMENT_ARRAY_BUFFER 0x8893
 #define GL_STATIC_DRAW 0x88E4
@@ -592,4 +575,4 @@ GLAPI PFNGLDRAWELEMENTSPROC glad_glDrawElements;
 }
 #endif
 
-#endif /* __glad_h_ */
+#endif 

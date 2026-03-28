@@ -14,11 +14,7 @@ _pipeline = SketchCompilerPipeline()
 
 @router.post("/process", response_model=PipelineResponse)
 async def process_sketch(req: IngestionRequest):
-    """
-    Phase 1-8 compiler pipeline.
-    Accepts base64 image + optional text prompt.
-    Returns full SceneGraph IR ready for REALIS engine injection.
-    """
+    
     try:
         if not req.session_id:
             req.session_id = str(uuid.uuid4())
@@ -31,7 +27,7 @@ async def process_sketch(req: IngestionRequest):
 
 @router.get("/status")
 async def sketch_status():
-    """Health check for the sketch AI pipeline."""
+    
     import cv2
     import numpy as np
     return {

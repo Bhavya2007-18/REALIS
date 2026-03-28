@@ -22,7 +22,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Premium scrollbar */
+  
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 99px; }
@@ -33,20 +33,20 @@
 }
 
 @layer components {
-  /* Core glass effect */
+  
   .glass {
     @apply backdrop-blur-xl border border-white/8;
     background: rgba(16, 22, 34, 0.65);
   }
 
-  /* Stronger glass for panels */
+  
   .glass-panel {
     background: rgba(9, 13, 22, 0.80);
     backdrop-filter: blur(20px) saturate(1.4);
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
-  /* Glowing primary button */
+  
   .btn-primary-glow {
     @apply bg-primary text-white rounded-full transition-all;
     box-shadow: 0 0 20px var(--primary-glow), 0 4px 12px rgba(0,0,0,0.4);
@@ -56,14 +56,14 @@
     transform: scale(1.05);
   }
 
-  /* Active tool glow ring */
+  
   .tool-active {
     @apply bg-primary/20 text-primary;
     box-shadow: 0 0 12px var(--primary-glow), inset 0 0 8px rgba(37,106,244,0.1);
     border: 1px solid rgba(37, 106, 244, 0.4);
   }
 
-  /* Grid canvas background */
+  
   .grid-bg {
     background-image:
       linear-gradient(rgba(37, 106, 244, 0.07) 1px, transparent 1px),
@@ -71,22 +71,22 @@
     background-size: 40px 40px;
   }
 
-  /* Glowing separator */
+  
   .glow-border-r {
     border-right: 1px solid rgba(255,255,255,0.06);
     box-shadow: 1px 0 12px rgba(37,106,244,0.05);
   }
 
-  /* Custom scrollbar class */
+  
   .custom-scrollbar::-webkit-scrollbar { width: 3px; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(37,106,244,0.3); border-radius: 99px; }
 
-  /* Ambient glow on physics panel */
+  
   .physics-glow {
     box-shadow: 0 0 40px rgba(251, 191, 36, 0.04) inset;
   }
 
-  /* Animations */
+  
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(20px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
@@ -114,12 +114,12 @@
     animation: shimmer 2s infinite;
   }
 
-  /* Heatmap Gradients */
+  
   .heatmap-cold { background: linear-gradient(135deg, #3b82f6, #0ea5e9); color: white; }
   .heatmap-warm { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; }
   .heatmap-hot { background: linear-gradient(135deg, #ef4444, #9f1239); color: white; }
 
-  /* Sketch Import Panel — slide up from bottom */
+  
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(16px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0)   scale(1); }
@@ -128,7 +128,7 @@
     animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
-  /* Sketch Import Panel — fade in from center */
+  
   @keyframes fadeInScale {
     from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
     to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -137,7 +137,7 @@
     animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
-  /* Scanning bar for the processing state */
+  
   @keyframes scanBar {
     0%   { transform: translateY(-100%); }
     100% { transform: translateY(400%); }
@@ -146,7 +146,7 @@
     animation: scanBar 1.4s ease-in-out infinite;
   }
 
-  /* Pulsing indigo glow for AI nodes */
+  
   @keyframes nodeGlow {
     0%, 100% { filter: drop-shadow(0 0 4px rgba(99,102,241,0.4)); }
     50%       { filter: drop-shadow(0 0 12px rgba(99,102,241,0.9)); }
@@ -155,7 +155,7 @@
     animation: nodeGlow 2s ease-in-out infinite;
   }
 
-  /* Dashed edge march */
+  
   @keyframes dashMarch {
     to { stroke-dashoffset: -20; }
   }
@@ -163,7 +163,7 @@
     animation: dashMarch 0.8s linear infinite;
   }
 
-  /* Confidence bar fill */
+  
   @keyframes fillBar {
     from { width: 0%; }
   }
