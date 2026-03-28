@@ -22,6 +22,7 @@ export default class MechanicsSolver {
             timeStep: settings.timeStep ?? 0.016,
             subSteps: settings.subSteps ?? 1,
             mode: settings.mode ?? 'preview', // 'preview' | 'accurate'
+            groundY: settings.groundY ?? 600
         };
         this.bodies = [];
         this.constraints = [];
@@ -30,14 +31,28 @@ export default class MechanicsSolver {
 
     setBodies(rawBodies) {
         // Normalize all bodies to have position, velocity, acceleration
-        this.bodies = rawBodies.map(b => ({
-            ...b,
-            position: b.position ?? { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 },
-            velocity: b.velocity ?? { x: 0, y: 0, z: 0 },
-            acceleration: b.acceleration ?? { x: 0, y: 0, z: 0 },
-            mass: b.mass ?? 1,
-            radius: b.radius ?? b.r ?? 10,
-        }));
+        this.bodies = rawBodies.map(b => {
+            let pos = { x: 0, y: 0, z: 0 };
+            if (b.position) {
+                if (Array.isArray(b.position)) {
+                    pos = { x: b.position[0] || 0, y: b.position[1] || 0, z: b.position[2] || 0 };
+                } else {
+                    pos = { x: b.position.x || 0, y: b.position.y || 0, z: b.position.z || 0 };
+                }
+            } else {
+                pos = { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 };
+            }
+
+            return {
+                ...b,
+                position: pos,
+                _initialPosition: { ...pos },
+                velocity: b.velocity ?? { x: 0, y: 0, z: 0 },
+                acceleration: b.acceleration ?? { x: 0, y: 0, z: 0 },
+                mass: b.mass ?? 1,
+                radius: b.radius ?? b.r ?? 10,
+            };
+        });
     }
 
     setConstraints(constraints) {
@@ -74,7 +89,7 @@ export default class MechanicsSolver {
             integrate(this.bodies, dt);
 
             // 5. Ground plane
-            this._applyGroundPlane(600);
+            this._applyGroundPlane(this.settings.groundY ?? 600);
         }
 
         this.time += this.settings.timeStep;
@@ -151,9 +166,11 @@ export default class MechanicsSolver {
 
     reset() {
         this.bodies.forEach(b => {
-            b.position = b._initialPosition
-                ? { ...b._initialPosition }
-                : { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 };
+            if (b._initialPosition) {
+                b.position = { ...b._initialPosition };
+            } else {
+                b.position = { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 };
+            }
             b.velocity = { x: 0, y: 0, z: 0 };
             b.acceleration = { x: 0, y: 0, z: 0 };
             b.onGround = false;

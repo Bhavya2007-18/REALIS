@@ -7,6 +7,10 @@ const useStore = create((set) => ({
     activeTool: 'select', // 'select', 'move', 'rotate', 'rect', 'ruler', 'pencil'
     setActiveTool: (tool) => set({ activeTool: tool }),
 
+    // Global view mode (persist across workspaces)
+    is3DView: true,
+    setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
+
     // Sidebar/Activity Bar state
     sidebarView: 'explorer', // 'explorer', 'search', 'git', 'debug'
     setSidebarView: (view) => set({ sidebarView: view }),
@@ -49,6 +53,10 @@ const useStore = create((set) => ({
     // Demo Overlay State
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
+
+    // Grid State
+    showGrid: true,
+    toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
     // History State
     history: [],
@@ -403,11 +411,35 @@ const useStore = create((set) => ({
         subSteps: 1,
         airResistance: 0.01,
         frictionCoeff: 0.3,
+        groundY: 0,
         ambientTemp: 20
     },
     setSimulationSettings: (settings) => set((state) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
+
+    // --- Active Model Controls ---
+    activeModelControls: [],
+    setActiveModelControls: (controls) => set({ activeModelControls: controls }),
+    updateModelControl: (controlId, value) => set((state) => {
+        // Update the control value
+        const newControls = state.activeModelControls.map(c => 
+            c.id === controlId ? { ...c, current: value } : c
+        );
+        
+        // Also map this to the actual object/constraint inside the engine
+        const { objects, constraints } = state;
+        const [targetId, property] = controlId.split('.');
+
+        const newObjects = objects.map(o => o.id === targetId ? { ...o, [property]: value } : o);
+        const newConstraints = constraints.map(c => c.id === targetId ? { ...c, [property]: value } : c);
+
+        return { 
+            activeModelControls: newControls,
+            objects: newObjects,
+            constraints: newConstraints
+        };
+    }),
 
     // --- Simulation State ───────────────────────────────────────────────────
     simulationState: {
@@ -435,6 +467,9 @@ const useStore = create((set) => ({
     analysisSettings: {
         showVectors: false,
         showHeatmap: false,
+        showJoints: false,
+        showAnchors: false,
+        isExplodedView: false,
         vectorScale: 2.0,
         colorTheme: 'thermal'
     },

@@ -1,9 +1,37 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport } from '@react-three/drei';
+import React, { useRef, useState, useEffect, Suspense } from 'react';
+import { Canvas, useLoader } from '@react-three/fiber';
+import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport, useProgress, Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { Grid as GridIcon, Maximize2, Minimize2 } from 'lucide-react';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import useStore from '../store/useStore';
 import { createThreeShapeFrom2D } from '../utils/geometryHelpers';
+
+function Loader() {
+  const { progress } = useProgress()
+  return <Html center className="text-white text-xs font-mono bg-black/50 p-2 rounded">{progress.toFixed(0)}% loaded</Html>
+}
+
+const OBJModel = ({ objPath, mtlPath }) => {
+    const materials = mtlPath ? useLoader(MTLLoader, mtlPath) : null;
+    const obj = useLoader(OBJLoader, objPath, (loader) => {
+        if (materials) {
+            materials.preload();
+            loader.setMaterials(materials);
+        }
+    });
+
+    useEffect(() => {
+        if (obj) {
+            const box = new THREE.Box3().setFromObject(obj);
+            const center = box.getCenter(new THREE.Vector3());
+            obj.position.sub(center);
+        }
+    }, [obj]);
+
+    return <primitive object={obj} />;
+};
 
 const Shape3DNode = React.memo(({ shape }) => {
     const groupRef = useRef();
@@ -43,6 +71,7 @@ const Shape3DNode = React.memo(({ shape }) => {
 
     // Better geometry management to avoid leaks
     const geometry = React.useMemo(() => {
+        if (shape.type === 'obj') return null;
         let geo;
         switch (shape.type) {
             case 'cube': geo = new THREE.BoxGeometry(shape.params?.width || 10, shape.params?.height || 10, shape.params?.depth || 10); break;
@@ -96,7 +125,7 @@ const Shape3DNode = React.memo(({ shape }) => {
         }));
     };
 
-    const node = (
+    const meshNode = (
         <group
             ref={groupRef}
             position={currentPos}
@@ -115,16 +144,20 @@ const Shape3DNode = React.memo(({ shape }) => {
                 }
             }}
         >
-            <mesh castShadow receiveShadow geometry={geometry}>
-                <meshStandardMaterial
-                    color={shape.color || '#3b82f6'}
-                    roughness={shape.roughness !== undefined ? shape.roughness : 0.5}
-                    metalness={shape.metalness !== undefined ? shape.metalness : 0.1}
-                    transparent
-                    opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
-                />
-            </mesh>
-            {isSelected && (
+            {shape.type === 'obj' ? (
+                <OBJModel objPath={shape.params?.objPath} mtlPath={shape.params?.mtlPath} />
+            ) : (
+                <mesh castShadow receiveShadow geometry={geometry}>
+                    <meshStandardMaterial
+                        color={shape.color || '#3b82f6'}
+                        roughness={shape.roughness !== undefined ? shape.roughness : 0.5}
+                        metalness={shape.metalness !== undefined ? shape.metalness : 0.1}
+                        transparent
+                        opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
+                    />
+                </mesh>
+            )}
+            {isSelected && geometry && (
                 <lineSegments>
                     <edgesGeometry attach="geometry" args={[geometry]} />
                     <lineBasicMaterial attach="material" color="white" />
@@ -133,19 +166,18 @@ const Shape3DNode = React.memo(({ shape }) => {
         </group>
     );
 
-    if (isTransforming) {
-        return (
-            <TransformControls
-                mode={active3DTool}
-                onMouseUp={onTransformEnd}
-                onObjectChange={() => { }}
-            >
-                {node}
-            </TransformControls>
-        );
-    }
-
-    return node;
+    return (
+        <>
+            {meshNode}
+            {isTransforming && !isPlaying && (
+                <TransformControls
+                    object={groupRef}
+                    mode={active3DTool}
+                    onMouseUp={onTransformEnd}
+                />
+            )}
+        </>
+    );
 });
 
 const JointMarker = ({ constraint }) => {
@@ -155,7 +187,6 @@ const JointMarker = ({ constraint }) => {
     // Find targets to position the marker
     const allEntities = [...shapes3D, ...objects];
     const targetA = allEntities.find(e => e.id === constraint.targetA);
-    const targetB = allEntities.find(e => e.id === constraint.targetB);
 
     if (!targetA) return null;
 
@@ -283,6 +314,37 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const selectedIds = useStore(state => state.selectedIds);
     const setSelectedIds = useStore(state => state.setSelectedIds);
     const isSelected = selectedIds.includes(obj.id);
+    const isTransforming = isSelected && ['translate', 'rotate', 'scale'].includes(active3DTool);
+
+    const groupRef = useRef();
+
+    const onTransformEnd = () => {
+        if (!groupRef.current) return;
+        const o = groupRef.current;
+        setObjects(objs => objs.map(item => {
+            if (item.id === obj.id) {
+                // In 2D map, x,y match x,z in 3D.
+                let update = { ...item };
+                
+                // Map the new 3D positions back to the 2D schema structure (since REALIS models use cx/cy or x/y)
+                if (item.cx !== undefined) {
+                    update.cx = o.position.x;
+                    update.cy = o.position.z;
+                } else if (item.x !== undefined) {
+                    update.x = o.position.x - (item.width || 0) / 2;
+                    update.y = o.position.z - (item.height || 0) / 2;
+                }
+
+                if (active3DTool === 'rotate') {
+                    // Approximate rotation back to 2D
+                    update.rotation = -(o.rotation.y * 180 / Math.PI);
+                }
+                
+                return update;
+            }
+            return item;
+        }));
+    };
 
     const [isDragging, setIsDragging] = useState(false);
     const [startY, setStartY] = useState(0);
@@ -365,29 +427,51 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
 
     if (!geometryProps) return null;
 
+    const meshNode = (
+        <group ref={groupRef} position={currentPos} rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)}>
+            <mesh 
+                castShadow
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerOut={handlePointerUp}
+            >
+                {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
+                {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
+                {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
+                <meshStandardMaterial 
+                    color={obj.fill || obj.stroke || '#3b82f6'} 
+                    transparent 
+                    opacity={isSelected ? 0.9 : 0.8} 
+                    side={THREE.DoubleSide} 
+                    emissive={isSelected || (active3DTool === 'extrude' && isDragging) ? obj.stroke || '#3b82f6' : '#000000'}
+                    emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
+                />
+            </mesh>
+            {isSelected && (
+                <lineSegments>
+                    <edgesGeometry attach="geometry" args={[
+                        geometryProps.type === 'box' ? new THREE.BoxGeometry(...geometryProps.args) :
+                        geometryProps.type === 'cylinder' ? new THREE.CylinderGeometry(...geometryProps.args) :
+                        new THREE.ExtrudeGeometry(...geometryProps.args)
+                    ]} />
+                    <lineBasicMaterial attach="material" color="white" />
+                </lineSegments>
+            )}
+        </group>
+    );
+
     return (
-        <mesh 
-            key={`ext-${obj.id}`} 
-            position={currentPos} 
-            rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)} 
-            castShadow
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerOut={handlePointerUp}
-        >
-            {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
-            {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
-            {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
-            <meshStandardMaterial 
-                color={obj.stroke || '#3b82f6'} 
-                transparent 
-                opacity={isSelected ? 0.9 : 0.6} 
-                side={THREE.DoubleSide} 
-                emissive={isSelected || (active3DTool === 'extrude' && isDragging) ? obj.stroke || '#3b82f6' : '#000000'}
-                emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
-            />
-        </mesh>
+        <>
+            {meshNode}
+            {isTransforming && !isPlaying && (
+                <TransformControls
+                    object={groupRef}
+                    mode={active3DTool}
+                    onMouseUp={onTransformEnd}
+                />
+            )}
+        </>
     );
 });
 
@@ -395,6 +479,8 @@ export default function Viewport3D({ objects, isSimulating }) {
     const shapes3D = useStore(state => state.shapes3D);
     const active3DTool = useStore(state => state.active3DTool);
     const addShape3D = useStore(state => state.addShape3D);
+    const showGrid = useStore(state => state.showGrid);
+    const toggleGrid = useStore(state => state.toggleGrid);
 
     // Simulation state
     const simulationFrames = useStore(state => state.simulationFrames);
@@ -403,25 +489,43 @@ export default function Viewport3D({ objects, isSimulating }) {
     const constraints = useStore(state => state.constraints);
 
     return (
-        <Canvas camera={{ position: [100, 100, 100], fov: 50 }} shadows>
-            <color attach="background" args={['#0a0f1a']} />
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[100, 200, 50]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
+        <div className="w-full h-full relative group">
+            {/* Viewport UI Overlay */}
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                <button
+                    onClick={toggleGrid}
+                    className={`p-2 rounded-lg border transition-all ${
+                        showGrid 
+                        ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/20' 
+                        : 'bg-slate-900/80 border-slate-700 text-slate-400 hover:border-slate-500'
+                    }`}
+                    title={showGrid ? "Hide Grid" : "Show Grid"}
+                >
+                    <GridIcon size={18} />
+                </button>
+            </div>
 
-            <Environment preset="city" />
+            <Canvas camera={{ position: [100, 100, 100], fov: 50 }} shadows>
+                <color attach="background" args={['#0a0f1a']} />
+                <ambientLight intensity={0.5} />
+                <directionalLight position={[100, 200, 50]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
 
-            {/* Engineering Grid */}
-            <Grid
-                infiniteGrid
-                fadeDistance={1000}
-                sectionColor="#256af4"
-                sectionSize={10}
-                cellColor="#1e293b"
-                cellSize={1}
-                position={[0, -0.01, 0]}
-            />
+                <Environment preset="city" />
 
-            {/* Creation tool helper plane */}
+                {/* Engineering Grid */}
+                {showGrid && (
+                    <Grid
+                        infiniteGrid
+                        fadeDistance={1000}
+                        sectionColor="#256af4"
+                        sectionSize={10}
+                        cellColor="#1e293b"
+                        cellSize={1}
+                        position={[0, -0.01, 0]}
+                    />
+                )}
+
+                {/* Creation tool helper plane */}
             {['cube', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'capsule'].includes(active3DTool) && (
                 <mesh
                     rotation={[-Math.PI / 2, 0, 0]}
@@ -441,6 +545,7 @@ export default function Viewport3D({ objects, isSimulating }) {
                             addShape3D({
                                 id,
                                 type: active3DTool,
+                                isStatic: false,
                                 position: [point.x, point.y + (params.height ? params.height / 2 : 0), point.z],
                                 rotation: [0, 0, 0],
                                 scale: [1, 1, 1],
@@ -455,26 +560,25 @@ export default function Viewport3D({ objects, isSimulating }) {
                 </mesh>
             )}
 
-            {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
-            {objects.map((obj) => (
-                <Extrudable2DShape 
-                    key={`ext-${obj.id}`} 
-                    obj={obj} 
-                    isPlaying={isPlaying} 
-                    simulationFrames={simulationFrames} 
-                    currentFrameIndex={currentFrameIndex} 
-                />
-            ))}
+            <Suspense fallback={<Loader />}>
+                {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
+                {objects.map((obj) => (
+                    <Extrudable2DShape 
+                        key={`ext-${obj.id}`} 
+                        obj={obj} 
+                        isPlaying={isPlaying} 
+                        simulationFrames={simulationFrames} 
+                        currentFrameIndex={currentFrameIndex} 
+                    />
+                ))}
 
-            {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
+                {/* Native 3D Objects */}
+                {shapes3D.map(shape => (
+                    <Shape3DNode key={shape.id} shape={shape} />
+                ))}
 
-
-            {/* Native 3D Objects */}
-            {shapes3D.map(shape => (
-                <Shape3DNode key={shape.id} shape={shape} />
-            ))}
-
-            <ExtrudePreview />
+                <ExtrudePreview />
+            </Suspense>
 
             {/* Constraints / Joints */}
             {constraints.map(c => (
@@ -492,5 +596,6 @@ export default function Viewport3D({ objects, isSimulating }) {
                 <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="white" />
             </GizmoHelper>
         </Canvas>
+        </div>
     );
 }

@@ -1,4 +1,5 @@
 const pendulumModel = {
+    id: "pendulum_1",
     name: "Pendulum",
     description: "A simple gravity pendulum demonstrating harmonic motion.",
     category: "Classical Mechanics",
@@ -43,6 +44,17 @@ const pendulumModel = {
             label: "Pendulum Rod"
         }
     ],
+    physics_config: {
+        gravity: { x: 0, y: 9.81, z: 0 },
+        timeStep: 0.016,
+        solverIterations: 10
+    },
+    controls: {
+        parameters: [
+            { id: "bob.mass", name: "Bob Mass", min: 1, max: 20, step: 1, current: 5 },
+            { id: "rod.distance", name: "Rod Length", min: 50, max: 400, step: 10, current: 200 }
+        ]
+    },
     metadata: {
         zoom: 1,
         center: { x: 400, y: 300 }

@@ -9,8 +9,9 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    port: 3000,
+    strictPort: true,
     proxy: {
-      // Forward all /api/* calls to the FastAPI backend
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
