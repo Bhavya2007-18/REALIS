@@ -9,11 +9,13 @@ import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
 import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import componentLibrary from '../models/componentLibrary'
+import testWorkplace from '../models/testWorkplace'
 import { Box, Play, Trash2, Layers, FileCode } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
     const sidebarView = useStore((s) => s.sidebarView)
+    const clearDesign = useStore((s) => s.clearDesign)
     const addShape3D = useStore((s) => s.addShape3D)
     const { size, onMouseDown } = useResizable({ initial: 260, min: 170, max: 600, direction: 'right' })
 
@@ -53,6 +55,16 @@ export default function Sidebar() {
                                     <span className="font-medium">ashwins workplace</span>
                                     <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title="Active File"></div>
                                 </div>
+                                <div
+                                    onClick={() => {
+                                        clearDesign()
+                                        useStore.setState({ demoOverlay: null })
+                                    }}
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] text-slate-400 hover:text-red-400 cursor-pointer hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-500/20"
+                                >
+                                    <Trash2 size={14} className="text-red-400" />
+                                    <span className="font-medium">Clean Workspace</span>
+                                </div>
                             </div>
                         </div>
 
@@ -85,7 +97,7 @@ export default function Sidebar() {
                                 <span className="text-[11px] font-bold uppercase text-slate-500">Demo Models</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {[ashwinsWorkplace, engineModel, pendulumModel, projectileModel].map((m) => (
+                                {[testWorkplace, ashwinsWorkplace, engineModel, pendulumModel, projectileModel].map((m) => (
                                     <div
                                         key={m.name}
                                         onClick={() => modelLoader.loadModel(m)}
@@ -124,9 +136,10 @@ export default function Sidebar() {
                                     <div
                                         key={comp.id}
                                         onClick={() => {
-                                            useStore.setState({ is3DMode: true });
+                                            useStore.setState({ is3DView: true });
                                             addShape3D({
                                                 ...comp,
+                                                isStatic: false,
                                                 id: `comp_${Math.random().toString(36).substring(2,7)}`
                                             });
                                         }}

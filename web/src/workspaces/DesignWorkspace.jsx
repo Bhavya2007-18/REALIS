@@ -50,9 +50,11 @@ export default function DesignWorkspace() {
     const svgRef = useRef(null)
 
     const [zoomLevel, setZoomLevel] = useState(1.0)
-    const [showGrid, setShowGrid] = useState(true)
+    const showGrid = useStore(s => s.showGrid)
+    const toggleGrid = useStore(s => s.toggleGrid)
     const [viewMode, setViewMode] = useState('top') // lock to orthographic in 2D by default
-    const [is3DMode, setIs3DMode] = useState(false)
+    const is3DMode = useStore(s => s.is3DView)
+    const setIs3DView = useStore(s => s.setIs3DView)
     const [isSplitView, setIsSplitView] = useState(false)
     const [pan, setPan] = useState({ x: 0, y: 0 })
     const panRef = useRef({ x: 0, y: 0, startX: 0, startY: 0, panning: false })
@@ -62,7 +64,7 @@ export default function DesignWorkspace() {
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 4.0))
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.25))
 
-    const toggleGrid = () => setShowGrid(!showGrid)
+    // grid toggle moved to store
 
     const rotateView = () => {
         const modes = ['top', 'front', 'side']
@@ -1014,6 +1016,7 @@ export default function DesignWorkspace() {
         const isSelected = selectedIds.includes(obj.id)
         const filter = isSelected ? 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.8))' : 'none'
         const hatchFill = obj.hatch ? `url(#hatch-${obj.hatch})` : obj.fill
+        const movingOpacity = currentAction?.type === 'move' && isSelected ? 0.5 : 1.0
 
         // Dimension annotation object
         if (obj.type === 'dimension') {
@@ -1052,7 +1055,7 @@ export default function DesignWorkspace() {
                 }
             }
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={handleClick}>
                     <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={obj.fill}
                         stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
                     {obj.hatch && <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={hatchFill} style={{ color: obj.stroke }} />}
@@ -1079,7 +1082,7 @@ export default function DesignWorkspace() {
                 }
             }
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={handleClick}>
                     <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={obj.fill}
                         stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
                     {obj.hatch && <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={hatchFill} style={{ color: obj.stroke }} />}
@@ -1098,7 +1101,7 @@ export default function DesignWorkspace() {
             }
 
             return (
-                <g key={obj.id}>
+                <g key={obj.id} style={{ opacity: movingOpacity }}>
                     <path
                         d={d}
                         fill={obj.fill}
@@ -1211,7 +1214,7 @@ export default function DesignWorkspace() {
             const d = points.length > 0 ? `M ${points[0]} ` + points.slice(1).map(p => `L ${p}`).join(' ') + ' Z' : '';
 
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={(e) => {
                     e.stopPropagation()
                     // Layer lock check
                     if (obj.layerId) {
@@ -1248,7 +1251,7 @@ export default function DesignWorkspace() {
             const d = obj.r > 0 ? `M ${x1} ${y1} A ${obj.r} ${obj.r} 0 ${largeArcFlag} 1 ${x2} ${y2}` : '';
 
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={(e) => {
                     e.stopPropagation()
                     // Layer lock check
                     if (obj.layerId) {
@@ -1491,7 +1494,7 @@ export default function DesignWorkspace() {
                 )}
                 <div className="w-[1px] bg-slate-700/50 mx-1" />
                 <button
-                    onClick={() => setIs3DMode(!is3DMode)}
+                    onClick={() => setIs3DView(!is3DMode)}
                     className={`p-2 rounded-lg transition-all cursor-pointer ${is3DMode ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
                     title={is3DMode ? 'Switch to 2D' : 'Enter 3D Modeling'}>
                     {is3DMode ? <Layers size={16} /> : <Box size={16} />}
@@ -1715,7 +1718,36 @@ export default function DesignWorkspace() {
                                 <marker id="dim-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
                                     <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
                                 </marker>
+                                <marker id="move-arrow-x" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto">
+                                    <path d="M0,0 L10,5 L0,10 Z" fill="#ef4444" />
+                                </marker>
+                                <marker id="move-arrow-y" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto">
+                                    <path d="M0,0 L10,5 L0,10 Z" fill="#22c55e" />
+                                </marker>
                             </defs>
+
+                            {/* Move Gizmo at centroid */}
+                            {currentAction?.type === 'move' && selectedIds.length > 0 && (() => {
+                                const obj = renderedObjects.find(o => o.id === selectedIds[0]);
+                                if (!obj) return null;
+                                let cx = 0, cy = 0;
+                                if (obj.type === 'rect') { cx = obj.x + obj.width / 2; cy = obj.y + obj.height / 2; }
+                                else if (obj.type === 'circle' || obj.type === 'polygon' || obj.type === 'arc') { cx = obj.cx; cy = obj.cy; }
+                                else if (obj.type === 'ruler' || obj.type === 'dimension') { cx = (obj.x1 + obj.x2) / 2; cy = (obj.y1 + obj.y2) / 2; }
+                                else if (obj.type === 'path' && obj.points && obj.points.length) {
+                                    const xs = obj.points.map(p => p.x); const ys = obj.points.map(p => p.y);
+                                    cx = (Math.min(...xs) + Math.max(...xs)) / 2; cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+                                }
+                                return (
+                                    <g key="move-gizmo" opacity="0.7">
+                                        <circle cx={cx} cy={cy} r="6" fill="#0ea5e9" stroke="white" strokeWidth="1" />
+                                        <line x1={cx} y1={cy} x2={cx + 40} y2={cy} stroke="#ef4444" strokeWidth="2" markerEnd="url(#move-arrow-x)" />
+                                        <line x1={cx} y1={cy} x2={cx} y2={cy - 40} stroke="#22c55e" strokeWidth="2" markerEnd="url(#move-arrow-y)" />
+                                        <text x={cx + 46} y={cy + 4} fill="#ef4444" fontSize="9" fontFamily="monospace">X</text>
+                                        <text x={cx + 4} y={cy - 46} fill="#22c55e" fontSize="9" fontFamily="monospace">Y</text>
+                                    </g>
+                                );
+                            })()}
 
                             {/* Snapping Indicator */}
                             {snapPoint && snapPoint.snapped && (

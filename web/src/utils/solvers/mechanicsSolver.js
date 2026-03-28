@@ -22,6 +22,7 @@ export default class MechanicsSolver {
             timeStep: settings.timeStep ?? 0.016,
             subSteps: settings.subSteps ?? 1,
             mode: settings.mode ?? 'preview', // 'preview' | 'accurate'
+            groundY: settings.groundY ?? 600
         };
         this.bodies = [];
         this.constraints = [];
@@ -74,7 +75,7 @@ export default class MechanicsSolver {
             integrate(this.bodies, dt);
 
             // 5. Ground plane
-            this._applyGroundPlane(600);
+            this._applyGroundPlane(this.settings.groundY ?? 600);
         }
 
         this.time += this.settings.timeStep;

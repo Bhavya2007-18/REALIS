@@ -494,6 +494,7 @@ export default function Viewport3D({ objects, isSimulating }) {
                             addShape3D({
                                 id,
                                 type: active3DTool,
+                                isStatic: false,
                                 position: [point.x, point.y + (params.height ? params.height / 2 : 0), point.z],
                                 rotation: [0, 0, 0],
                                 scale: [1, 1, 1],

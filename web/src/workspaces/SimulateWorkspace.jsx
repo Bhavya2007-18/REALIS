@@ -11,6 +11,8 @@ export default function SimulateWorkspace() {
     const objects = useStore(state => state.objects);
     const shapes3D = useStore(state => state.shapes3D);
     const setShapes3D = useStore(state => state.setShapes3D);
+    const is3DView = useStore(state => state.is3DView);
+    const activeWorkspace = useStore(state => state.activeWorkspace);
     const constraints = useStore(state => state.constraints);
     const materials = useStore(state => state.materials);
     const applyMaterial = useStore(state => state.applyMaterial);
@@ -61,6 +63,34 @@ export default function SimulateWorkspace() {
         mechSolver.current.updateSettings({ ...simulationSettings, mode: simulationMode });
         thermSolver.current.updateSettings(simulationSettings);
     }, [simulationSettings, simulationMode]);
+    
+    // Ensure design changes reflect live in simulation.
+    // If objects or shapes change while playing, pause and resync bodies.
+    const prevCounts = useRef({ o: objects.length, s: shapes3D.length });
+    useEffect(() => {
+        const changed = prevCounts.current.o !== objects.length || prevCounts.current.s !== shapes3D.length;
+        if (changed) {
+            prevCounts.current = { o: objects.length, s: shapes3D.length };
+            if (isPlaying) {
+                useStore.getState().togglePlayback();
+            }
+            const allBodies = [...shapes3D, ...objects];
+            mechSolver.current.setBodies(allBodies);
+            thermSolver.current.setBodies(allBodies);
+            setRenderBodies(allBodies);
+        }
+    }, [objects, shapes3D, isPlaying]);
+    
+    // On entering Simulation workspace, force a resync to the latest design state.
+    useEffect(() => {
+        if (activeWorkspace === 'simulate') {
+            const allBodies = [...shapes3D, ...objects];
+            mechSolver.current.setBodies(allBodies);
+            thermSolver.current.setBodies(allBodies);
+            setRenderBodies(allBodies);
+            useStore.getState().setSimulationState({ time: 0 });
+        }
+    }, [activeWorkspace]);
 
     // Main Simulation Loop
     useEffect(() => {
@@ -191,9 +221,35 @@ export default function SimulateWorkspace() {
                 </div>
             </div>
 
-            {/* Main 3D Viewport Area */}
+            {/* Main Viewport Area */}
             <div className="flex-1 relative pt-14">
-                <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
+                {is3DView ? (
+                    <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
+                ) : (
+                    <div className="absolute inset-0">
+                        <svg className="absolute inset-0 w-full h-full z-10">
+                            {objects.map(obj => {
+                                if (obj.type === 'rect') {
+                                    return <rect key={obj.id} x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={obj.fill || 'rgba(59,130,246,0.2)'} stroke={obj.stroke || '#3b82f6'} strokeWidth={obj.strokeWidth || 2} />
+                                }
+                                if (obj.type === 'circle') {
+                                    return <circle key={obj.id} cx={obj.cx} cy={obj.cy} r={obj.r} fill={obj.fill || 'rgba(139,92,246,0.2)'} stroke={obj.stroke || '#8b5cf6'} strokeWidth={obj.strokeWidth || 2} />
+                                }
+                                if (obj.type === 'path' && obj.points) {
+                                    const d = obj.points.reduce((acc, p, i) => acc + (i === 0 ? `M ${p.x} ${p.y} ` : `L ${p.x} ${p.y} `), '');
+                                    return <path key={obj.id} d={d} fill="none" stroke={obj.stroke || '#10b981'} strokeWidth={obj.strokeWidth || 2} />
+                                }
+                                return null;
+                            })}
+                            {renderBodies.map(b => {
+                                const px = Array.isArray(b.position) ? b.position[0] : (b.position?.x ?? 0);
+                                const py = Array.isArray(b.position) ? b.position[1] : (b.position?.y ?? 0);
+                                const r = b.params?.radius || b.params?.radiusTop || Math.max(2, (b.params?.width || b.params?.height || 4) / 4);
+                                return <circle key={`sim2d_${b.id}`} cx={px} cy={py} r={r} fill={b.color || '#64748b'} opacity="0.7" />;
+                            })}
+                        </svg>
+                    </div>
+                )}
 
                 {/* SVG Vector Overlay Layer */}
                 {analysisSettings.showVectors && simulationType === 'rigid' && (
