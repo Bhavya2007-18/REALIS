@@ -10,7 +10,8 @@ import projectileModel from '../models/projectileModel'
 import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import componentLibrary from '../models/componentLibrary'
 import testWorkplace from '../models/testWorkplace'
-import { Box, Trash2, Layers, FileCode } from 'lucide-react'
+import v6EngineModel from '../models/v6EngineModel'
+import { Box, Play, Trash2, Layers, FileCode } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -132,6 +133,38 @@ export default function Sidebar() {
                                             </div>
                                             <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
                                                 {m.description}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Pre-made Simulations Section */}
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.prebuilt ? 'overflow-hidden' : ''}`} style={expanded.prebuilt ? { minHeight: '140px' } : {}}>
+                            <div onClick={() => toggleSection('prebuilt')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
+                                {expanded.prebuilt ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                                <span className="text-[11px] font-bold uppercase text-slate-500">Pre-built Simulations</span>
+                            </div>
+                            {expanded.prebuilt && (
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {[v6EngineModel].map((sim) => (
+                                        <div
+                                            key={sim.name}
+                                            onClick={() => modelLoader.loadModel(sim)}
+                                            className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer relative overflow-hidden"
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 group-hover:text-emerald-400 transition-colors flex items-center gap-2">
+                                                    <Play size={12} className="text-slate-400 group-hover:text-emerald-400" />
+                                                    {sim.name}
+                                                </span>
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
+                                                    SIM
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                                                {sim.description}
                                             </p>
                                         </div>
                                     ))}
