@@ -257,7 +257,8 @@ export default function SketchImportPanel() {
 
         <input
           type="file" className="hidden" ref={fileInputRef}
-          accept="image}
+          accept="image/*"
+        />
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
             Describe the mechanism <span className="text-gray-700 normal-case">(optional — helps heuristics)</span>
