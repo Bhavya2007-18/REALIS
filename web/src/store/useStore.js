@@ -38,6 +38,17 @@ const useStore = create((set) => ({
         };
         return { shapes3D: [...state.shapes3D, { ...physicsDefaults, ...shape }] };
     }),
+    addShapes3D: (newShapes) => set((state) => {
+        state.saveHistorySnapshot();
+        const physicsDefaults = { mass: 1.0, restitution: 0.5, friction: 0.3, isStatic: false };
+        const formatted = newShapes.map(s => ({ ...physicsDefaults, ...s }));
+        return { shapes3D: [...state.shapes3D, ...formatted] };
+    }),
+
+    constraints: [],
+    setConstraints: (constraints) => set({ constraints }),
+    addConstraints: (newConstraints) => set((state) => ({ constraints: [...(state.constraints || []), ...newConstraints] })),
+
     active3DTool: 'select', 
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
@@ -486,6 +497,7 @@ const useStore = create((set) => ({
     
     analysisSettings: {
         showVectors: false,
+        showForces: false,
         showHeatmap: false,
         showJoints: false,
         showAnchors: false,

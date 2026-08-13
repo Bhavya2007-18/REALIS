@@ -57,15 +57,15 @@ class SketchCompilerPipeline:
 
         
         geometry = self._phase2_extract_geometry(req.image, prompt_lower)
-        print(f"[Phase 2] Geometry → lines={len(geometry.lines)}, circles={len(geometry.circles)}, polygons={len(geometry.polygons)}")
+        print(f"[Phase 2] Geometry -> lines={len(geometry.lines)}, circles={len(geometry.circles)}, polygons={len(geometry.polygons)}")
 
         
         semantics = self._phase3_detect_objects(geometry, prompt_lower)
-        print(f"[Phase 3] Objects  → {len(semantics.objects)} semantic objects detected")
+        print(f"[Phase 3] Objects  -> {len(semantics.objects)} semantic objects detected")
 
         
         relationships = self._phase4_infer_relationships(semantics, geometry)
-        print(f"[Phase 4] Relations→ {len(relationships.relationships)} relationships inferred")
+        print(f"[Phase 4] Relations-> {len(relationships.relationships)} relationships inferred")
 
         
         hypotheses = self._phase5_generate_hypotheses(semantics, relationships, prompt_lower)
@@ -75,17 +75,17 @@ class SketchCompilerPipeline:
 
         
         intent = self._phase6_fuse_intent(req.user_prompt, hypotheses, semantics)
-        print(f"[Phase 6] Intent   → {intent.system_type} (confidence={intent.confidence:.2f})")
+        print(f"[Phase 6] Intent   -> {intent.system_type} (confidence={intent.confidence:.2f})")
 
         
         scene_graph = self._phase7_generate_scene_graph(intent, semantics, relationships, geometry)
-        print(f"[Phase 7] SceneGraph → {len(scene_graph.nodes)} nodes, {len(scene_graph.edges)} edges")
+        print(f"[Phase 7] SceneGraph -> {len(scene_graph.nodes)} nodes, {len(scene_graph.edges)} edges")
 
         
         validation = self._phase75_validate_physics(scene_graph)
         print(f"[Phase 7.5] Valid={validation.valid}  Warnings={len(validation.warnings)}")
         for w in validation.warnings:
-            print(f"  ⚠ {w}")
+            print(f"  ! {w}")
 
         
         response = PipelineResponse(
@@ -114,7 +114,7 @@ class SketchCompilerPipeline:
         
         img_gray = self._decode_image_to_gray(b64_image)
         if img_gray is None:
-            print("[Phase 2] No valid image — using prompt-based geometric mock.")
+            print("[Phase 2] No valid image -- using prompt-based geometric mock.")
             return self._geometry_mock(prompt, nid)
 
         
@@ -197,7 +197,10 @@ class SketchCompilerPipeline:
         )
         if lines_hough is not None:
             for line in lines_hough:
-                x1, y1, x2, y2 = map(float, line[0])
+                arr = np.asarray(line).ravel().tolist()
+                if len(arr) < 4:
+                    continue
+                x1, y1, x2, y2 = map(float, arr[:4])
                 length = math.hypot(x2 - x1, y2 - y1)
                 if length < 40:
                     continue
@@ -480,7 +483,7 @@ class SketchCompilerPipeline:
 
         top = hypotheses[0]
         second = hypotheses[1] if len(hypotheses) > 1 else None
-        assumptions = ["OpenCV spatial analysis used — 100% local, zero APIs."]
+        assumptions = ["OpenCV spatial analysis used -- 100% local, zero APIs."]
 
         if prompt:
             assumptions.append(f"User context: '{prompt.strip()}' incorporated.")
@@ -627,7 +630,7 @@ class SketchCompilerPipeline:
 
         if not sg.nodes:
             valid = False
-            warnings.append("Scene graph has no nodes — sketch may be blank or too faint.")
+            warnings.append("Scene graph has no nodes -- sketch may be blank or too faint.")
             return ValidationResult(valid=valid, warnings=warnings, auto_fixes=auto_fixes)
 
         linked = set()
@@ -637,7 +640,7 @@ class SketchCompilerPipeline:
 
         for node in sg.nodes:
             if node.type == "rigid_body" and node.id not in linked:
-                warnings.append(f"'{node.id}' ({node.shape}) is unconnected — will free-fall.")
+                warnings.append(f"'{node.id}' ({node.shape}) is unconnected -- will free-fall.")
 
         
         for node in sg.nodes:
@@ -649,7 +652,7 @@ class SketchCompilerPipeline:
         
         statics = [n for n in sg.nodes if n.type == "static"]
         if len(statics) == 0 and len(sg.nodes) > 1:
-            warnings.append("No static anchors detected — the entire system will fall.")
+            warnings.append("No static anchors detected -- the entire system will fall.")
 
         return ValidationResult(valid=valid, warnings=warnings, auto_fixes=auto_fixes)
 

@@ -7,6 +7,7 @@ import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
 import PropertiesPanel from '../components/PropertiesPanel'
 import SketchImportPanel from '../components/SketchImportPanel'
 import SketchPreviewOverlay from '../components/SketchPreviewOverlay'
+import EnergyMonitor from '../components/EnergyMonitor'
 import useStore from '../store/useStore'
 import modelLoader from '../services/modelLoader'
 import ashwinsWorkplace from '../models/ashwinsWorkplace'
@@ -52,6 +53,7 @@ export default function AppLayout() {
                 <div className="flex-1 relative bg-[#0a0f1a]">
                     <WorkspaceRenderer />
                     <SketchPreviewOverlay />
+                    <EnergyMonitor />
                 </div>
                 {isRightPanelOpen && rightPanelView === 'properties' && <PropertiesPanel />}
                 

@@ -4,6 +4,12 @@ import {
   ChevronRight, AlertTriangle, Info, RotateCcw, ImageIcon
 } from 'lucide-react';
 import useStore from '../store/useStore';
+import { sceneGraphToShapes, sceneGraphToConstraints } from '../utils/sketchToScene';
+import { useSimulation } from '../hooks/useSimulation';
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+
+
 
 
 const PHASES = [
@@ -69,6 +75,12 @@ export default function SketchImportPanel() {
   const setSketchImportOpen  = useStore(s => s.setSketchImportOpen);
   const setSketchDraft       = useStore(s => s.setSketchDraft);
   const sketchDraft          = useStore(s => s.sketchDraft);
+  const addShapes3D          = useStore(s => s.addShapes3D);
+  const addConstraints       = useStore(s => s.addConstraints);
+  const setIs3DView          = useStore(s => s.setIs3DView);
+
+  const { runSimulation, isSimulating: isAutoSimulating } = useSimulation();
+
 
   const [preview,    setPreview]    = useState(null);
   const [prompt,     setPrompt]     = useState('');
@@ -112,7 +124,7 @@ export default function SketchImportPanel() {
     }, 380);
 
     try {
-      const res = await fetch('/api/sketch/process', {
+      const res = await fetch(`${API_BASE}/api/sketch/process`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ session_id: '', image: preview, user_prompt: prompt }),
@@ -145,7 +157,22 @@ export default function SketchImportPanel() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleConfirm = () => setSketchImportOpen(false);
+  const handleConfirm = async () => {
+    if (sketchDraft?.scene?.scene_graph) {
+      const shapes = sceneGraphToShapes(sketchDraft.scene.scene_graph);
+      const newConstraints = sceneGraphToConstraints(sketchDraft.scene.scene_graph);
+      if (shapes.length > 0) addShapes3D(shapes);
+      if (newConstraints.length > 0) addConstraints(newConstraints);
+      setIs3DView(true);
+      setSketchImportOpen(false);
+      // Small delay to let store update before simulating
+      setTimeout(() => runSimulation({ duration: 4.0, autoPlay: true }), 100);
+    } else {
+      setSketchImportOpen(false);
+    }
+  };
+
+
 
   if (!isSketchImportOpen) return null;
 
@@ -167,12 +194,19 @@ export default function SketchImportPanel() {
 
   return (
     <div
-      className="sketch-panel-enter absolute left-1/2 top-1/2 z-50 w-[440px] max-h-[90vh]
-                 overflow-hidden flex flex-col
-                 bg-[#0b0f1c] border border-white/8 rounded-2xl shadow-2xl
-                 shadow-indigo-950/60 text-gray-100"
-      style={{ boxShadow: '0 0 60px rgba(79,70,229,0.12), 0 24px 48px rgba(0,0,0,0.6)' }}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setSketchImportOpen(false);
+      }}
     >
+      <div
+        className="sketch-panel-enter relative w-[440px] max-h-[90vh]
+                   overflow-hidden flex flex-col
+                   bg-[#0b0f1c] border border-white/10 rounded-2xl shadow-2xl
+                   shadow-indigo-950/80 text-gray-100"
+        style={{ boxShadow: '0 0 60px rgba(79,70,229,0.18), 0 24px 48px rgba(0,0,0,0.8)' }}
+      >
+
       {}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/6 bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
@@ -446,6 +480,7 @@ export default function SketchImportPanel() {
           </>
         )}
       </div>
+    </div>
     </div>
   );
 }

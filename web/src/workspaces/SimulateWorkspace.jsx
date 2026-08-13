@@ -376,7 +376,10 @@ export default function SimulateWorkspace() {
 
                     <div className="flex gap-2">
                         <button onClick={() => setAnalysisSettings({ showVectors: !analysisSettings.showVectors })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showVectors ? 'border-primary bg-primary/20 text-white shadow-[0_0_10px_rgba(37,106,244,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <ArrowRightCircle size={12} /> Vectors
+                            <ArrowRightCircle size={12} /> Velocity
+                        </button>
+                        <button onClick={() => setAnalysisSettings({ showForces: !analysisSettings.showForces })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showForces ? 'border-amber-500 bg-amber-500/20 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
+                            <Gauge size={12} /> Forces
                         </button>
                         <button onClick={() => setAnalysisSettings({ showJoints: !analysisSettings.showJoints })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showJoints ? 'border-purple-500 bg-purple-500/20 text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
                             <Box size={12} /> Joints

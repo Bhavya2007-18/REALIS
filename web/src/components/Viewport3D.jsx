@@ -8,6 +8,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import useStore from '../store/useStore';
 import { createThreeShapeFrom2D } from '../utils/geometryHelpers';
 import WaterSurface from './WaterSurface';
+import VectorOverlay from './VectorOverlay';
 
 function Loader() {
   const { progress } = useProgress()
@@ -656,6 +657,8 @@ export default function Viewport3D({ objects }) {
             {simulationFrames[currentFrameIndex]?.contacts?.map((contact, idx) => (
                 <CollisionMarker key={`contact-${idx}`} contact={contact} />
             ))}
+
+            <VectorOverlay />
 
             <OrbitControls makeDefault />
 

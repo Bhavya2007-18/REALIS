@@ -4,6 +4,8 @@ import useStore from '../store/useStore'
 import commandHandler from '../services/commandHandler'
 import modelLoader from '../services/modelLoader'
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+
 export default function AIChatBot({ toggleAIPanel }) {
     const isAIPanelOpen = useStore((s) => s.isAIPanelOpen)
     const addCADObject = useStore((s) => s.addCADObject)
@@ -77,7 +79,7 @@ export default function AIChatBot({ toggleAIPanel }) {
         }
 
         try {
-            const req = await fetch('/api/chat', {
+            const req = await fetch(`${API_BASE}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: [...messages, userMsg] })

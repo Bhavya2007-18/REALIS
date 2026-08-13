@@ -70,7 +70,7 @@ def infer_semantics_and_relationships(cv_items: List[GeomPrimitive], user_prompt
         main_hypothesis = Hypothesis(
             system_type="crank_mechanism",
             confidence=0.75,
-            description="Detected multiple wheels and rods — likely a rotational mechanism."
+            description="Detected multiple wheels and rods - likely a rotational mechanism."
         )
     else:
         main_hypothesis = Hypothesis(

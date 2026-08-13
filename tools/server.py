@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-import subprocess
 import os
 import sys
 
@@ -17,6 +16,9 @@ except ImportError:
     from tools.sketch_ai.api import router as sketch_router
 
 app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
+
+# In-memory storage of the last simulation result, used by /api/context for the AI.
+last_sim_result = None
 
 
 app.add_middleware(
@@ -126,249 +128,121 @@ class ChatResponse(BaseModel):
 def read_root():
     return {"status": "REALIS API Online"}
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "engine": "Python physics engine (v0.2)",
+        "cpp_engine_available": False,
+        "physics_enabled": True,
+        "sketch_pipeline": "local-opencv"
+    }
+
+
 @app.post("/simulate", response_model=SimulationResponse)
 def run_simulation(req: SimulationRequest):
-    
-    import math
+    from tools.physics import simulate as py_simulate
 
     print(f">>> Simulation request: {len(req.objects)} objects, {req.duration}s, gravity={req.gravity}")
+    print("[REALIS] Using Python physics engine (v0.2)")
 
-    
-    def run_python_physics(req):
-        
-        gx, gy, gz = req.gravity.x, req.gravity.y, req.gravity.z
-        dt = req.time_step
-        sub = max(1, req.sub_steps)
-        sub_dt = dt / sub
-        
-        
-        pg_center = None
-        pg_strength = 0
-        if req.point_gravity:
-            c = req.point_gravity.get('center', {})
-            pg_center = (c.get('x', 0), c.get('y', 0), c.get('z', 0))
-            pg_strength = req.point_gravity.get('strength', 0)
-
-        
-        bodies = []
+    def to_dict_objects(req):
+        out = []
         for obj in req.objects:
-            pos = obj.geometry.position
-            vel = obj.physics.initial_velocity
-            ang = obj.physics.initial_angular_velocity
-            dim = obj.geometry.dimensions
-            bodies.append({
-                'id': obj.id,
-                'px': pos.x, 'py': pos.y, 'pz': pos.z,
-                'vx': vel.x, 'vy': vel.y, 'vz': vel.z,
-                'wx': ang.x, 'wy': ang.y, 'wz': ang.z,
-                'rx': 0.0, 'ry': 0.0, 'rz': 0.0,
-                'mass': obj.physics.mass,
-                'inv_mass': 0.0 if obj.physics.is_static else (1.0 / max(obj.physics.mass, 0.001)),
-                'is_static': obj.physics.is_static,
-                'restitution': obj.physics.restitution,
-                'geo_type': obj.geometry.type,
-                'radius': dim.x if obj.geometry.type == 'sphere' else 0,
-                'half_x': dim.x * 0.5, 'half_y': dim.y * 0.5, 'half_z': dim.z * 0.5,
+            out.append({
+                "id": obj.id,
+                "geometry": {
+                    "type": obj.geometry.type,
+                    "position": {
+                        "x": obj.geometry.position.x,
+                        "y": obj.geometry.position.y,
+                        "z": obj.geometry.position.z,
+                    },
+                    "dimensions": {
+                        "x": obj.geometry.dimensions.x,
+                        "y": obj.geometry.dimensions.y,
+                        "z": obj.geometry.dimensions.z,
+                    },
+                },
+                "physics": {
+                    "mass": obj.physics.mass,
+                    "restitution": obj.physics.restitution,
+                    "friction": obj.physics.friction,
+                    "is_static": obj.physics.is_static,
+                    "initial_velocity": {
+                        "x": obj.physics.initial_velocity.x,
+                        "y": obj.physics.initial_velocity.y,
+                        "z": obj.physics.initial_velocity.z,
+                    },
+                    "initial_angular_velocity": {
+                        "x": obj.physics.initial_angular_velocity.x,
+                        "y": obj.physics.initial_angular_velocity.y,
+                        "z": obj.physics.initial_angular_velocity.z,
+                    },
+                },
             })
+        return out
 
-        steps = int(req.duration / dt) + 1
-        frames = []
-
-        for step_i in range(steps):
-            t = step_i * dt
-            
-            for _ in range(sub):
-                for b in bodies:
-                    if b['is_static']: continue
-                    
-                    
-                    if pg_center and pg_strength > 0:
-                        dx = pg_center[0] - b['px']
-                        dy = pg_center[1] - b['py']
-                        dz = pg_center[2] - b['pz']
-                        dist_sq = dx*dx + dy*dy + dz*dz
-                        dist = math.sqrt(dist_sq) if dist_sq > 0.01 else 0.1
-                        force = pg_strength * b['mass'] / dist_sq
-                        ax = force * dx / dist / b['mass'] if b['mass'] > 0 else 0
-                        ay = force * dy / dist / b['mass'] if b['mass'] > 0 else 0
-                        az = force * dz / dist / b['mass'] if b['mass'] > 0 else 0
-                    else:
-                        ax, ay, az = gx, gy, gz
-
-                    
-                    b['vx'] += ax * sub_dt
-                    b['vy'] += ay * sub_dt
-                    b['vz'] += az * sub_dt
-
-                    
-                    b['px'] += b['vx'] * sub_dt
-                    b['py'] += b['vy'] * sub_dt
-                    b['pz'] += b['vz'] * sub_dt
-
-                    
-                    b['rx'] += b['wx'] * sub_dt
-                    b['ry'] += b['wy'] * sub_dt
-                    b['rz'] += b['wz'] * sub_dt
-
-                
-                for b in bodies:
-                    if b['is_static']: continue
-                    floor_y = b['radius'] if b['geo_type'] == 'sphere' else b['half_y']
-                    
-                    for s in bodies:
-                        if not s['is_static']: continue
-                        
-                        floor_top = s['py'] + s['half_y']
-                        if abs(b['px'] - s['px']) < s['half_x'] + b['half_x'] and \
-                           abs(b['pz'] - s['pz']) < s['half_z'] + b['half_z']:
-                            if b['py'] - floor_y < floor_top and b['vy'] < 0:
-                                b['py'] = floor_top + floor_y
-                                b['vy'] = -b['vy'] * b['restitution']
-                                b['vx'] *= 0.98  
-
-            
-            states = []
-            for b in bodies:
-                states.append(ObjectState(
-                    id=b['id'],
-                    position=Vector3(x=b['px'], y=b['py'], z=b['pz']),
-                    rotation=Vector3(x=b['rx'], y=b['ry'], z=b['rz']),
-                    linear_velocity=Vector3(x=b['vx'], y=b['vy'], z=b['vz']),
-                    angular_velocity=Vector3(x=b['wx'], y=b['wy'], z=b['wz'])
-                ))
-            frames.append(SimulationFrame(time=t, states=states))
-
-        return SimulationResponse(frames=frames, energy_drift=0.0001)
-
-    
-    sim_path = os.getenv("REALIS_SIM_PATH")
-    if not sim_path:
-        binary_name = "realis_simulator.exe" if os.name == 'nt' else "realis_simulator"
-        sim_path = os.path.join(os.getcwd(), "engine", "build", binary_name)
-        if not os.path.exists(sim_path):
-            sim_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "engine", "build", binary_name)
-
-    if not os.path.exists(sim_path):
-        print(f">>> C++ engine not found at {sim_path}, using Python fallback")
-        return run_python_physics(req)
-
-    
-    input_lines = [
-        f"SET_DT {req.time_step}",
-        f"SET_DURATION {req.duration}",
-        f"SET_SUBSTEPS {req.sub_steps}",
-        f"SET_GRAVITY {req.gravity.x} {req.gravity.y} {req.gravity.z}"
-    ]
-
-    if req.point_gravity:
-        pg = req.point_gravity
-        center = pg.get('center', {'x': 0, 'y': 0, 'z': 0})
-        strength = pg.get('strength', 1000.0)
-        input_lines.append(f"ADD_POINT_GRAVITY {center['x']} {center['y']} {center['z']} {strength}")
-    
-    for obj in req.objects:
-        pos = obj.geometry.position
-        rot = obj.geometry.rotation
-        phys = obj.physics
-        is_static = 1 if phys.is_static else 0
-        
-        if obj.geometry.type == "box":
-            hx = obj.geometry.dimensions.x * 0.5
-            hy = obj.geometry.dimensions.y * 0.5
-            hz = obj.geometry.dimensions.z * 0.5
-            input_lines.append(f"ADD_BOX {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {hx} {hy} {hz} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
-        elif obj.geometry.type == "sphere":
-            radius = obj.geometry.dimensions.x
-            input_lines.append(f"ADD_SPHERE {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {radius} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
-        
-        vel = phys.initial_velocity
-        ang_vel = phys.initial_angular_velocity
-        if vel.x != 0 or vel.y != 0 or vel.z != 0 or ang_vel.x != 0 or ang_vel.y != 0 or ang_vel.z != 0:
-            input_lines.append(f"SET_VELOCITY {obj.id} {vel.x} {vel.y} {vel.z} {ang_vel.x} {ang_vel.y} {ang_vel.z}")
-    
-    for con in req.constraints:
-        if con.type == "distance":
-            input_lines.append(f"ADD_DISTANCE {con.target_a} {con.target_b} {con.distance}")
-        elif con.type in ("hinge", "fixed") and con.pivot_a and con.pivot_b:
-            input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
-
-    input_lines.append("RUN")
-    input_str = "\n".join(input_lines) + "\n"
-    print(f">>> Sending {len(input_lines)} commands to C++ engine")
+    def to_dict_constraints(req):
+        out = []
+        for con in req.constraints:
+            out.append({
+                "id": con.id,
+                "type": con.type,
+                "target_a": con.target_a,
+                "target_b": con.target_b,
+                "distance": con.distance,
+                "pivot_a": con.pivot_a.model_dump() if con.pivot_a else None,
+                "pivot_b": con.pivot_b.model_dump() if con.pivot_b else None,
+                "axis": con.axis.model_dump() if con.axis else None,
+            })
+        return out
 
     try:
-        process = subprocess.Popen(
-            [sim_path],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+        result = py_simulate(
+            to_dict_objects(req),
+            to_dict_constraints(req),
+            time_step=req.time_step,
+            duration=req.duration,
+            gravity=(req.gravity.x, req.gravity.y, req.gravity.z),
+            point_gravity=req.point_gravity,
+            sub_steps=req.sub_steps,
         )
-        stdout, stderr = process.communicate(input=input_str, timeout=30)
-        
-        if process.returncode != 0:
-            print(f">>> C++ engine error: {stderr[:500]}, falling back to Python")
-            return run_python_physics(req)
-
-        
         frames = []
-        current_frame_time = None
-        current_states = []
-        current_contacts = []
-        
-        for line in stdout.splitlines():
-            parts = line.split()
-            if not parts:
-                continue
-            
-            if parts[0] == "FRAME":
-                
-                if current_frame_time is not None:
-                    frames.append(SimulationFrame(
-                        time=current_frame_time,
-                        states=current_states,
-                        contacts=current_contacts
-                    ))
-                current_frame_time = float(parts[1])
-                current_states = []
-                current_contacts = []
-
-            elif parts[0] == "OBJ" and len(parts) >= 12:
-                
-                obj_id = parts[1]
-                px, py, pz = float(parts[2]), float(parts[3]), float(parts[4])
-                vx = float(parts[9]) if len(parts) > 9 else 0
-                vy = float(parts[10]) if len(parts) > 10 else 0
-                vz = float(parts[11]) if len(parts) > 11 else 0
-                wx = float(parts[12]) if len(parts) > 12 else 0
-                wy = float(parts[13]) if len(parts) > 13 else 0
-                wz = float(parts[14]) if len(parts) > 14 else 0
-                current_states.append(ObjectState(
-                    id=obj_id,
-                    position=Vector3(x=px, y=py, z=pz),
-                    rotation=Vector3(x=0, y=0, z=0),
-                    linear_velocity=Vector3(x=vx, y=vy, z=vz),
-                    angular_velocity=Vector3(x=wx, y=wy, z=wz)
+        for f in result["frames"]:
+            states = []
+            for st in f["states"]:
+                states.append(ObjectState(
+                    id=st["id"],
+                    position=Vector3(x=st["position"]["x"], y=st["position"]["y"], z=st["position"]["z"]),
+                    rotation=Vector3(x=st["rotation"]["x"], y=st["rotation"]["y"], z=st["rotation"]["z"]),
+                    linear_velocity=Vector3(x=st["linear_velocity"]["x"], y=st["linear_velocity"]["y"], z=st["linear_velocity"]["z"]),
+                    angular_velocity=Vector3(x=st["angular_velocity"]["x"], y=st["angular_velocity"]["y"], z=st["angular_velocity"]["z"]),
                 ))
+            contacts = [
+                ContactPoint(id_a=c["id_a"], id_b=c["id_b"], point=c["point"])
+                for c in f["contacts"]
+            ]
+            frames.append(SimulationFrame(time=f["time"], states=states, contacts=contacts))
 
-        
-        if current_frame_time is not None and current_states:
-            frames.append(SimulationFrame(
-                time=current_frame_time,
-                states=current_states,
-                contacts=current_contacts
-            ))
+        # Store last result for the AI context endpoint (Phase 4).
+        global last_sim_result
+        last_sim_result = {
+            "duration": req.duration,
+            "n_frames": len(frames),
+            "objects": [{ "id": o.id } for o in req.objects],
+            "constraints": [{ "id": c.id, "type": c.type, "target_a": c.target_a, "target_b": c.target_b } for c in req.constraints],
+            "gravity": {"x": req.gravity.x, "y": req.gravity.y, "z": req.gravity.z},
+            "energy": result.get("energy", {}),
+            "energy_drift": float(result.get("energy_drift", 0.0)),
+            "contacts_count": result.get("contacts_count", 0),
+            "final_states": frames[-1].states if frames else [],
+        }
 
-        if not frames:
-            print(">>> C++ engine produced no frames, falling back to Python")
-            return run_python_physics(req)
-
-        print(f">>> C++ engine produced {len(frames)} frames")
-        return SimulationResponse(frames=frames, energy_drift=0.0001)
-        
+        return SimulationResponse(frames=frames, energy_drift=result.get("energy_drift", 0.0))
     except Exception as e:
-        print(f">>> C++ engine exception: {str(e)}, falling back to Python")
-        return run_python_physics(req)
+        print(f">>> Physics engine error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Physics simulation failed: {str(e)}")
 
 
 
@@ -384,12 +258,12 @@ def handle_chat(req: ChatRequest):
 
     
     if any(k in last_msg for k in ["make it static", "make static", "make it a floor", "ground", "fix it in place", "don't move", "make it solid"]):
-        reply = "Done! I've marked the selected object as static — it will act as an immovable surface (floor, wall, etc.) during simulation."
+        reply = "Done! I've marked the selected object as static - it will act as an immovable surface (floor, wall, etc.) during simulation."
         actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": True}})
 
     
     elif any(k in last_msg for k in ["make it dynamic", "make dynamic", "unfix", "let it move"]):
-        reply = "The selected object is now dynamic — it will respond to gravity and collisions."
+        reply = "The selected object is now dynamic - it will respond to gravity and collisions."
         actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": False}})
 
     
@@ -409,7 +283,7 @@ def handle_chat(req: ChatRequest):
         nums = re.findall(r'\d+\.?\d*', last_msg)
         if nums:
             val = min(1.0, float(nums[0]))
-            reply = f"Friction set to **{val}** on the selected object (range 0–1)."
+            reply = f"Friction set to **{val}** on the selected object (range 0-1)."
             actions.append({"type": "SET_PHYSICS", "payload": {"field": "friction", "value": val}})
         else:
             reply = "Please specify a friction value between 0 and 1."
@@ -427,7 +301,7 @@ def handle_chat(req: ChatRequest):
 
     
     elif any(k in last_msg for k in ["pin it", "anchor", "pin to world", "pin to ground", "fixed joint", "fix to world"]):
-        reply = "I've added a **Fixed Anchor** constraint — the selected object is pinned to the world. It'll stay in place but can still be affected by joints with other objects."
+        reply = "I've added a **Fixed Anchor** constraint - the selected object is pinned to the world. It'll stay in place but can still be affected by joints with other objects."
         actions.append({"type": "ADD_JOINT", "payload": {"type": "fixed"}})
 
     
@@ -441,7 +315,7 @@ def handle_chat(req: ChatRequest):
         nums = re.findall(r'\d+\.?\d*', last_msg)
         w = float(nums[0]) if len(nums) > 0 else 100
         h = float(nums[1]) if len(nums) > 1 else w
-        reply = f"I've created a **{int(w)}×{int(h)} rectangle** for you. Select it and set physics properties in the panel."
+        reply = f"I've created a **{int(w)}x{int(h)} rectangle** for you. Select it and set physics properties in the panel."
         actions.append({"type": "CREATE_CAD", "payload": {"type": "rect", "x": 300, "y": 200, "width": w, "height": h}})
 
     
@@ -460,13 +334,13 @@ def handle_chat(req: ChatRequest):
     else:
         reply = (
             "I can help you configure your scene. Try commands like:\n"
-            "• **'make it static'** — fix an object in place\n"
-            "• **'set mass to 5'** — set object mass in kg\n"
-            "• **'set friction to 0.8'** — configure surface friction\n"
-            "• **'set bounciness to 0.3'** — adjust restitution\n"
-            "• **'pin it to world'** — add a fixed anchor joint\n"
-            "• **'draw a 100x50 box'** — create a rectangle\n"
-            "• **'draw a circle of radius 40'** — create a circle"
+            "- **'make it static'** - fix an object in place\n"
+            "- **'set mass to 5'** - set object mass in kg\n"
+            "- **'set friction to 0.8'** - configure surface friction\n"
+            "- **'set bounciness to 0.3'** - adjust restitution\n"
+            "- **'pin it to world'** - add a fixed anchor joint\n"
+            "- **'draw a 100x50 box'** - create a rectangle\n"
+            "- **'draw a circle of radius 40'** - create a circle"
         )
 
     return ChatResponse(reply=reply, actions=actions if actions else None)
