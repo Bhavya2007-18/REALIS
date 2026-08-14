@@ -69,14 +69,8 @@ const executors = {
     },
 
     load_model({ modelId }) {
-        const registry = {
-            engine: () => import('../models/engineModel.js'),
-            pendulum: () => import('../models/pendulumModel.js'),
-            projectile: () => import('../models/projectileModel.js'),
-            thermal: () => import('../models/thermalModel.js'),
-            v6Engine: () => import('../models/v6EngineModel.js'),
-            test_workplace: () => import('../models/testWorkplace.js')
-        };
+        // Demo models removed; registry will be repopulated alongside new models.
+        const registry = {};
         const importer = registry[modelId];
         if (!importer) return { ok: false, summary: `No model ${modelId}.` };
         importer().then(mod => {

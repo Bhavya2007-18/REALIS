@@ -9,7 +9,6 @@ import MechanicalAssemblySolver from '../utils/solvers/mechanicalAssemblySolver'
 import V6RenderAdapter from '../utils/v6RenderAdapter';
 import { SIM_UNITS, FIXED_STEP, clamp, isFiniteNumber, createSimulationLogger } from '../utils/simulationSafety';
 import V6ControlPanel from '../components/V6ControlPanel';
-import modelLoader from '../services/modelLoader';
 import ModelControls from '../components/ModelControls';
 import { stepWater } from '../utils/waterPhysics';
 
@@ -281,12 +280,6 @@ export default function SimulateWorkspace() {
     const updateSetting = (key, val) => setSimulationSettings({ [key]: val });
     const updateGravity = (axis, val) => setSimulationSettings({ gravity: { ...simulationSettings.gravity, [axis]: parseFloat(val) } });
 
-    const handlePresetLoad = (presetFile) => {
-        import(`../models/${presetFile}.js`).then(module => {
-            modelLoader.loadModel(module.default);
-        });
-    };
-
     
     const finalViewportObjects = renderBodies.map((b, index) => {
         let matArgs = {};
@@ -365,24 +358,6 @@ export default function SimulateWorkspace() {
                             <Box size={12} /> Exploded View
                         </button>
                     </div>
-
-                    <div className="h-6 w-px bg-white/10 mx-2"></div>
-
-                    {}
-                    <select 
-                        className="bg-black/40 border border-white/10 text-slate-300 text-[10px] uppercase font-bold tracking-wider rounded-lg px-3 py-1.5 outline-none cursor-pointer focus:border-primary/50"
-                        onChange={(e) => { if(e.target.value) handlePresetLoad(e.target.value); e.target.value = ''; }}
-                    >
-                        <option value="">+ Load Preset...</option>
-                        <option value="engineModel">Legacy Engine Demo</option>
-                        <option value="v6EngineModel">V6 Engine (Advanced)</option>
-                        <option value="shaftRingAssemblyModel">Shaft Ring Assembly</option>
-                        <option value="sliderCrankModel">Slider-Crank Mechanism</option>
-                        <option value="springMassModel">Spring-Mass System</option>
-                        <option value="leverModel">Lever System</option>
-                        <option value="pulleyModel">Pulley System</option>
-                        <option value="pendulumModel">Pendulum System</option>
-                    </select>
                 </div>
             </div>
 

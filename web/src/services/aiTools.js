@@ -65,11 +65,11 @@ export const AI_TOOLS = [
     },
     {
         name: 'load_model',
-        description: 'Load one of the REALIS demo models.',
+        description: 'Load a REALIS model by id into the scene.',
         parameters: {
             type: 'object',
             properties: {
-                modelId: { type: 'string', enum: ['engine', 'pendulum', 'projectile', 'thermal', 'v6Engine'] }
+                modelId: { type: 'string' }
             },
             required: ['modelId']
         }

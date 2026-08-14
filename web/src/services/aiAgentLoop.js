@@ -1,9 +1,9 @@
 // REALIS AI Agent Loop
 // Pattern adapted from Aedifex packages/editor/src/components/ai/ai-agent-loop.ts
 // Pipeline: user input -> intent -> tool_calls -> validate -> execute -> reply.
-// A local rule parser produces structured tool calls (replacing the old
-// keyword-matching commandHandler); anything unparseable falls back to the
-// remote backend /api/chat, whose tool_calls are validated the same way.
+// A local rule parser produces structured tool calls; anything unparseable
+// falls back to the remote backend /api/chat, whose tool_calls are validated
+// the same way.
 
 import { validateToolCall } from './aiValidators.js';
 import { executeToolCall } from './aiExecutor.js';
@@ -22,20 +22,6 @@ const num = (msg) => {
 function parseIntent(raw) {
     const msg = raw.toLowerCase();
     const calls = [];
-
-    // model loading
-    const modelKeywords = [
-        ['v6', 'v6Engine'], ['engine', 'engine'], ['pendulum', 'pendulum'],
-        ['projectile', 'projectile'], ['thermal', 'thermal'], ['test_workplace', 'test_workplace']
-    ];
-    if (/load|demo|model|example|switch to/.test(msg)) {
-        for (const [kw, id] of modelKeywords) {
-            if (msg.includes(kw)) {
-                calls.push({ tool: 'load_model', args: { modelId: id } });
-                return calls;
-            }
-        }
-    }
 
     // physics
     const physFields = [
@@ -134,7 +120,7 @@ export async function runAgent(userInput, { backendFetch } = {}) {
         return {
             results,
             needHelp: true,
-            reply: "I didn't catch a concrete action there. Try: 'set mass to 5', 'make it static', 'pin it to world', 'draw a 100x100 box', 'load pendulum', or 'run simulation'."
+            reply: "I didn't catch a concrete action there. Try: 'set mass to 5', 'make it static', 'pin it to world', 'draw a 100x100 box', or 'run simulation'."
         };
     }
 

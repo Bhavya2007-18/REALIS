@@ -102,9 +102,10 @@ const validators = {
     },
 
     load_model(args) {
-        const allowed = ['engine', 'pendulum', 'projectile', 'thermal', 'v6Engine', 'test_workplace'];
+        // Model registry is empty while demo models are rebuilt from scratch.
+        const allowed = [];
         if (!allowed.includes(args.modelId)) {
-            return { status: 'invalid', reason: `Unknown model "${args.modelId}". Use ${allowed.join(', ')}.` };
+            return { status: 'invalid', reason: `No loadable models yet. Demo models are being rebuilt.` };
         }
         return { status: 'valid', reason: `Load model ${args.modelId}`, args };
     },
