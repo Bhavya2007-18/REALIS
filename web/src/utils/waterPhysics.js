@@ -33,68 +33,16 @@ function worldToGrid(x, z) {
     return { ix, iz };
 }
 
-export function stepWater(dt, bodies) {
+export function stepWater(dt) {
     ensureHeightfield();
     const water = useStore.getState().water;
     const k = water?.ripple?.stiffness ?? 0.015;
     const d = water?.ripple?.damping ?? 0.04;
     const activeRadius = 180;
 
-    const preset = useStore.getState().simulationPreset;
-    if (preset === 'ashwins_workplace') {
-        const ctrl = useStore.getState().boatControl;
-        if (ctrl?.enabled || (ctrl?.thrust || 0) > 0) {
-            const boat = bodies?.find(b => b.id === 'ship_hull_bottom') || bodies?.find(b => (b.name || '').toLowerCase().includes('ship'));
-            if (boat) {
-                const w = boat.params?.width || 40;
-                const propX = (boat.position?.x || 0) - w / 2 - 2;
-                const propZ = (boat.position?.z || 0) + (ctrl?.steer || 0) * 0.5;
-                const propArea = Math.PI * 2 * 2;
-                const rho = water?.density ?? 1000;
-                const vJet = Math.min(8, Math.max(0, ctrl?.thrust || 0) * 0.02);
-                const dir = { x: -1, z: (ctrl?.steer || 0) * 0.3 };
-
-                const { ix, iz } = worldToGrid(propX, propZ);
-                for (let oz = -3; oz <= 3; oz++) {
-                    for (let ox = -4; ox <= 4; ox++) {
-                        const gi = idx(ix + ox, iz + oz);
-                        if (gi < 0) continue;
-                        const r2 = ox * ox + oz * oz;
-                        const falloff = Math.exp(-r2 / 6);
-                        
-                        const dirBias = ox < 0 ? 1.0 : -0.3;
-                        const impulse = vJet * 0.01 * falloff * dirBias;
-                        const newH = (heights[gi] || 0) + impulse;
-                        heights[gi] = Math.max(-5, Math.min(5, newH));
-                    }
-                }
-
-                const massFlow = rho * propArea * vJet;
-                const dv = vJet;
-                const thrust = massFlow * dv * 0.002;
-                boat.externalForce = {
-                    x: thrust,
-                    y: 0,
-                    z: dir.z * thrust * 0.5
-                };
-                const lever = (w / 2) * 0.05;
-                boat.externalTorque = { z: -thrust * lever };
-            } else if (boat) {
-                boat.externalForce = null;
-                boat.externalTorque = null;
-            }
-        }
-    }
-
     const nextVel = velocities.slice();
     
-    let centerX = 0, centerZ = 0;
-    const boatForWindow = bodies?.find(b => b.id === 'ship_hull_bottom') || null;
-    if (boatForWindow) {
-        centerX = boatForWindow.position?.x || 0;
-        centerZ = boatForWindow.position?.z || 0;
-    }
-    const { ix: cix, iz: ciz } = worldToGrid(centerX, centerZ);
+    const { ix: cix, iz: ciz } = worldToGrid(0, 0);
     const radiusCells = Math.ceil(activeRadius / cellSize);
     const minX = Math.max(0, cix - radiusCells);
     const maxX = Math.min(gridW - 1, cix + radiusCells);
@@ -131,16 +79,11 @@ export function applyWaterForces(bodies, water, gravity) {
     const rho = water?.density ?? 1000;
     const g = Math.abs(gravity?.y ?? 9.81);
     const activeRadius = 200;
-    const boat = bodies?.find(b => b.id === 'ship_hull_bottom') || null;
-    const bx = boat?.position?.x || 0;
-    const bz = boat?.position?.z || 0;
     bodies.forEach(b => {
         if (b.isStatic) return;
         const pos = b.position || { x: b.cx || 0, y: b.cy || 0, z: 0 };
-        const dx = pos.x - bx;
-        const dz = (pos.z || 0) - bz;
-        const dist2 = dx * dx + dz * dz;
-        if (b.id !== 'ship_hull_bottom' && dist2 > activeRadius * activeRadius) return;
+        const dist2 = (pos.x || 0) ** 2 + (pos.z || 0) ** 2;
+        if (dist2 > activeRadius * activeRadius) return;
         const dimY = b.params?.height || b.dimensions?.y || (b.radius ? b.radius * 2 : 10);
         const dimX = b.params?.width || b.dimensions?.x || (b.radius ? b.radius * 2 : 10);
         const dimZ = b.params?.depth || b.dimensions?.z || (b.radius ? b.radius * 2 : 10);
@@ -183,12 +126,8 @@ export function applyWaterForces(bodies, water, gravity) {
             if (b.acceleration.y < -(g * 0.6)) b.acceleration.y = -(g * 0.6);
 
             const v = b.velocity || { x: 0, y: 0, z: 0 };
-            let CdLin = water?.linearDrag ?? 0.8;
-            let CdQuad = water?.quadDrag ?? 0.2;
-            if (b.id === 'ship_hull_bottom') {
-                CdLin *= 0.3;
-                CdQuad *= 0.3;
-            }
+            const CdLin = water?.linearDrag ?? 0.8;
+            const CdQuad = water?.quadDrag ?? 0.2;
             const areaX = dimY * dimZ;
             const areaZ = dimX * dimY;
             const relX = (v.x - vx);

@@ -9,8 +9,6 @@ import SketchImportPanel from '../components/SketchImportPanel'
 import SketchPreviewOverlay from '../components/SketchPreviewOverlay'
 import EnergyMonitor from '../components/EnergyMonitor'
 import useStore from '../store/useStore'
-import modelLoader from '../services/modelLoader'
-import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import { useEffect } from 'react'
 
 export default function AppLayout() {
@@ -20,11 +18,6 @@ export default function AppLayout() {
     const toggleAIPanel = useStore((s) => s.toggleAIPanel)
     const undo = useStore((s) => s.undo)
     const redo = useStore((s) => s.redo)
-
-    
-    useEffect(() => {
-        modelLoader.loadModel(ashwinsWorkplace);
-    }, []);
 
     
     useEffect(() => {

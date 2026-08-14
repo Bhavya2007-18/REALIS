@@ -64,15 +64,6 @@ const useStore = create((set) => ({
     setWater: (cfg) => set(state => ({ water: { ...state.water, ...cfg } })),
 
     
-    boatControl: {
-        enabled: false,
-        thrust: 0,      
-        steer: 0        
-    },
-    setBoatControl: (update) => set(state => ({
-        boatControl: { ...state.boatControl, ...update }
-    })),
-    
     extrudeOperation: {
         profileId: null,
         distance: 20,

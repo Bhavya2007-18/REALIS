@@ -7,11 +7,10 @@ import LayerPanel from './LayerPanel'
 import modelLoader from '../services/modelLoader'
 import pendulumModel from '../models/pendulumModel'
 import projectileModel from '../models/projectileModel'
-import ashwinsWorkplace from '../models/ashwinsWorkplace'
 import componentLibrary from '../models/componentLibrary'
 import testWorkplace from '../models/testWorkplace'
 import v6EngineModel from '../models/v6EngineModel'
-import { Box, Play, Trash2, Layers, FileCode } from 'lucide-react'
+import { Box, Play, Trash2, Layers } from 'lucide-react'
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -62,14 +61,6 @@ export default function Sidebar() {
                             </div>
                             <div className="px-2 py-1 space-y-0.5">
                                 <div
-                                    onClick={() => modelLoader.loadModel(ashwinsWorkplace)}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] text-primary bg-primary/10 cursor-pointer hover:bg-primary/20 transition-colors border border-primary/20"
-                                >
-                                    <FileCode size={14} className="text-primary" />
-                                    <span className="font-medium">ashwins workplace</span>
-                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title="Active File"></div>
-                                </div>
-                                <div
                                     onClick={() => {
                                         clearDesign()
                                         useStore.setState({ demoOverlay: null })
@@ -116,7 +107,7 @@ export default function Sidebar() {
                             </div>
                             {expanded.models && (
                                 <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                    {[testWorkplace, ashwinsWorkplace, pendulumModel, projectileModel].map((m) => (
+                                    {[testWorkplace, pendulumModel, projectileModel].map((m) => (
                                         <div
                                             key={m.name}
                                             onClick={() => modelLoader.loadModel(m)}

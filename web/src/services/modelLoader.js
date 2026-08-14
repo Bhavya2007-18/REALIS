@@ -39,35 +39,6 @@ const modelLoader = {
                     isStatic: shape.isStatic ?? false
                 }))
 
-                if (model.id === 'ashwins_workplace') {
-                    const rhoWood = 500;
-                    shapes.forEach(s => {
-                        const isShipPart = (s.id || '').startsWith('ship_') || (s.name || '').toLowerCase().includes('ship');
-                        if (!isShipPart) return;
-                        s.isStatic = false;
-                        s.fluidInteraction = 'water';
-                        s.material = 'wood';
-                        s.restitution = 0.3;
-                        s.friction = 0.4;
-
-                        if (s.type === 'cube' && s.params) {
-                            const w = s.params.width || 1;
-                            const h = s.params.height || 1;
-                            const d = s.params.depth || 1;
-                            const vol = w * h * d;
-                            s.mass = Math.max(10, rhoWood * vol * 0.001);
-                        } else if (s.type === 'cylinder' && s.params) {
-                            const r1 = s.params.radiusTop || 1;
-                            const r2 = s.params.radiusBottom || r1;
-                            const r = (r1 + r2) * 0.5;
-                            const h = s.params.height || 1;
-                            const vol = Math.PI * r * r * h;
-                            s.mass = Math.max(8, rhoWood * vol * 0.0005);
-                        } else {
-                            s.mass = s.mass ?? 20;
-                        }
-                    });
-                }
                 if (model.id === 'test_workplace') {
                     shapes.forEach(s => {
                         if (s.id === 'lab_floor') return;

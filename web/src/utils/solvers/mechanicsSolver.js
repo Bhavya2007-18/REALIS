@@ -78,7 +78,7 @@ export default class MechanicsSolver {
         for (let s = 0; s < subSteps; s++) {
             
             applyForces(this.bodies, this.settings);
-            if (this.settings.water?.enabled && useStore.getState().simulationPreset === 'ashwins_workplace') {
+            if (this.settings.water?.enabled && useStore.getState().water.enabled) {
                 applyWaterForces(this.bodies, this.settings.water, this.settings.gravity);
             }
 
