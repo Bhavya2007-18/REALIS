@@ -1,4 +1,5 @@
 import { Search, Bell, Settings, User, Box, SlidersHorizontal, Sparkles, FileJson, FolderOpen, Save, FilePlus, ChevronDown, Undo2, Redo2, Trash2, PenTool } from 'lucide-react'
+import { useStoreWithEqualityFn } from 'zustand/traditional'
 import useStore from '../store/useStore'
 import { useRef, useState } from 'react'
 export default function Navbar() {
@@ -26,8 +27,8 @@ export default function Navbar() {
 
     const undo = useStore(s => s.undo)
     const redo = useStore(s => s.redo)
-    const history = useStore(s => s.history)
-    const historyIndex = useStore(s => s.historyIndex)
+    const canUndo = useStoreWithEqualityFn(useStore.temporal, s => (s.pastStates?.length ?? 0) > 0)
+    const canRedo = useStoreWithEqualityFn(useStore.temporal, s => (s.futureStates?.length ?? 0) > 0)
     const clearDesign = useStore(s => s.clearDesign)
 
     const fileInputRef = useRef(null)
@@ -66,7 +67,7 @@ export default function Navbar() {
                 if (data.shapes3D) setShapes3D(data.shapes3D)
                 if (data.constraints) setConstraints(data.constraints)
                 if (data.activeLayerId) setActiveLayerId(data.activeLayerId)
-            } catch (err) {
+            } catch {
                 alert("Invalid REALIS project file.")
             }
         }
@@ -145,7 +146,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 ml-4">
                     <button
                         onClick={undo}
-                        disabled={historyIndex <= 0 && history.length <= 1}
+                        disabled={!canUndo}
                         className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
                         title="Undo (Ctrl+Z)"
                     >
@@ -153,7 +154,7 @@ export default function Navbar() {
                     </button>
                     <button
                         onClick={redo}
-                        disabled={historyIndex >= history.length - 1}
+                        disabled={!canRedo}
                         className="p-1.5 rounded-md text-slate-500 hover:text-primary hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
                         title="Redo (Ctrl+Y)"
                     >

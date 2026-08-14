@@ -116,10 +116,11 @@ class ChatMessage(BaseModel):
     
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    scene: Optional[str] = None
 
 class ChatResponse(BaseModel):
     reply: str
-    actions: Optional[List[dict]] = None
+    tool_calls: Optional[List[dict]] = None
 
 
 
@@ -253,18 +254,18 @@ def handle_chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Empty messages")
 
     last_msg = req.messages[-1].content.lower()
-    actions = []
+    tool_calls = []
     reply = ""
 
     
     if any(k in last_msg for k in ["make it static", "make static", "make it a floor", "ground", "fix it in place", "don't move", "make it solid"]):
         reply = "Done! I've marked the selected object as static - it will act as an immovable surface (floor, wall, etc.) during simulation."
-        actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": True}})
+        tool_calls.append({"tool": "set_physics", "args": {"field": "isStatic", "value": True}})
 
     
     elif any(k in last_msg for k in ["make it dynamic", "make dynamic", "unfix", "let it move"]):
         reply = "The selected object is now dynamic - it will respond to gravity and collisions."
-        actions.append({"type": "SET_PHYSICS", "payload": {"field": "isStatic", "value": False}})
+        tool_calls.append({"tool": "set_physics", "args": {"field": "isStatic", "value": False}})
 
     
     elif "mass" in last_msg and any(c.isdigit() for c in last_msg):
@@ -273,7 +274,7 @@ def handle_chat(req: ChatRequest):
         if nums:
             mass_val = float(nums[0])
             reply = f"I've set the mass of the selected object to **{mass_val} kg**."
-            actions.append({"type": "SET_PHYSICS", "payload": {"field": "mass", "value": mass_val}})
+            tool_calls.append({"tool": "set_physics", "args": {"field": "mass", "value": mass_val}})
         else:
             reply = "Could you specify the mass value? For example: 'set mass to 5'."
 
@@ -284,7 +285,7 @@ def handle_chat(req: ChatRequest):
         if nums:
             val = min(1.0, float(nums[0]))
             reply = f"Friction set to **{val}** on the selected object (range 0-1)."
-            actions.append({"type": "SET_PHYSICS", "payload": {"field": "friction", "value": val}})
+            tool_calls.append({"tool": "set_physics", "args": {"field": "friction", "value": val}})
         else:
             reply = "Please specify a friction value between 0 and 1."
 
@@ -295,19 +296,19 @@ def handle_chat(req: ChatRequest):
         if nums:
             val = min(1.0, float(nums[0]))
             reply = f"Bounciness (restitution) set to **{val}** on the selected object."
-            actions.append({"type": "SET_PHYSICS", "payload": {"field": "restitution", "value": val}})
+            tool_calls.append({"tool": "set_physics", "args": {"field": "restitution", "value": val}})
         else:
             reply = "Specify a bounciness value between 0 (no bounce) and 1 (fully elastic)."
 
     
     elif any(k in last_msg for k in ["pin it", "anchor", "pin to world", "pin to ground", "fixed joint", "fix to world"]):
         reply = "I've added a **Fixed Anchor** constraint - the selected object is pinned to the world. It'll stay in place but can still be affected by joints with other objects."
-        actions.append({"type": "ADD_JOINT", "payload": {"type": "fixed"}})
+        tool_calls.append({"tool": "add_joint", "args": {"type": "fixed"}})
 
     
     elif any(k in last_msg for k in ["link", "distance joint", "rod", "connect objects", "joint between"]):
         reply = "I'll create a **Distance Joint** between the two selected objects. Select your objects and define the target distance in the Properties panel's Joints section."
-        actions.append({"type": "ADD_JOINT", "payload": {"type": "distance"}})
+        tool_calls.append({"tool": "add_joint", "args": {"type": "distance"}})
 
     
     elif any(k in last_msg for k in ["cube", "box", "rectangle", "rect"]):
@@ -316,7 +317,7 @@ def handle_chat(req: ChatRequest):
         w = float(nums[0]) if len(nums) > 0 else 100
         h = float(nums[1]) if len(nums) > 1 else w
         reply = f"I've created a **{int(w)}x{int(h)} rectangle** for you. Select it and set physics properties in the panel."
-        actions.append({"type": "CREATE_CAD", "payload": {"type": "rect", "x": 300, "y": 200, "width": w, "height": h}})
+        tool_calls.append({"tool": "create_object", "args": {"type": "rect", "x": 300, "y": 200, "width": w, "height": h}})
 
     
     elif any(k in last_msg for k in ["circle", "sphere", "disc", "ball", "cylinder"]):
@@ -324,11 +325,12 @@ def handle_chat(req: ChatRequest):
         nums = re.findall(r'\d+\.?\d*', last_msg)
         r = float(nums[0]) if nums else 50
         reply = f"I've drafted a **circle with radius {int(r)}** for extrusion into a cylinder."
-        actions.append({"type": "CREATE_CAD", "payload": {"type": "circle", "cx": 400, "cy": 300, "r": r}})
+        tool_calls.append({"tool": "create_object", "args": {"type": "circle", "cx": 400, "cy": 300, "r": r}})
 
     
     elif any(k in last_msg for k in ["simulate", "run simulation", "play", "start simulation"]):
         reply = "Click the **Play button** at the bottom of the viewport to run the physics simulation. All your objects and joints are already configured!"
+        tool_calls.append({"tool": "run_simulation", "args": {"action": "start"}})
 
     
     else:
@@ -343,7 +345,7 @@ def handle_chat(req: ChatRequest):
             "- **'draw a circle of radius 40'** - create a circle"
         )
 
-    return ChatResponse(reply=reply, actions=actions if actions else None)
+    return ChatResponse(reply=reply, tool_calls=tool_calls if tool_calls else None)
 
 if __name__ == "__main__":
     import uvicorn

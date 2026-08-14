@@ -15,7 +15,8 @@ const pendulumModel = {
             stroke: "#b91c1c",
             strokeWidth: 2,
             isStatic: true,
-            label: "Pivot"
+            label: "Pivot",
+            vertical3D: true
         },
         {
             id: "bob",
@@ -29,7 +30,8 @@ const pendulumModel = {
             mass: 5,
             restitution: 0.5,
             friction: 0.1,
-            label: "Bob"
+            label: "Bob",
+            vertical3D: true
         }
     ],
     constraints: [

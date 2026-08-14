@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight, X } from 'lucide-react'
 import useStore from '../store/useStore'
-import commandHandler from '../services/commandHandler'
-import modelLoader from '../services/modelLoader'
+import { runAgent } from '../services/aiAgentLoop'
+import { serializeSceneForPrompt } from '../services/sceneSerializer'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -44,94 +44,42 @@ export default function AIChatBot({ toggleAIPanel }) {
         setInputValue('')
         setIsTyping(true)
 
-        
-        const localAction = commandHandler.handleCommand(msg)
-        if (localAction) {
-            
-            useStore.setState(s => ({ aiMemory: [msg, ...(s.aiMemory || [])].slice(0, 3) }));
-
-            setTimeout(() => {
-                let actionColor = 'CREATE_CAD';
-                if (localAction.type === 'LOAD_MODEL') {
-                    modelLoader.loadModel(localAction.model)
-                } else if (localAction.type === 'TRIGGER_SIMULATION') {
-                    useStore.setState({ isPlaying: true });
-                    actionColor = 'SET_PHYSICS';
-                } else if (localAction.type === 'AI_INSIGHT') {
-                    actionColor = 'SET_PHYSICS';
-                } else if (localAction.type === 'SET_MATERIAL') {
-                    actionColor = 'SET_PHYSICS';
-                    if (activeFileId) {
-                        setObjects(prev => prev.map(o => 
-                            o.id === activeFileId ? { ...o, material: localAction.material } : o
-                        ));
-                    }
-                }
-
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: localAction.reply,
-                    actionType: actionColor
-                }])
-                setIsTyping(false)
-            }, 800) 
-            return
-        }
-
-        try {
+        const backendFetch = async (userInput) => {
             const req = await fetch(`${API_BASE}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: [...messages, userMsg] })
-            })
-
-            if (!req.ok) throw new Error("API Error")
-            const res = await req.json()
-
-            
-            if (res.actions && res.actions.length > 0) {
-                res.actions.forEach(action => {
-
-                    
-                    if (action.type === 'CREATE_CAD') {
-                        addCADObject({
-                            id: Math.random().toString(36).substring(2, 9),
-                            ...action.payload,
-                            stroke: '#3b82f6',
-                            fill: 'rgba(59, 130, 246, 0.2)',
-                            strokeWidth: 2,
-                            rotation: 0
-                        })
-                    }
-
-                    
-                    if (action.type === 'SET_PHYSICS' && activeFileId) {
-                        const { field, value } = action.payload
-                        setObjects(prev => prev.map(o =>
-                            o.id === activeFileId ? { ...o, [field]: value } : o
-                        ))
-                    }
-
-                    
-                    if (action.type === 'ADD_JOINT' && activeFileId) {
-                        const { type } = action.payload
-                        setConstraints(prev => [...prev, {
-                            id: `joint_${Math.random().toString(36).substring(2, 7)}`,
-                            type,
-                            targetA: activeFileId,
-                            targetB: null,
-                            distance: 100,
-                        }])
-                    }
+                body: JSON.stringify({
+                    messages: [...messages, userMsg],
+                    scene: serializeSceneForPrompt()
                 })
+            })
+            if (!req.ok) throw new Error("API Error")
+            return req.json()
+        }
+
+        try {
+            const result = await runAgent(msg, { backendFetch })
+
+            let content = result.reply
+            let actionColor = null
+            const tool = result.toolCalls?.find(tc => tc.tool !== 'ask_user')
+            if (tool) {
+                const map = {
+                    set_physics: 'SET_PHYSICS',
+                    add_joint: 'ADD_JOINT',
+                    create_object: 'CREATE_CAD',
+                    create_shape3d: 'CREATE_CAD',
+                    load_model: 'LOAD_MODEL',
+                    run_simulation: 'SET_PHYSICS'
+                }
+                actionColor = map[tool.tool]
             }
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: res.reply,
-                actionType: res.actions?.[0]?.type 
+                content,
+                actionType: actionColor
             }])
-
         } catch (err) {
             console.error(err)
             setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Could not connect to the REALIS AI server. Please ensure `python server.py` is running." }])

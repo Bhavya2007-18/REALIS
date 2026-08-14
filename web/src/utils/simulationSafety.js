@@ -7,6 +7,14 @@ export const SIM_UNITS = {
     V6_ROD_LENGTH_MAX: 60
 }
 
+// Fixed-step accumulator limits (Gaffer on Games "Fix Your Timestep").
+// MAX_FRAME_DT clamps the real frame delta so a stalled tab cannot spiral;
+// MAX_STEPS_PER_FRAME caps catch-up work so one slow frame cannot freeze the UI.
+export const FIXED_STEP = {
+    MAX_FRAME_DT: 0.5,
+    MAX_STEPS_PER_FRAME: 8
+}
+
 export const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
 export const isFiniteNumber = (value) => Number.isFinite(value) && !Number.isNaN(value)

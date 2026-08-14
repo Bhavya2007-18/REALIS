@@ -1,6 +1,18 @@
 import { create } from 'zustand'
+import { temporal } from 'zundo'
 
-const useStore = create((set) => ({
+// Scene fields tracked by the undo/redo history (Pascal use-scene temporal pattern).
+const HISTORY_PARTIALIZE = (s) => ({
+    objects: s.objects,
+    shapes3D: s.shapes3D,
+    constraints: s.constraints || [],
+    layers: s.layers,
+    activeLayerId: s.activeLayerId
+});
+
+const HISTORY_LIMIT = 50;
+
+const useStore = create(temporal((set) => ({
     activeWorkspace: 'design',
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
 
@@ -84,101 +96,51 @@ const useStore = create((set) => ({
     history: [],
     historyIndex: -1,
 
-    saveHistorySnapshot: () => set((state) => {
-        
-        const nextHistory = state.history.slice(0, state.historyIndex + 1);
+    // Backed by zundo's temporal store (attached as useStore.temporal).
+    saveHistorySnapshot: () => { /* zundo auto-tracks scene sets; kept for caller compat */ },
 
-        const snapshot = {
-            objects: JSON.parse(JSON.stringify(state.objects)),
-            layers: JSON.parse(JSON.stringify(state.layers)),
-            shapes3D: JSON.parse(JSON.stringify(state.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(state.constraints || [])),
-            activeLayerId: state.activeLayerId
-        };
+    undo: () => useStore.temporal.getState().undo(),
 
-        
-        if (nextHistory.length > 0) {
-            const last = nextHistory[nextHistory.length - 1];
-            if (JSON.stringify(last.objects) === JSON.stringify(snapshot.objects) &&
-                JSON.stringify(last.layers) === JSON.stringify(snapshot.layers) &&
-                JSON.stringify(last.shapes3D) === JSON.stringify(snapshot.shapes3D)) {
-                return state;
-            }
+    redo: () => useStore.temporal.getState().redo(),
+
+    // Live-gesture controls: pause tracking during a drag, resume once done,
+    // so a full drag collapses into a single undo step (Pascal history-control).
+    pauseHistory: () => useStore.temporal.getState().pause(),
+
+    resumeHistory: () => useStore.temporal.getState().resume(),
+
+    // Push a snapshot of the current scene into the undo stack, then pause
+    // tracking. Use at the START of a continuous gesture (draw / move / slider);
+    // call endHistoryGesture() when the gesture finishes.
+    beginHistoryGesture: () => {
+        const t = useStore.temporal.getState();
+        const snapshot = HISTORY_PARTIALIZE(useStore.getState());
+        const last = t.pastStates[t.pastStates.length - 1];
+        if (!last || JSON.stringify(last) !== JSON.stringify(snapshot)) {
+            useStore.temporal.setState({
+                pastStates: [...t.pastStates, snapshot].slice(-HISTORY_LIMIT),
+                futureStates: []
+            });
         }
+        t.pause();
+    },
 
-        nextHistory.push(snapshot);
-        if (nextHistory.length > 50) nextHistory.shift();
+    endHistoryGesture: () => {
+        useStore.temporal.getState().resume();
+    },
 
-        return {
-            history: nextHistory,
-            historyIndex: nextHistory.length - 1
-        };
-    }),
-
-    undo: () => set((state) => {
-        let { history, historyIndex, objects, layers, shapes3D, constraints, activeLayerId } = state;
-        if (historyIndex < 0 && history.length === 0) return state;
-
-        const currentState = {
-            objects: JSON.parse(JSON.stringify(objects)),
-            layers: JSON.parse(JSON.stringify(layers)),
-            shapes3D: JSON.parse(JSON.stringify(shapes3D)),
-            constraints: JSON.parse(JSON.stringify(constraints || [])),
-            activeLayerId
-        };
-
-        
-        let currentHistory = [...history];
-        let cIdx = historyIndex;
-
-        if (cIdx === currentHistory.length - 1) {
-            if (JSON.stringify(currentState) !== JSON.stringify(currentHistory[cIdx])) {
-                currentHistory.push(currentState);
-                cIdx = currentHistory.length - 1;
-            }
-        }
-
-        if (cIdx <= 0) return state;
-
-        const targetIdx = cIdx - 1;
-        const target = currentHistory[targetIdx];
-
-        return {
-            history: currentHistory,
-            historyIndex: targetIdx,
-            objects: JSON.parse(JSON.stringify(target.objects)),
-            layers: JSON.parse(JSON.stringify(target.layers)),
-            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
-            activeLayerId: target.activeLayerId
-        };
-    }),
-
-    redo: () => set((state) => {
-        if (state.historyIndex >= state.history.length - 1) return state;
-
-        const targetIdx = state.historyIndex + 1;
-        const target = state.history[targetIdx];
-
-        return {
-            historyIndex: targetIdx,
-            objects: JSON.parse(JSON.stringify(target.objects)),
-            layers: JSON.parse(JSON.stringify(target.layers)),
-            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
-            activeLayerId: target.activeLayerId
-        };
-    }),
-
-    clearDesign: () => set({
-        objects: [],
-        shapes3D: [],
-        constraints: [],
-        history: [],
-        historyIndex: -1,
-        selectedIds: [],
-        selected3DIds: []
-    }),
+    clearDesign: () => {
+        useStore.temporal.getState().clear();
+        set({
+            objects: [],
+            shapes3D: [],
+            constraints: [],
+            history: [],
+            historyIndex: -1,
+            selectedIds: [],
+            selected3DIds: []
+        });
+    },
 
     
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
@@ -325,8 +287,6 @@ const useStore = create((set) => ({
         return { objects: [...objects, ...clones] };
     }),
 
-    constraints: [],
-    setConstraints: (cons) => set({ constraints: typeof cons === 'function' ? cons(useStore.getState().constraints) : cons }),
     addConstraint: (constraint) => set((state) => {
         state.saveHistorySnapshot();
         const motorDefaults = {
@@ -477,7 +437,11 @@ const useStore = create((set) => ({
     simulationFrames: [], 
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
-    setIsPlaying: (playing) => set({ isPlaying: playing }),
+    setIsPlaying: (playing) => {
+        if (playing) useStore.temporal.getState().pause();
+        else useStore.temporal.getState().resume();
+        set({ isPlaying: playing });
+    },
     currentFrameIndex: 0,
     setCurrentFrameIndex: (index) => set({ currentFrameIndex: index }),
 
@@ -522,6 +486,10 @@ const useStore = create((set) => ({
     setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
     sketchDraft: null, 
     setSketchDraft: (draft) => set({ sketchDraft: draft })
+}), {
+    partialize: HISTORY_PARTIALIZE,
+    equality: (past, current) => JSON.stringify(past) === JSON.stringify(current),
+    limit: HISTORY_LIMIT
 }))
 
 export default useStore

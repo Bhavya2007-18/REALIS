@@ -13,6 +13,8 @@ export default function ModelControls() {
 
     const activeModelControls = useStore(state => state.activeModelControls) || [];
     const updateModelControl = useStore(state => state.updateModelControl);
+    const beginHistoryGesture = useStore(state => state.beginHistoryGesture);
+    const endHistoryGesture = useStore(state => state.endHistoryGesture);
 
     if (!activeModelControls || activeModelControls.length === 0) {
         return null;
@@ -36,6 +38,8 @@ export default function ModelControls() {
                             max={control.max} 
                             step={control.step}
                             value={control.current}
+                            onPointerDown={beginHistoryGesture}
+                            onPointerUp={endHistoryGesture}
                             onChange={e => updateModelControl(control.id, parseFloat(e.target.value))}
                             className="w-full h-1 bg-white/10 rounded-full accent-emerald-500 outline-none cursor-pointer"
                         />

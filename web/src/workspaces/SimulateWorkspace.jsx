@@ -7,7 +7,7 @@ import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
 import MechanicalAssemblySolver from '../utils/solvers/mechanicalAssemblySolver';
 import V6RenderAdapter from '../utils/v6RenderAdapter';
-import { SIM_UNITS, clamp, isFiniteNumber, createSimulationLogger } from '../utils/simulationSafety';
+import { SIM_UNITS, FIXED_STEP, clamp, isFiniteNumber, createSimulationLogger } from '../utils/simulationSafety';
 import V6ControlPanel from '../components/V6ControlPanel';
 import modelLoader from '../services/modelLoader';
 import ModelControls from '../components/ModelControls';
@@ -93,6 +93,8 @@ export default function SimulateWorkspace() {
     const reqRef = useRef(null);
     const mechSolver = useRef(new MechanicsSolver(simulationSettings));
     const thermSolver = useRef(new ThermalSolver(simulationSettings));
+    const accumulatorRef = useRef(0);
+    const prevRigidSnapshotRef = useRef(null);
 
     
     const [renderBodies, setRenderBodies] = useState([...shapes3D, ...objects]);
@@ -149,6 +151,7 @@ export default function SimulateWorkspace() {
     useEffect(() => {
         if (!isPlaying) {
             cancelAnimationFrame(reqRef.current);
+            accumulatorRef.current = 0;
             return;
         }
 
@@ -156,20 +159,26 @@ export default function SimulateWorkspace() {
 
         const loop = (time) => {
             const elapsed = (time - lastTime) / 1000;
-            const rawDt = Math.min(Math.max(elapsed, 0), SIM_UNITS.TARGET_FRAME_DT);
             lastTime = time;
-            if (!isFiniteNumber(rawDt)) {
-                v6LogRef.current.log(Math.floor(time), 'invalid_dt', { elapsed, rawDt, source: 'mainLoop' }, 'error');
+            if (!isFiniteNumber(elapsed)) {
+                v6LogRef.current.log(Math.floor(time), 'invalid_dt', { elapsed, source: 'mainLoop' }, 'error');
                 reqRef.current = requestAnimationFrame(loop);
                 return;
             }
 
-            
+            // Fixed-step accumulator (Gaffer on Games / R3F-Rapier pattern).
+            // Clamp real frame delta to avoid the "spiral of death" after stalls,
+            // accumulate it, then run as many fixed steps as time allows.
+            const clampedDelta = Math.min(Math.max(elapsed, 0), FIXED_STEP.MAX_FRAME_DT);
+            accumulatorRef.current += clampedDelta;
+            const fixedDt = mechSolver.current.settings?.timeStep ?? SIM_UNITS.TARGET_FRAME_DT;
+
             if (isV6Active && v6SolverRef.current) {
-                const snap = v6SolverRef.current.tick(rawDt);
+                // v6 + mechanical solvers carry their own internal accumulators.
+                const snap = v6SolverRef.current.tick(clampedDelta);
                 setV6EngineState(snap);
                 setShapes3D(prev => {
-                    v6RenderAdapterRef.current.snapshotToTransforms(snap, prev, rawDt, v6SolverRef.current.config);
+                    v6RenderAdapterRef.current.snapshotToTransforms(snap, prev, clampedDelta, v6SolverRef.current.config);
                     const alpha = clamp(snap.interpolationAlpha ?? 0, 0, 1);
                     const interpolated = v6RenderAdapterRef.current.getInterpolatedTransforms(alpha);
                     return v6RenderAdapterRef.current.apply(prev, interpolated);
@@ -177,9 +186,8 @@ export default function SimulateWorkspace() {
 
                 setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
 
-            
             } else if (isMechanicalAssemblyActive && mechanicalSolverRef.current) {
-                const { states, time: simTime } = mechanicalSolverRef.current.tick(rawDt);
+                const { states, time: simTime } = mechanicalSolverRef.current.tick(clampedDelta);
                 if (states && states.size > 0) {
                     setShapes3D(prev => mechanicalSolverRef.current.applyToShapes(prev, states));
                 }
@@ -188,32 +196,61 @@ export default function SimulateWorkspace() {
                     energy: { kinetic: 0, potential: 0, total: 0 }
                 });
 
-            
             } else if (simulationType === 'rigid') {
-                
-                stepWater(rawDt);
-                
-                const snapshot = mechSolver.current.step();
-                
+                // Previous step state is captured before stepping so rendering can
+                // interpolate between the last completed state and the current one.
+                const prevSnapshot = mechSolver.current.getSnapshot();
+                prevRigidSnapshotRef.current = prevSnapshot;
+
+                let steps = 0;
+                while (accumulatorRef.current >= fixedDt && steps < FIXED_STEP.MAX_STEPS_PER_FRAME) {
+                    stepWater(fixedDt);
+                    mechSolver.current.step();
+                    accumulatorRef.current -= fixedDt;
+                    steps++;
+                }
+
+                const snapshot = mechSolver.current.getSnapshot();
+                const alpha = clamp(accumulatorRef.current / fixedDt, 0, 1);
+                const prev = prevRigidSnapshotRef.current;
+
                 const newRenderBodies = renderBodies.map(rb => {
                     const sb = snapshot.bodies.find(b => b.id === rb.id);
-                    if (sb) {
-                        const pos = Array.isArray(sb.position)
-                            ? sb.position
-                            : [sb.position.x || 0, sb.position.y || 0, sb.position.z || 0];
-                        const rot = Array.isArray(sb.rotation)
-                            ? sb.rotation
-                            : [sb.rotation?.x || 0, sb.rotation?.y || 0, sb.rotation?.z || 0];
-                        return { ...rb, position: pos, rotation: rot };
+                    if (!sb) return rb;
+                    const toPos = Array.isArray(sb.position)
+                        ? sb.position
+                        : [sb.position.x || 0, sb.position.y || 0, sb.position.z || 0];
+                    let pos = toPos;
+                    if (prev && steps > 0 && alpha > 0 && alpha < 1) {
+                        const pb = prev.bodies.find(b => b.id === rb.id);
+                        if (pb) {
+                            const fromPos = Array.isArray(pb.position)
+                                ? pb.position
+                                : [pb.position.x || 0, pb.position.y || 0, pb.position.z || 0];
+                            pos = [
+                                fromPos[0] + (toPos[0] - fromPos[0]) * alpha,
+                                fromPos[1] + (toPos[1] - fromPos[1]) * alpha,
+                                fromPos[2] + (toPos[2] - fromPos[2]) * alpha,
+                            ];
+                        }
                     }
-                    return rb;
+                    const rot = Array.isArray(sb.rotation)
+                        ? sb.rotation
+                        : [sb.rotation?.x || 0, sb.rotation?.y || 0, sb.rotation?.z || 0];
+                    return { ...rb, position: pos, rotation: rot };
                 });
                 setRenderBodies(newRenderBodies);
                 setVectors(snapshot.vectors || []);
                 setSimulationState({ time: snapshot.time, energy: snapshot.energy });
 
             } else if (simulationType === 'thermal') {
-                const snapshot = thermSolver.current.step();
+                let steps = 0;
+                while (accumulatorRef.current >= fixedDt && steps < FIXED_STEP.MAX_STEPS_PER_FRAME) {
+                    thermSolver.current.step();
+                    accumulatorRef.current -= fixedDt;
+                    steps++;
+                }
+                const snapshot = thermSolver.current.getSnapshot();
                 setColorMap(snapshot.colorMap || {});
                 setSimulationState({ time: snapshot.time, energy: snapshot.energy });
             }

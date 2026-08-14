@@ -1,21 +1,23 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling, PenTool } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling, PenTool, Download } from 'lucide-react'
 import { SimulationDemoManager } from '../utils/SimulationDemoManager';
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
+import { exportScene } from '../services/exportManager'
 
 export default function DesignWorkspace() {
     const activeTool = useStore((s) => s.activeTool)
     const setActiveTool = useStore((s) => s.setActiveTool)
     const active3DTool = useStore((s) => s.active3DTool)
     const setActive3DTool = useStore((s) => s.setActive3DTool)
-    const addShape3D = useStore((s) => s.addShape3D)
     const shapes3D = useStore((s) => s.shapes3D)
 
     
     const [snappingEnabled, setSnappingEnabled] = useState(true)
     const SNAP_THRESHOLD = 15;
+    const [exportMenuOpen, setExportMenuOpen] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
     
     const objects = useStore((s) => s.objects)
@@ -31,6 +33,8 @@ export default function DesignWorkspace() {
     const undo = useStore(s => s.undo)
     const redo = useStore(s => s.redo)
     const saveHistorySnapshot = useStore(s => s.saveHistorySnapshot)
+    const beginHistoryGesture = useStore(s => s.beginHistoryGesture)
+    const endHistoryGesture = useStore(s => s.endHistoryGesture)
     const [isDrawing, setIsDrawing] = useState(false)
     const [currentAction, setCurrentAction] = useState(null)
     const [isSimulating, setIsSimulating] = useState(false)
@@ -262,7 +266,7 @@ export default function DesignWorkspace() {
                 pts.push({ x: obj.cx, y: obj.cy, type: 'center' }); 
             } else if (obj.type === 'path' && obj.points) {
                 
-                obj.points.forEach((p, idx) => {
+                obj.points.forEach((p) => {
                     pts.push({ x: p.x, y: p.y, type: 'endpoint' });
                 });
                 
@@ -410,13 +414,13 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'move' && selectedIds.length > 0) {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             setCurrentAction({ type: 'move', startX: x, startY: y, originalObjects: [...objects] })
             return
         }
 
         if (activeTool === 'scale' && selectedIds.length > 0) {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             
             const objToScale = objects.find(o => o.id === selectedIds[0])
             if (objToScale) {
@@ -433,7 +437,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'rotate' && selectedIds.length > 0) {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             
             const objToRotate = objects.find(o => o.id === selectedIds[0])
             if (objToRotate) {
@@ -449,7 +453,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'rect') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
@@ -457,7 +461,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'circle') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
@@ -465,7 +469,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'polygon') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
@@ -473,7 +477,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'arc') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
@@ -481,7 +485,7 @@ export default function DesignWorkspace() {
         }
         
         if (activeTool === 'bezier') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = {
                 id: Math.random().toString(36).substring(2, 9),
                 type: 'bezier',
@@ -500,7 +504,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'ruler') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_ruler', id: newObj.id, startX: x, startY: y })
@@ -508,7 +512,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'pencil') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = {
                 id: Math.random().toString(36).substring(2, 9),
                 type: 'path',
@@ -524,7 +528,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'dimension') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_dimension', id: newObj.id, startX: x, startY: y })
@@ -723,12 +727,16 @@ export default function DesignWorkspace() {
     const handlePointerUp = (e) => {
         if (panRef.current.panning) {
             panRef.current = { x: pan.x, y: pan.y, startX: 0, startY: 0, panning: false }
+            endHistoryGesture()
             return
         }
         if (activeTool === 'pencil' && currentAction?.type === 'create_polyline') {
             
             
-            if (!isDrawing) return; 
+            if (!isDrawing) {
+                endHistoryGesture()
+                return;
+            }
 
             let { x, y } = getRelativeCoordinates(e)
             const snap = findSnapPoint(x, y, currentAction.id);
@@ -746,6 +754,7 @@ export default function DesignWorkspace() {
             }))
             
             setIsDrawing(false) 
+            endHistoryGesture()
             return;
         }
 
@@ -807,6 +816,7 @@ export default function DesignWorkspace() {
         if (currentAction && currentAction.type !== 'create_polyline' && currentAction.type !== 'select_window') {
             setCurrentAction(null)
         }
+        endHistoryGesture()
     }
 
     
@@ -1023,7 +1033,6 @@ export default function DesignWorkspace() {
             const dx = obj.x2 - obj.x1, dy = obj.y2 - obj.y1
             const dist = Math.sqrt(dx * dx + dy * dy).toFixed(1)
             const midX = (obj.x1 + obj.x2) / 2, midY = (obj.y1 + obj.y2) / 2
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI
             const nx = -dy / Math.sqrt(dx * dx + dy * dy) * 20
             const ny = dx / Math.sqrt(dx * dx + dy * dy) * 20
             return (
@@ -1284,7 +1293,7 @@ export default function DesignWorkspace() {
             onPointerDown: (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                saveHistorySnapshot();
+                beginHistoryGesture();
                 setIsDrawing(true);
                 setCurrentAction({ type: 'drag_handle', id: obj.id, handleType, originalObj: { ...obj } });
             }
@@ -1505,6 +1514,37 @@ export default function DesignWorkspace() {
                     title={isSplitView ? 'Single View' : 'Split View'}>
                     <Layers size={16} />
                 </button>
+                <div className="relative">
+                    <button
+                        onClick={() => setExportMenuOpen(o => !o)}
+                        disabled={exporting}
+                        className={`p-2 rounded-lg transition-all cursor-pointer text-slate-400 hover:text-white hover:bg-slate-700/60 ${exportMenuOpen ? 'tool-active' : ''} ${exporting ? 'opacity-60 cursor-wait' : ''}`}
+                        title="Export model (GLB / STL / OBJ)">
+                        <Download size={16} />
+                    </button>
+                    {exportMenuOpen && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                            <div className="absolute left-0 top-full mt-1 z-50 glass p-1 rounded-lg shadow-2xl flex flex-col min-w-[120px]"
+                                onClick={(e) => e.stopPropagation()}>
+                                {['glb', 'stl', 'obj'].map(fmt => (
+                                    <button key={fmt}
+                                        disabled={exporting}
+                                        onClick={() => {
+                                            setExportMenuOpen(false);
+                                            setExporting(true);
+                                            exportScene(fmt, objects, shapes3D)
+                                                .catch(err => console.error('export failed:', err))
+                                                .finally(() => setExporting(false));
+                                        }}
+                                        className="px-3 py-1.5 text-left text-[11px] text-slate-300 hover:text-white hover:bg-slate-700/60 rounded-md transition-colors cursor-pointer uppercase disabled:opacity-50">
+                                        {exporting ? '...' : `.${fmt}`}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             {}

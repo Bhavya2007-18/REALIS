@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, Suspense } from 'react';
-import { Canvas, useLoader, useFrame } from '@react-three/fiber';
+import { Canvas, useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport, useProgress, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Grid as GridIcon, Maximize2, Minimize2 } from 'lucide-react';
@@ -14,6 +14,24 @@ function Loader() {
   const { progress } = useProgress()
   return <Html center className="text-white text-xs font-mono bg-black/50 p-2 rounded">{progress.toFixed(0)}% loaded</Html>
 }
+
+// Maps a 2D canvas object to its 3D world origin.
+// default: 2D (x=cx, y=cy) -> 3D (x, y=thickness/2, z)
+// vertical3D: 2D (x=cx, y=cy) -> 3D upright: world y = -cy (cy grows downward on canvas)
+const objToWorldPos = (o, fallbackY = 0.05) => {
+    const isVertical = !!o.vertical3D;
+    let px, py;
+    if (o.position) {
+        px = o.position[0];
+        py = o.position[1];
+    } else {
+        px = o.x + (o.width || 0) / 2 || o.cx || 0;
+        py = o.y + (o.height || 0) / 2 || o.cy || 0;
+    }
+    return isVertical
+        ? [px, -py, 0]
+        : [px, (isVertical ? 0 : fallbackY), py];
+};
 
  
 
@@ -60,6 +78,8 @@ const Shape3DNode = React.memo(({ shape }) => {
     const setSelected3DIds = useStore(state => state.setSelected3DIds);
     const active3DTool = useStore(state => state.active3DTool);
     const setShapes3D = useStore(state => state.setShapes3D);
+    const beginHistoryGesture = useStore(state => state.beginHistoryGesture);
+    const endHistoryGesture = useStore(state => state.endHistoryGesture);
     const profile = useStore(state => shape.type === 'extruded_solid' ? state.objects.find(o => o.id === (shape.params?.profileId || shape.profileId)) : null);
     const isV6Active = useStore(state => state.simulationPreset === 'v6_engine_simulation');
 
@@ -164,6 +184,7 @@ const Shape3DNode = React.memo(({ shape }) => {
             }
             return s;
         }));
+        endHistoryGesture();
     };
 
     const meshNode = (
@@ -227,6 +248,7 @@ const Shape3DNode = React.memo(({ shape }) => {
                 <TransformControls
                     object={groupRef}
                     mode={active3DTool}
+                    onMouseDown={beginHistoryGesture}
                     onMouseUp={onTransformEnd}
                 />
             )}
@@ -303,6 +325,25 @@ const CollisionMarker = React.memo(({ contact }) => {
     );
 });
 
+const DistanceRod = ({ constraint, objects }) => {
+    const targetA = objects.find(o => o.id === constraint.targetA);
+    const targetB = objects.find(o => o.id === constraint.targetB);
+    if (!targetA || !targetB) return null;
+
+    const pA = objToWorldPos(targetA);
+    const pB = objToWorldPos(targetB);
+    const mid = [(pA[0] + pB[0]) / 2, (pA[1] + pB[1]) / 2, (pA[2] + pB[2]) / 2];
+    const length = Math.hypot(pB[0] - pA[0], pB[1] - pA[1], pB[2] - pA[2]) || 1;
+    const dir = [(pB[0] - pA[0]) / length, (pB[1] - pA[1]) / length, (pB[2] - pA[2]) / length];
+
+    return (
+        <mesh position={mid} quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dir[0], dir[1], dir[2]))}>
+            <cylinderGeometry args={[0.3, 0.3, length, 6]} />
+            <meshBasicMaterial color="#a855f7" transparent opacity={0.7} />
+        </mesh>
+    );
+};
+
 const ExtrudePreview = () => {
     const active3DTool = useStore(s => s.active3DTool);
     const extrudeOperation = useStore(s => s.extrudeOperation);
@@ -356,7 +397,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const yPosOverride = obj.y_override !== undefined ? obj.y_override : depth / 2;
     const currentPos = simState
         ? [simState.position.x, simState.position.y, simState.position.z]
-        : [obj.x + (obj.width || 0) / 2 || obj.cx || 0, yPosOverride, obj.y + (obj.height || 0) / 2 || obj.cy || 0];
+        : objToWorldPos(obj, yPosOverride);
 
     const currentRot = simState
         ? [simState.rotation.x, simState.rotation.y, simState.rotation.z]
@@ -368,6 +409,8 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const setObjects = useStore(state => state.setObjects);
     const selectedIds = useStore(state => state.selectedIds);
     const setSelectedIds = useStore(state => state.setSelectedIds);
+    const beginHistoryGesture = useStore(state => state.beginHistoryGesture);
+    const endHistoryGesture = useStore(state => state.endHistoryGesture);
     const isSelected = selectedIds.includes(obj.id);
     const isTransforming = isSelected && ['translate', 'rotate', 'scale'].includes(active3DTool);
 
@@ -399,6 +442,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
             }
             return item;
         }));
+        endHistoryGesture();
     };
 
     const [isDragging, setIsDragging] = useState(false);
@@ -408,6 +452,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const handlePointerDown = (e) => {
         e.stopPropagation();
         if (active3DTool === 'extrude') {
+            beginHistoryGesture();
             setIsDragging(true);
             setStartY(e.clientY);
             if (isSelected) {
@@ -446,6 +491,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
         if (isDragging) {
             setIsDragging(false);
             e.target.releasePointerCapture(e.pointerId);
+            endHistoryGesture();
         }
     };
 
@@ -475,7 +521,10 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
 
     const geometryProps = React.useMemo(() => {
         if (obj.type === 'rect') return { type: 'box', args: [obj.width, depth, obj.height] };
-        if (obj.type === 'circle') return { type: 'cylinder', args: [obj.r, obj.r, depth, 32] };
+        if (obj.type === 'circle') {
+            if (obj.vertical3D) return { type: 'sphere', args: [obj.r || (obj.width || 10) / 2, 32, 32] };
+            return { type: 'cylinder', args: [obj.r, obj.r, depth, 32] };
+        }
         if (customShape) return { type: 'extrude', args: [customShape, { depth: depth, bevelEnabled: false }] };
         return null;
     }, [obj, depth, customShape]);
@@ -493,6 +542,7 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
             >
                 {geometryProps.type === 'box' && <boxGeometry args={geometryProps.args} />}
                 {geometryProps.type === 'cylinder' && <cylinderGeometry args={geometryProps.args} />}
+                {geometryProps.type === 'sphere' && <sphereGeometry args={geometryProps.args} />}
                 {geometryProps.type === 'extrude' && <extrudeGeometry args={geometryProps.args} />}
                 <meshStandardMaterial 
                     color={obj.fill || obj.stroke || '#3b82f6'} 
@@ -523,12 +573,67 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
                 <TransformControls
                     object={groupRef}
                     mode={active3DTool}
+                    onMouseDown={beginHistoryGesture}
                     onMouseUp={onTransformEnd}
                 />
             )}
         </>
     );
 });
+
+const CameraRig = ({ objects, shapes3D, disabled }) => {
+    const camera = useThree(s => s.camera);
+    const controls = useThree(s => s.controls);
+    const signatureRef = useRef('');
+
+    useEffect(() => {
+        if (disabled) return;
+        const sig = JSON.stringify([
+            (objects || []).map(o => [o.id, o.cx, o.cy, o.x, o.y, o.width, o.height, o.r, o.depth, o.y_override]),
+            (shapes3D || []).map(s => [s.id, s.position, s.params])
+        ]);
+        if (sig === signatureRef.current) return;
+        signatureRef.current = sig;
+        if (!objects?.length && !shapes3D?.length) return;
+
+        const box = new THREE.Box3();
+        objects.forEach(o => {
+            const ext = {
+                x: (o.width || (o.r || 0) * 2 || 2) / 2,
+                y: (o.depth ?? 0.1) / 2,
+                z: (o.height || (o.r || 0) * 2 || 2) / 2
+            };
+            const p = objToWorldPos(o);
+            const c = new THREE.Vector3(p[0], p[1], p[2]);
+            box.expandByPoint(new THREE.Vector3(c.x - ext.x, c.y - ext.y, c.z - ext.z));
+            box.expandByPoint(new THREE.Vector3(c.x + ext.x, c.y + ext.y, c.z + ext.z));
+        });
+        shapes3D.forEach(s => {
+            const p = s.position || [0, 0, 0];
+            const pr = s.params || {};
+            const ex = pr.width || pr.radiusTop || pr.radius || pr.radiusBottom || 2;
+            const ey = pr.height || pr.length || pr.radius || 2;
+            const ez = pr.width || pr.depth || pr.radius || pr.radiusBottom || 2;
+            box.expandByPoint(new THREE.Vector3(p[0] - ex / 2, p[1] - ey / 2, p[2] - ez / 2));
+            box.expandByPoint(new THREE.Vector3(p[0] + ex / 2, p[1] + ey / 2, p[2] + ez / 2));
+        });
+
+        if (box.isEmpty()) return;
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z, 1);
+        const dist = maxDim * 2.2;
+
+        camera.position.set(center.x + dist * 0.6, center.y + dist * 0.7, center.z + dist);
+        camera.lookAt(center);
+        if (controls) {
+            controls.target.copy(center);
+            controls.update();
+        }
+    }, [objects, shapes3D, camera, controls, disabled]);
+
+    return null;
+};
 
 export default function Viewport3D({ objects }) {
     const shapes3D = useStore(state => state.shapes3D);
@@ -650,7 +755,10 @@ export default function Viewport3D({ objects }) {
 
             {/* Constraints / Joints */}
             {constraints.map(c => (
-                <JointMarker key={c.id} constraint={c} />
+                <React.Fragment key={c.id}>
+                    <JointMarker constraint={c} />
+                    {c.type === 'distance' && <DistanceRod constraint={c} objects={objects} />}
+                </React.Fragment>
             ))}
 
             {/* Collisions for current frame */}
@@ -665,6 +773,8 @@ export default function Viewport3D({ objects }) {
             <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
                 <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="white" />
             </GizmoHelper>
+
+            <CameraRig objects={objects} shapes3D={shapes3D} disabled={isPlaying} />
         </Canvas>
         </div>
     );

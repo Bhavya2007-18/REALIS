@@ -92,3 +92,6 @@ validation_result.txt
 invariant_ledger.csv
 output.txt
 renderer_init.txt
+
+# Reference repos (learned patterns only, not part of REALIS)
+forks/
