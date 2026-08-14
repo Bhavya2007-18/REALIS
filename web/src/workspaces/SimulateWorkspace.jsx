@@ -147,6 +147,13 @@ export default function SimulateWorkspace() {
     }, [activeWorkspace]);
 
     
+    const renderBodiesRef = useRef(renderBodies);
+    useEffect(() => {
+        renderBodiesRef.current = renderBodies;
+    }, [renderBodies]);
+
+    const lastTelemetryTimeRef = useRef(0);
+
     useEffect(() => {
         if (!isPlaying) {
             cancelAnimationFrame(reqRef.current);
@@ -155,6 +162,7 @@ export default function SimulateWorkspace() {
         }
 
         let lastTime = performance.now();
+        lastTelemetryTimeRef.current = performance.now();
 
         const loop = (time) => {
             const elapsed = (time - lastTime) / 1000;
@@ -166,16 +174,19 @@ export default function SimulateWorkspace() {
             }
 
             // Fixed-step accumulator (Gaffer on Games / R3F-Rapier pattern).
-            // Clamp real frame delta to avoid the "spiral of death" after stalls,
-            // accumulate it, then run as many fixed steps as time allows.
             const clampedDelta = Math.min(Math.max(elapsed, 0), FIXED_STEP.MAX_FRAME_DT);
             accumulatorRef.current += clampedDelta;
             const fixedDt = mechSolver.current.settings?.timeStep ?? SIM_UNITS.TARGET_FRAME_DT;
 
+            const shouldUpdateTelemetry = (time - lastTelemetryTimeRef.current) >= 45; // ~22 FPS for UI telemetry
+
             if (isV6Active && v6SolverRef.current) {
-                // v6 + mechanical solvers carry their own internal accumulators.
                 const snap = v6SolverRef.current.tick(clampedDelta);
-                setV6EngineState(snap);
+                if (shouldUpdateTelemetry) {
+                    lastTelemetryTimeRef.current = time;
+                    setV6EngineState(snap);
+                    setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
+                }
                 setShapes3D(prev => {
                     v6RenderAdapterRef.current.snapshotToTransforms(snap, prev, clampedDelta, v6SolverRef.current.config);
                     const alpha = clamp(snap.interpolationAlpha ?? 0, 0, 1);
@@ -183,21 +194,20 @@ export default function SimulateWorkspace() {
                     return v6RenderAdapterRef.current.apply(prev, interpolated);
                 });
 
-                setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
-
             } else if (isMechanicalAssemblyActive && mechanicalSolverRef.current) {
                 const { states, time: simTime } = mechanicalSolverRef.current.tick(clampedDelta);
                 if (states && states.size > 0) {
                     setShapes3D(prev => mechanicalSolverRef.current.applyToShapes(prev, states));
                 }
-                setSimulationState({
-                    time: simTime || 0,
-                    energy: { kinetic: 0, potential: 0, total: 0 }
-                });
+                if (shouldUpdateTelemetry) {
+                    lastTelemetryTimeRef.current = time;
+                    setSimulationState({
+                        time: simTime || 0,
+                        energy: { kinetic: 0, potential: 0, total: 0 }
+                    });
+                }
 
             } else if (simulationType === 'rigid') {
-                // Previous step state is captured before stepping so rendering can
-                // interpolate between the last completed state and the current one.
                 const prevSnapshot = mechSolver.current.getSnapshot();
                 prevRigidSnapshotRef.current = prevSnapshot;
 
@@ -213,7 +223,8 @@ export default function SimulateWorkspace() {
                 const alpha = clamp(accumulatorRef.current / fixedDt, 0, 1);
                 const prev = prevRigidSnapshotRef.current;
 
-                const newRenderBodies = renderBodies.map(rb => {
+                const currentBodies = renderBodiesRef.current;
+                const newRenderBodies = currentBodies.map(rb => {
                     const sb = snapshot.bodies.find(b => b.id === rb.id);
                     if (!sb) return rb;
                     const toPos = Array.isArray(sb.position)
@@ -238,9 +249,15 @@ export default function SimulateWorkspace() {
                         : [sb.rotation?.x || 0, sb.rotation?.y || 0, sb.rotation?.z || 0];
                     return { ...rb, position: pos, rotation: rot };
                 });
+
+                renderBodiesRef.current = newRenderBodies;
                 setRenderBodies(newRenderBodies);
-                setVectors(snapshot.vectors || []);
-                setSimulationState({ time: snapshot.time, energy: snapshot.energy });
+
+                if (shouldUpdateTelemetry) {
+                    lastTelemetryTimeRef.current = time;
+                    setVectors(snapshot.vectors || []);
+                    setSimulationState({ time: snapshot.time, energy: snapshot.energy });
+                }
 
             } else if (simulationType === 'thermal') {
                 let steps = 0;
@@ -250,8 +267,11 @@ export default function SimulateWorkspace() {
                     steps++;
                 }
                 const snapshot = thermSolver.current.getSnapshot();
-                setColorMap(snapshot.colorMap || {});
-                setSimulationState({ time: snapshot.time, energy: snapshot.energy });
+                if (shouldUpdateTelemetry) {
+                    lastTelemetryTimeRef.current = time;
+                    setColorMap(snapshot.colorMap || {});
+                    setSimulationState({ time: snapshot.time, energy: snapshot.energy });
+                }
             }
 
             reqRef.current = requestAnimationFrame(loop);
@@ -259,7 +279,7 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, renderBodies, setShapes3D, setSimulationState]);
+    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, setShapes3D, setSimulationState]);
 
     
     useEffect(() => {

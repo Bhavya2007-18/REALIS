@@ -337,35 +337,61 @@ export default function DesignWorkspace() {
             }
         });
 
-        
-        const allSegments = [];
+        // 3. Line-Line Intersections with AABB Spatial Pre-Filtering around cursor (px, py)
+        const SNAP_BOUNDS = 40;
+        const nearMinX = px - SNAP_BOUNDS;
+        const nearMaxX = px + SNAP_BOUNDS;
+        const nearMinY = py - SNAP_BOUNDS;
+        const nearMaxY = py + SNAP_BOUNDS;
+
+        const candidateSegments = [];
         objects.forEach(obj => {
             if (obj.id === excludeId) return;
-            if (obj.type === 'ruler' || obj.type === 'dimension') allSegments.push([{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]);
-            else if (obj.type === 'rect') {
+
+            const addSegIfNear = (p1, p2) => {
+                const segMinX = Math.min(p1.x, p2.x);
+                const segMaxX = Math.max(p1.x, p2.x);
+                const segMinY = Math.min(p1.y, p2.y);
+                const segMaxY = Math.max(p1.y, p2.y);
+
+                if (segMaxX >= nearMinX && segMinX <= nearMaxX && segMaxY >= nearMinY && segMinY <= nearMaxY) {
+                    candidateSegments.push([p1, p2]);
+                }
+            };
+
+            if (obj.type === 'ruler' || obj.type === 'dimension') {
+                addSegIfNear({ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 });
+            } else if (obj.type === 'rect') {
                 const w = obj.width, h = obj.height;
-                
                 if (!obj.rotation) {
-                    allSegments.push([{ x: obj.x, y: obj.y }, { x: obj.x + w, y: obj.y }]);
-                    allSegments.push([{ x: obj.x + w, y: obj.y }, { x: obj.x + w, y: obj.y + h }]);
-                    allSegments.push([{ x: obj.x + w, y: obj.y + h }, { x: obj.x, y: obj.y + h }]);
-                    allSegments.push([{ x: obj.x, y: obj.y + h }, { x: obj.x, y: obj.y }]);
+                    const c1 = { x: obj.x, y: obj.y };
+                    const c2 = { x: obj.x + w, y: obj.y };
+                    const c3 = { x: obj.x + w, y: obj.y + h };
+                    const c4 = { x: obj.x, y: obj.y + h };
+                    addSegIfNear(c1, c2);
+                    addSegIfNear(c2, c3);
+                    addSegIfNear(c3, c4);
+                    addSegIfNear(c4, c1);
                 }
             } else if (obj.type === 'path' && obj.points) {
-                for (let i = 0; i < obj.points.length - 1; i++) allSegments.push([obj.points[i], obj.points[i + 1]]);
+                for (let i = 0; i < obj.points.length - 1; i++) {
+                    addSegIfNear(obj.points[i], obj.points[i + 1]);
+                }
             } else if (obj.type === 'polygon') {
                 const polyPts = [];
                 for (let i = 0; i < obj.sides; i++) {
                     const angle = (Math.PI * 2 * i) / obj.sides - Math.PI / 2 + (obj.rotation || 0) * Math.PI / 180;
                     polyPts.push({ x: obj.cx + obj.r * Math.cos(angle), y: obj.cy + obj.r * Math.sin(angle) });
                 }
-                for (let i = 0; i < polyPts.length; i++) allSegments.push([polyPts[i], polyPts[(i + 1) % polyPts.length]]);
+                for (let i = 0; i < polyPts.length; i++) {
+                    addSegIfNear(polyPts[i], polyPts[(i + 1) % polyPts.length]);
+                }
             }
         });
 
-        for (let i = 0; i < allSegments.length; i++) {
-            for (let j = i + 1; j < allSegments.length; j++) {
-                const isect = getLineIntersection(allSegments[i][0], allSegments[i][1], allSegments[j][0], allSegments[j][1]);
+        for (let i = 0; i < candidateSegments.length; i++) {
+            for (let j = i + 1; j < candidateSegments.length; j++) {
+                const isect = getLineIntersection(candidateSegments[i][0], candidateSegments[i][1], candidateSegments[j][0], candidateSegments[j][1]);
                 if (isect) {
                     const d = Math.sqrt((px - isect.x) ** 2 + (py - isect.y) ** 2);
                     if (d < closestDist) {

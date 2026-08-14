@@ -111,9 +111,14 @@ const Shape3DNode = React.memo(({ shape }) => {
     const [trailPositions, setTrailPositions] = useState([]);
     const hasTrail = shape.id?.startsWith('v6_');
 
-    useFrame(() => {
+    const lastTrailUpdateRef = useRef(0);
+    useFrame(({ clock }) => {
         if (!hasTrail) return;
         if (!Array.isArray(currentPos) || currentPos.length < 3) return;
+        const now = clock.getElapsedTime();
+        if (now - lastTrailUpdateRef.current < 0.08) return; // ~12 FPS trail update throttle
+        lastTrailUpdateRef.current = now;
+
         const prev = trailRef.current[trailRef.current.length - 1];
         const next = prev
             ? [
@@ -531,6 +536,25 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
 
     if (!geometryProps) return null;
 
+    const selectionEdgeGeo = React.useMemo(() => {
+        if (!isSelected || !geometryProps) return null;
+        let baseGeo;
+        if (geometryProps.type === 'box') baseGeo = new THREE.BoxGeometry(...geometryProps.args);
+        else if (geometryProps.type === 'cylinder') baseGeo = new THREE.CylinderGeometry(...geometryProps.args);
+        else if (geometryProps.type === 'sphere') baseGeo = new THREE.SphereGeometry(...geometryProps.args);
+        else if (geometryProps.type === 'extrude') baseGeo = new THREE.ExtrudeGeometry(...geometryProps.args);
+        if (!baseGeo) return null;
+        const edgeGeo = new THREE.EdgesGeometry(baseGeo);
+        baseGeo.dispose();
+        return edgeGeo;
+    }, [isSelected, geometryProps]);
+
+    useEffect(() => {
+        return () => {
+            if (selectionEdgeGeo) selectionEdgeGeo.dispose();
+        };
+    }, [selectionEdgeGeo]);
+
     const meshNode = (
         <group ref={groupRef} position={currentPos} rotation={simState ? currentRot : (customShape ? [-Math.PI / 2, 0, 0] : currentRot)}>
             <mesh 
@@ -553,13 +577,8 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
                     emissiveIntensity={isSelected ? 0.2 : (isDragging ? 0.4 : 0)}
                 />
             </mesh>
-            {isSelected && (
-                <lineSegments>
-                    <edgesGeometry attach="geometry" args={[
-                        geometryProps.type === 'box' ? new THREE.BoxGeometry(...geometryProps.args) :
-                        geometryProps.type === 'cylinder' ? new THREE.CylinderGeometry(...geometryProps.args) :
-                        new THREE.ExtrudeGeometry(...geometryProps.args)
-                    ]} />
+            {isSelected && selectionEdgeGeo && (
+                <lineSegments geometry={selectionEdgeGeo}>
                     <lineBasicMaterial attach="material" color="white" />
                 </lineSegments>
             )}

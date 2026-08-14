@@ -246,6 +246,22 @@ def run_simulation(req: SimulationRequest):
         raise HTTPException(status_code=500, detail=f"Physics simulation failed: {str(e)}")
 
 
+@app.get("/api/context")
+def get_simulation_context():
+    """Context Engineering endpoint: Provides pruned, authoritative simulation state for AI reasoning."""
+    if not last_sim_result:
+        return {
+            "status": "idle",
+            "has_simulation": False,
+            "message": "No active or recent simulation session."
+        }
+    return {
+        "status": "completed",
+        "has_simulation": True,
+        "summary": last_sim_result
+    }
+
+
 
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(req: ChatRequest):

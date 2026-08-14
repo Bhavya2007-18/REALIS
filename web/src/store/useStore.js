@@ -446,7 +446,12 @@ const useStore = create(temporal((set) => ({
     setCurrentFrameIndex: (index) => set({ currentFrameIndex: index }),
 
     
-    togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
+    togglePlayback: () => set((state) => {
+        const nextPlaying = !state.isPlaying;
+        if (nextPlaying) useStore.temporal.getState().pause();
+        else useStore.temporal.getState().resume();
+        return { isPlaying: nextPlaying };
+    }),
     resetPlayback: () => set({ currentFrameIndex: 0, isPlaying: false, simTime: 0 }),
 
     
