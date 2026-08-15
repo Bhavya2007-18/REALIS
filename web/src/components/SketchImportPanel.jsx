@@ -161,12 +161,28 @@ export default function SketchImportPanel() {
     if (sketchDraft?.scene?.scene_graph) {
       const shapes = sceneGraphToShapes(sketchDraft.scene.scene_graph);
       const newConstraints = sceneGraphToConstraints(sketchDraft.scene.scene_graph);
+
+      // Inject into store synchronously first
       if (shapes.length > 0) addShapes3D(shapes);
       if (newConstraints.length > 0) addConstraints(newConstraints);
+
+      // Switch to 3D view and simulate workspace so user sees the result
       setIs3DView(true);
       setSketchImportOpen(false);
-      // Small delay to let store update before simulating
-      setTimeout(() => runSimulation({ duration: 4.0, autoPlay: true }), 100);
+
+      // Pass shapes directly to avoid stale closure — runSimulation reads
+      // getState() at call-time so this is belt-and-suspenders but ensures
+      // the payload is correct even if React hasn't re-rendered yet.
+      const currentConstraints = useStore.getState().constraints;
+      await runSimulation({
+        duration: 4.0,
+        autoPlay: true,
+        injectShapes: [...(useStore.getState().shapes3D)],
+        injectConstraints: currentConstraints,
+      });
+
+      // Switch to simulate workspace after simulation is ready
+      useStore.getState().setActiveWorkspace('simulate');
     } else {
       setSketchImportOpen(false);
     }

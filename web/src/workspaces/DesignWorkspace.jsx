@@ -4,7 +4,7 @@ import { SimulationDemoManager } from '../utils/SimulationDemoManager';
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
-import { exportScene } from '../services/exportManager'
+import { normalizeDraftToSimObject } from '../utils/draftEntityAdapter'
 
 export default function DesignWorkspace() {
     const activeTool = useStore((s) => s.activeTool)
@@ -478,9 +478,11 @@ export default function DesignWorkspace() {
             return
         }
 
+        const defaultPhysics = { mass: 1.0, restitution: 0.5, friction: 0.3, isStatic: false };
+
         if (activeTool === 'rect') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
             return
@@ -488,7 +490,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'circle') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
             return
@@ -496,7 +498,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'polygon') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
             return
@@ -504,7 +506,7 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'arc') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
             return
@@ -522,7 +524,8 @@ export default function DesignWorkspace() {
                 stroke: '#22c55e',
                 fill: 'none',
                 strokeWidth: 2,
-                layerId: activeLayerId
+                layerId: activeLayerId,
+                ...defaultPhysics
             }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_bezier', id: newObj.id, startX: x, startY: y })
@@ -890,38 +893,26 @@ export default function DesignWorkspace() {
             const combinedObjects = [
                 
                 ...objects.map(o => {
-                    const depth = o.depth || 20;
-                    const geometry = {
-                        id: o.id,
-                        type: 'extrusion',
-                        position: { x: o.x || o.cx || 0, y: (o.y_override || depth / 2), z: o.y || o.cy || 0 },
-                        rotation: { x: 0, y: o.rotation ? -o.rotation * Math.PI / 180 : 0, z: 0 },
-                        dimensions: { x: o.width || o.r || 0, y: depth, z: o.height || o.r || 0 },
-                        depth: depth
-                    };
-
-                    
-                    if (o.type === 'circle') {
-                        geometry.type = 'sphere'; 
-                        geometry.dimensions = { x: o.r, y: o.r, z: o.r };
-                    } else if (o.type === 'rect') {
-                        geometry.type = 'box';
-                        geometry.dimensions = { x: o.width, y: depth, z: o.height };
-                    } else if ((o.type === 'path' || o.type === 'polygon' || o.type === 'arc') && o.points) {
-                        geometry.path = o.points.map(p => ({ x: p.x, y: p.y }));
-                    }
-
+                    const simObj = normalizeDraftToSimObject(o);
+                    if (!simObj) return null;
                     return {
-                        id: o.id,
-                        geometry: geometry,
+                        id: simObj.id,
+                        geometry: {
+                            id: simObj.id,
+                            type: simObj.type === 'circle' ? 'sphere' : 'box',
+                            position: simObj.position,
+                            rotation: simObj.rotation,
+                            dimensions: simObj.dimensions,
+                            depth: simObj.depth
+                        },
                         physics: {
-                            mass: o.mass !== undefined ? parseFloat(o.mass) : 1.0,
-                            restitution: o.restitution !== undefined ? parseFloat(o.restitution) : 0.5,
-                            friction: o.friction !== undefined ? parseFloat(o.friction) : 0.3,
-                            is_static: o.isStatic || false
+                            mass: simObj.physics.mass,
+                            restitution: simObj.physics.restitution,
+                            friction: simObj.physics.friction,
+                            is_static: simObj.physics.isStatic
                         }
                     };
-                }),
+                }).filter(Boolean),
                 
                 ...shapes3D.map(s => {
                     let geoType = s.type === 'cube' ? 'box' : s.type;

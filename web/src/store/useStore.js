@@ -20,7 +20,7 @@ const useStore = create(temporal((set) => ({
     setActiveTool: (tool) => set({ activeTool: tool }),
 
     
-    is3DView: true,
+    is3DView: false,
     setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
 
     

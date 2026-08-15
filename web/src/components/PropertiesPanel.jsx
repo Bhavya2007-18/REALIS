@@ -79,7 +79,7 @@ export default function PropertiesPanel() {
                                 <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1 rounded text-[10px] font-mono">
                                     <span className="text-primary">{c.type}</span>
                                     <span className="text-slate-400 truncate mx-1">{c.targetA} ↔ {c.targetB || '⚓'}</span>
-                                    <button onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))} className="text-red-400 hover:text-red-300 transition-colors shrink-0">
+                                    <button onClick={() => setConstraints(constraints.filter(x => x.id !== c.id))} className="text-red-400 hover:text-red-300 transition-colors shrink-0">
                                         <Trash2 size={10} />
                                     </button>
                                 </div>
@@ -159,7 +159,7 @@ export default function PropertiesPanel() {
             targetB: jointTargetB || null,
             distance: parseFloat(jointDistance),
         };
-        setConstraints(prev => [...prev, newConstraint]);
+        setConstraints([...(constraints || []), newConstraint]);
     };
 
     return (
@@ -821,13 +821,13 @@ export default function PropertiesPanel() {
                                 className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                             >
                                 <option value="">-- Select Object --</option>
-                                {objects.map(o => (
-                                    <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                {[...objects, ...shapes3D].map(o => (
+                                    <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
                                 ))}
                             </select>
                         </div>
 
-                        {}
+                        {/* Target B */}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Body B</label>
@@ -837,14 +837,14 @@ export default function PropertiesPanel() {
                                     className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                                 >
                                     <option value="">-- Select Object --</option>
-                                    {objects.filter(o => o.id !== jointTargetA).map(o => (
-                                        <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                    {[...objects, ...shapes3D].filter(o => String(o.id) !== String(jointTargetA)).map(o => (
+                                        <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
                                     ))}
                                 </select>
                             </div>
                         )}
 
-                        {}
+                        {/* Distance Value */}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Target Distance</label>
@@ -866,17 +866,17 @@ export default function PropertiesPanel() {
                         </button>
                     </div>
 
-                    {}
+                    {/* Active Constraints List */}
                     {constraints.length > 0 && (
                         <div className="space-y-1">
                             {constraints.map(c => (
                                 <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700/30">
                                     <div className="flex flex-col">
                                         <span className="text-primary font-bold">{c.type}</span>
-                                        <span className="text-slate-400">{c.targetA?.substring(0, 6)} ↔ {c.targetB?.substring(0, 6) || '⚓ world'}</span>
+                                        <span className="text-slate-400">{String(c.targetA || '').substring(0, 6)} ↔ {c.targetB ? String(c.targetB).substring(0, 6) : '⚓ world'}</span>
                                     </div>
                                     <button
-                                        onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))}
+                                        onClick={() => setConstraints((constraints || []).filter(x => x.id !== c.id))}
                                         className="text-red-400 hover:text-red-300 transition-colors p-1"
                                     >
                                         <Trash2 size={10} />

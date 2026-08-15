@@ -19,18 +19,27 @@ function Loader() {
 // default: 2D (x=cx, y=cy) -> 3D (x, y=thickness/2, z)
 // vertical3D: 2D (x=cx, y=cy) -> 3D upright: world y = -cy (cy grows downward on canvas)
 const objToWorldPos = (o, fallbackY = 0.05) => {
-    const isVertical = !!o.vertical3D;
-    let px, py;
     if (o.position) {
-        px = o.position[0];
-        py = o.position[1];
-    } else {
-        px = o.x + (o.width || 0) / 2 || o.cx || 0;
-        py = o.y + (o.height || 0) / 2 || o.cy || 0;
+        if (Array.isArray(o.position)) return o.position;
+        return [o.position.x || 0, o.position.y || 0, o.position.z || 0];
     }
+    const isVertical = !!o.vertical3D;
+    let px = 0, py = 0;
+    if (o.x !== undefined && o.width !== undefined) {
+        px = o.x + o.width / 2;
+    } else {
+        px = o.cx || 0;
+    }
+
+    if (o.y !== undefined && o.height !== undefined) {
+        py = o.y + o.height / 2;
+    } else {
+        py = o.cy || 0;
+    }
+
     return isVertical
         ? [px, -py, 0]
-        : [px, (isVertical ? 0 : fallbackY), py];
+        : [px, fallbackY, py];
 };
 
  
@@ -330,19 +339,40 @@ const CollisionMarker = React.memo(({ contact }) => {
     );
 });
 
-const DistanceRod = ({ constraint, objects }) => {
-    const targetA = objects.find(o => o.id === constraint.targetA);
-    const targetB = objects.find(o => o.id === constraint.targetB);
+const DistanceRod = ({ constraint }) => {
+    const shapes3D = useStore(s => s.shapes3D);
+    const objects = useStore(s => s.objects);
+    const allEntities = [...(shapes3D || []), ...(objects || [])];
+
+    const targetA = allEntities.find(o => String(o.id) === String(constraint.targetA));
+    const targetB = allEntities.find(o => String(o.id) === String(constraint.targetB));
     if (!targetA || !targetB) return null;
 
     const pA = objToWorldPos(targetA);
     const pB = objToWorldPos(targetB);
+    if (!pA || !pB) return null;
+
+    const dx = pB[0] - pA[0];
+    const dy = pB[1] - pA[1];
+    const dz = pB[2] - pA[2];
+    const length = Math.hypot(dx, dy, dz);
+    if (!length || !isFinite(length) || length < 0.001) return null;
+
     const mid = [(pA[0] + pB[0]) / 2, (pA[1] + pB[1]) / 2, (pA[2] + pB[2]) / 2];
-    const length = Math.hypot(pB[0] - pA[0], pB[1] - pA[1], pB[2] - pA[2]) || 1;
-    const dir = [(pB[0] - pA[0]) / length, (pB[1] - pA[1]) / length, (pB[2] - pA[2]) / length];
+    const dir = [dx / length, dy / length, dz / length];
+
+    const up = new THREE.Vector3(0, 1, 0);
+    const targetVec = new THREE.Vector3(dir[0], dir[1], dir[2]);
+    const quat = new THREE.Quaternion();
+
+    if (Math.abs(up.dot(targetVec) + 1) < 0.0001) {
+        quat.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+    } else {
+        quat.setFromUnitVectors(up, targetVec);
+    }
 
     return (
-        <mesh position={mid} quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dir[0], dir[1], dir[2]))}>
+        <mesh position={mid} quaternion={quat}>
             <cylinderGeometry args={[0.3, 0.3, length, 6]} />
             <meshBasicMaterial color="#a855f7" transparent opacity={0.7} />
         </mesh>
@@ -776,7 +806,7 @@ export default function Viewport3D({ objects }) {
             {constraints.map(c => (
                 <React.Fragment key={c.id}>
                     <JointMarker constraint={c} />
-                    {c.type === 'distance' && <DistanceRod constraint={c} objects={objects} />}
+                    {c.type === 'distance' && <DistanceRod constraint={c} />}
                 </React.Fragment>
             ))}
 

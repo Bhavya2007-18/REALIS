@@ -11,6 +11,8 @@ import {
 import { applyWaterForces } from '../waterPhysics.js';
 import useStore from '../../store/useStore.js';
 
+import { normalizeDraftToSimObject } from '../draftEntityAdapter.js';
+
 export default class MechanicsSolver {
     constructor(settings = {}) {
         this.settings = {
@@ -28,8 +30,28 @@ export default class MechanicsSolver {
     }
 
     setBodies(rawBodies) {
-        
         this.bodies = rawBodies.map(b => {
+            // Check if b is a 2D drafting entity (rect, circle, polygon, path, etc.)
+            if (b.type && ['rect', 'circle', 'polygon', 'arc', 'path', 'pencil'].includes(b.type) && (!b.position || !b.dimensions)) {
+                const simObj = normalizeDraftToSimObject(b);
+                if (simObj) {
+                    return {
+                        ...b,
+                        position: { ...simObj.position },
+                        _initialPosition: { ...simObj.position },
+                        velocity: b.velocity ? { ...b.velocity } : { x: 0, y: 0, z: 0 },
+                        acceleration: b.acceleration ? { ...b.acceleration } : { x: 0, y: 0, z: 0 },
+                        mass: simObj.physics.mass,
+                        restitution: simObj.physics.restitution,
+                        friction: simObj.physics.friction,
+                        isStatic: simObj.physics.isStatic,
+                        radius: simObj.radius,
+                        halfExtents: simObj.halfExtents,
+                        dimensions: simObj.dimensions
+                    };
+                }
+            }
+
             let pos = { x: 0, y: 0, z: 0 };
             if (b.position) {
                 if (Array.isArray(b.position)) {
@@ -41,11 +63,11 @@ export default class MechanicsSolver {
                 pos = { x: b.cx ?? b.x ?? 0, y: b.cy ?? b.y ?? 0, z: 0 };
             }
 
-            const dimX = b.params?.width ?? b.dimensions?.x ?? (b.radius ? b.radius * 2 : 10);
-            const dimY = b.params?.height ?? b.dimensions?.y ?? (b.radius ? b.radius * 2 : 10);
-            const dimZ = b.params?.depth ?? b.dimensions?.z ?? (b.radius ? b.radius * 2 : 10);
-            const halfExtents = { x: (dimX || 10) / 2, y: (dimY || 10) / 2, z: (dimZ || 10) / 2 };
-            const approxRadius = Math.sqrt(halfExtents.x ** 2 + halfExtents.y ** 2 + halfExtents.z ** 2);
+            const dimX = b.params?.width ?? b.dimensions?.x ?? b.width ?? (b.r ? b.r * 2 : (b.radius ? b.radius * 2 : 10));
+            const dimY = b.params?.height ?? b.dimensions?.y ?? b.height ?? (b.r ? b.r * 2 : (b.radius ? b.radius * 2 : 10));
+            const dimZ = b.params?.depth ?? b.dimensions?.z ?? b.depth ?? (b.r ? b.r * 2 : (b.radius ? b.radius * 2 : 10));
+            const halfExtents = b.halfExtents || { x: (dimX || 10) / 2, y: (dimY || 10) / 2, z: (dimZ || 10) / 2 };
+            const approxRadius = b.radius ?? b.r ?? Math.sqrt(halfExtents.x ** 2 + halfExtents.y ** 2 + halfExtents.z ** 2);
 
             return {
                 ...b,
@@ -54,7 +76,10 @@ export default class MechanicsSolver {
                 velocity: b.velocity ?? { x: 0, y: 0, z: 0 },
                 acceleration: b.acceleration ?? { x: 0, y: 0, z: 0 },
                 mass: b.mass ?? 1,
-                radius: b.radius ?? b.r ?? approxRadius,
+                restitution: b.restitution ?? 0.5,
+                friction: b.friction ?? 0.3,
+                isStatic: b.isStatic ?? false,
+                radius: approxRadius,
                 halfExtents
             };
         });

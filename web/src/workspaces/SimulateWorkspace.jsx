@@ -386,26 +386,112 @@ export default function SimulateWorkspace() {
                 {is3DView ? (
                     <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
                 ) : (
-                    <div className="absolute inset-0">
+                    <div className="absolute inset-0 bg-slate-950/80">
                         <svg className="absolute inset-0 w-full h-full z-10">
-                            {objects.map(obj => {
-                                if (obj.type === 'rect') {
-                                    return <rect key={obj.id} x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={obj.fill || 'rgba(59,130,246,0.2)'} stroke={obj.stroke || '#3b82f6'} strokeWidth={obj.strokeWidth || 2} />
-                                }
-                                if (obj.type === 'circle') {
-                                    return <circle key={obj.id} cx={obj.cx} cy={obj.cy} r={obj.r} fill={obj.fill || 'rgba(139,92,246,0.2)'} stroke={obj.stroke || '#8b5cf6'} strokeWidth={obj.strokeWidth || 2} />
-                                }
-                                if (obj.type === 'path' && obj.points) {
-                                    const d = obj.points.reduce((acc, p, i) => acc + (i === 0 ? `M ${p.x} ${p.y} ` : `L ${p.x} ${p.y} `), '');
-                                    return <path key={obj.id} d={d} fill="none" stroke={obj.stroke || '#10b981'} strokeWidth={obj.strokeWidth || 2} />
-                                }
-                                return null;
-                            })}
                             {renderBodies.map(b => {
-                                const px = Array.isArray(b.position) ? b.position[0] : (b.position?.x ?? 0);
-                                const py = Array.isArray(b.position) ? b.position[1] : (b.position?.y ?? 0);
-                                const r = b.params?.radius || b.params?.radiusTop || Math.max(2, (b.params?.width || b.params?.height || 4) / 4);
-                                return <circle key={`sim2d_${b.id}`} cx={px} cy={py} r={r} fill={b.color || '#64748b'} opacity="0.7" />;
+                                let px = b.cx ?? b.x ?? 0;
+                                let py = b.cy ?? b.y ?? 0;
+
+                                if (b.position) {
+                                    if (Array.isArray(b.position)) {
+                                        px = b.position[0];
+                                        py = (b.position[2] !== undefined && b.position[2] !== 0) ? b.position[2] : (b.position[1] ?? py);
+                                    } else {
+                                        px = b.position.x ?? px;
+                                        py = (b.position.z !== undefined && b.position.z !== 0) ? b.position.z : (b.position.y ?? py);
+                                    }
+                                }
+
+                                let rotDeg = 0;
+                                if (b.rotation) {
+                                    if (typeof b.rotation === 'number') rotDeg = b.rotation;
+                                    else if (Array.isArray(b.rotation)) rotDeg = -b.rotation[1] * 180 / Math.PI;
+                                    else if (b.rotation.y !== undefined) rotDeg = -b.rotation.y * 180 / Math.PI;
+                                }
+
+                                if (b.type === 'rect' || (b.width && b.height)) {
+                                    const w = b.width || b.dimensions?.x || 20;
+                                    const h = b.height || b.dimensions?.z || 20;
+                                    const rectX = px - w / 2;
+                                    const rectY = py - h / 2;
+                                    return (
+                                        <rect
+                                            key={b.id}
+                                            x={rectX}
+                                            y={rectY}
+                                            width={w}
+                                            height={h}
+                                            fill={b.fill || 'rgba(59,130,246,0.2)'}
+                                            stroke={b.stroke || '#3b82f6'}
+                                            strokeWidth={b.strokeWidth || 2}
+                                            transform={rotDeg ? `rotate(${rotDeg}, ${px}, ${py})` : undefined}
+                                        />
+                                    );
+                                }
+
+                                if (b.type === 'circle' || b.r || b.radius) {
+                                    const r = b.r || b.radius || (b.dimensions?.x ? b.dimensions.x / 2 : 20);
+                                    return (
+                                        <circle
+                                            key={b.id}
+                                            cx={px}
+                                            cy={py}
+                                            r={r}
+                                            fill={b.fill || 'rgba(139,92,246,0.2)'}
+                                            stroke={b.stroke || '#8b5cf6'}
+                                            strokeWidth={b.strokeWidth || 2}
+                                        />
+                                    );
+                                }
+
+                                if (b.type === 'polygon' && b.sides) {
+                                    const r = b.r || b.radius || 20;
+                                    const pts = [];
+                                    for (let i = 0; i < b.sides; i++) {
+                                        const angle = (Math.PI * 2 * i) / b.sides - Math.PI / 2 + (rotDeg * Math.PI / 180);
+                                        pts.push(`${px + r * Math.cos(angle)},${py + r * Math.sin(angle)}`);
+                                    }
+                                    return (
+                                        <polygon
+                                            key={b.id}
+                                            points={pts.join(' ')}
+                                            fill={b.fill || 'rgba(236,72,153,0.2)'}
+                                            stroke={b.stroke || '#ec4899'}
+                                            strokeWidth={b.strokeWidth || 2}
+                                        />
+                                    );
+                                }
+
+                                if (b.type === 'path' && b.points) {
+                                    const initialX = b._initialPosition?.x ?? (b.points[0]?.x || 0);
+                                    const initialY = b._initialPosition?.z ?? b._initialPosition?.y ?? (b.points[0]?.y || 0);
+                                    const dx = px - initialX;
+                                    const dy = py - initialY;
+                                    const d = b.points.reduce((acc, p, i) => acc + (i === 0 ? `M ${p.x + dx} ${p.y + dy} ` : `L ${p.x + dx} ${p.y + dy} `), '');
+                                    return (
+                                        <path
+                                            key={b.id}
+                                            d={d}
+                                            fill={b.fill || 'none'}
+                                            stroke={b.stroke || '#10b981'}
+                                            strokeWidth={b.strokeWidth || 2}
+                                        />
+                                    );
+                                }
+
+                                const r = b.radius || (b.dimensions?.x ? b.dimensions.x / 2 : 15);
+                                return (
+                                    <circle
+                                        key={`shape3d_${b.id}`}
+                                        cx={px}
+                                        cy={py}
+                                        r={r}
+                                        fill={b.color || '#3b82f6'}
+                                        stroke="#ffffff"
+                                        strokeWidth={1.5}
+                                        opacity="0.85"
+                                    />
+                                );
                             })}
                         </svg>
                     </div>
@@ -432,27 +518,42 @@ export default function SimulateWorkspace() {
                         
                         {}
                         {constraints.map((c, i) => {
-                            const bA = finalViewportObjects.find(o => o.id === c.targetA);
-                            const bB = finalViewportObjects.find(o => o.id === c.targetB);
-                            
-                            
-                            let pA = bA ? { x: bA.x || bA.cx, y: bA.y || bA.cy } : null;
-                            let pB = bB ? { x: bB.x || bB.cx, y: bB.y || bB.cy } : null;
+                            const allBodies = [...(renderBodies || []), ...(objects || []), ...(shapes3D || [])];
+                            const bA = allBodies.find(o => String(o.id) === String(c.targetA));
+                            const bB = allBodies.find(o => String(o.id) === String(c.targetB));
 
-                            
-                            if (pA && c.anchorA) { pA.x += c.anchorA.x; pA.y += c.anchorA.y; }
-                            if (pB && c.anchorB) { pB.x += c.anchorB.x; pB.y += c.anchorB.y; }
+                            const extract2DPos = (obj) => {
+                                if (!obj) return null;
+                                let x = obj.cx ?? obj.x ?? 0;
+                                let y = obj.cy ?? obj.y ?? 0;
+                                if (obj.position) {
+                                    if (Array.isArray(obj.position)) {
+                                        x = obj.position[0];
+                                        y = (obj.position[2] !== undefined && obj.position[2] !== 0) ? obj.position[2] : (obj.position[1] ?? y);
+                                    } else {
+                                        x = obj.position.x ?? x;
+                                        y = (obj.position.z !== undefined && obj.position.z !== 0) ? obj.position.z : (obj.position.y ?? y);
+                                    }
+                                }
+                                return { x: Number(x) || 0, y: Number(y) || 0 };
+                            };
+
+                            let pA = extract2DPos(bA);
+                            let pB = extract2DPos(bB);
+
+                            if (pA && c.anchorA) { pA.x += Number(c.anchorA.x || 0); pA.y += Number(c.anchorA.y || 0); }
+                            if (pB && c.anchorB) { pB.x += Number(c.anchorB.x || 0); pB.y += Number(c.anchorB.y || 0); }
 
                             return (
-                                <g key={`constraint-${i}`}>
-                                    {analysisSettings.showJoints && pA && pB && (
-                                        <line x1={pA.x} y1={pA.y} x2={pB.x} y2={pB.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="4 4" opacity="0.6" />
+                                <g key={`constraint-${c.id || i}`}>
+                                    {pA && pB && (
+                                        <line x1={pA.x} y1={pA.y} x2={pB.x} y2={pB.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="4 4" opacity="0.8" />
                                     )}
-                                    {analysisSettings.showAnchors && pA && (
-                                        <circle cx={pA.x} cy={pA.y} r="4" fill="#ec4899" stroke="#fff" strokeWidth="1" opacity="0.8" />
+                                    {pA && (
+                                        <circle cx={pA.x} cy={pA.y} r="5" fill="#ec4899" stroke="#fff" strokeWidth="1.5" opacity="0.9" />
                                     )}
-                                    {analysisSettings.showAnchors && pB && (
-                                        <circle cx={pB.x} cy={pB.y} r="4" fill="#ec4899" stroke="#fff" strokeWidth="1" opacity="0.8" />
+                                    {pB && (
+                                        <circle cx={pB.x} cy={pB.y} r="5" fill="#ec4899" stroke="#fff" strokeWidth="1.5" opacity="0.9" />
                                     )}
                                 </g>
                             );
