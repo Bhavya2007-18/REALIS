@@ -81,7 +81,7 @@ const OBJModel = ({ objPath, mtlPath }) => {
     return <OBJModelPlain objPath={objPath} />;
 };
 
-const Shape3DNode = React.memo(({ shape }) => {
+const Shape3DNode = React.memo(({ shape, renderBodies }) => {
     const groupRef = useRef();
     const selected3DIds = useStore(state => state.selected3DIds);
     const setSelected3DIds = useStore(state => state.setSelected3DIds);
@@ -105,6 +105,8 @@ const Shape3DNode = React.memo(({ shape }) => {
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === shape.id)
         : null;
 
+    const liveBody = renderBodies?.find(b => String(b.id) === String(shape.id));
+
     // Helper to safely format vectors for R3F
     const formatVec = (vec, def) => {
         if (!vec) return def;
@@ -113,8 +115,13 @@ const Shape3DNode = React.memo(({ shape }) => {
         return def;
     };
 
-    const currentPos = simState ? [simState.position.x, simState.position.y, simState.position.z] : formatVec(shape.position, [0, 0, 0]);
-    const currentRot = simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : formatVec(shape.rotation, [0, 0, 0]);
+    const currentPos = liveBody
+        ? (Array.isArray(liveBody.position) ? liveBody.position : [liveBody.position.x || 0, liveBody.position.y || 0, liveBody.position.z || 0])
+        : (simState ? [simState.position.x, simState.position.y, simState.position.z] : formatVec(shape.position, [0, 0, 0]));
+
+    const currentRot = liveBody
+        ? (Array.isArray(liveBody.rotation) ? liveBody.rotation : [liveBody.rotation?.x || 0, liveBody.rotation?.y || 0, liveBody.rotation?.z || 0])
+        : (simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : formatVec(shape.rotation, [0, 0, 0]));
     const currentScale = formatVec(shape.scale, [1, 1, 1]);
     const trailRef = useRef([]);
     const [trailPositions, setTrailPositions] = useState([]);
@@ -422,21 +429,23 @@ const ExtrudePreview = () => {
     );
 };
 
-const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, currentFrameIndex }) => {
+const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, currentFrameIndex, renderBodies }) => {
     const depth = obj.depth !== undefined ? obj.depth : 0.1;
     const isV6Active = useStore(state => state.simulationPreset === 'v6_engine_simulation');
     const simState = (!isV6Active && isPlaying && simulationFrames[currentFrameIndex])
         ? simulationFrames[currentFrameIndex].states.find(s => s.id === obj.id)
         : null;
 
+    const liveBody = renderBodies?.find(b => String(b.id) === String(obj.id));
     const yPosOverride = obj.y_override !== undefined ? obj.y_override : depth / 2;
-    const currentPos = simState
-        ? [simState.position.x, simState.position.y, simState.position.z]
-        : objToWorldPos(obj, yPosOverride);
 
-    const currentRot = simState
-        ? [simState.rotation.x, simState.rotation.y, simState.rotation.z]
-        : [0, obj.rotation ? -obj.rotation * Math.PI / 180 : 0, 0];
+    const currentPos = liveBody
+        ? (Array.isArray(liveBody.position) ? liveBody.position : [liveBody.position.x || 0, liveBody.position.y || 0, liveBody.position.z || 0])
+        : (simState ? [simState.position.x, simState.position.y, simState.position.z] : objToWorldPos(obj, yPosOverride));
+
+    const currentRot = liveBody
+        ? (Array.isArray(liveBody.rotation) ? liveBody.rotation : [liveBody.rotation?.x || 0, liveBody.rotation?.y || 0, liveBody.rotation?.z || 0])
+        : (simState ? [simState.rotation.x, simState.rotation.y, simState.rotation.z] : [0, obj.rotation ? -obj.rotation * Math.PI / 180 : 0, 0]);
 
     const active3DTool = useStore(state => state.active3DTool);
     const extrudeOperation = useStore(state => state.extrudeOperation);
@@ -684,7 +693,7 @@ const CameraRig = ({ objects, shapes3D, disabled }) => {
     return null;
 };
 
-export default function Viewport3D({ objects }) {
+export default function Viewport3D({ objects, renderBodies }) {
     const shapes3D = useStore(state => state.shapes3D);
     const active3DTool = useStore(state => state.active3DTool);
     const addShape3D = useStore(state => state.addShape3D);
@@ -791,12 +800,13 @@ export default function Viewport3D({ objects }) {
                         isPlaying={isPlaying} 
                         simulationFrames={simulationFrames} 
                         currentFrameIndex={currentFrameIndex} 
+                        renderBodies={renderBodies}
                     />
                 ))}
 
                 {/* Native 3D Objects */}
                 {shapes3D.map(shape => (
-                    <Shape3DNode key={shape.id} shape={shape} />
+                    <Shape3DNode key={shape.id} shape={shape} renderBodies={renderBodies} />
                 ))}
 
                 <ExtrudePreview />

@@ -74,7 +74,7 @@ export function useSimulation() {
         restitution: shape.physics?.restitution ?? shape.restitution ?? 0.5,
         friction: shape.physics?.friction ?? shape.friction ?? 0.3,
         is_static: shape.physics?.isStatic ?? shape.isStatic ?? false,
-        initial_velocity: { x: 0, y: 0, z: 0 },
+        initial_velocity: shape.initialVelocity || shape.velocity || { x: 0, y: 0, z: 0 },
         initial_angular_velocity: { x: 0, y: 0, z: 0 },
       }
     }));
@@ -173,8 +173,40 @@ export function useSimulation() {
       }
 
     } catch (err) {
-      setSimError(err.message);
-      console.error('[useSimulation] Error:', err);
+      // ── Zero-crash offline fallback: run client-side MechanicsSolver ──
+      console.warn('[useSimulation] Backend unreachable, falling back to client-side solver:', err.message);
+      try {
+        const MechanicsSolver = (await import('../utils/solvers/mechanicsSolver.js')).default;
+        const solver = new MechanicsSolver({
+          gravity: request.gravity ? { x: request.gravity.x, y: -request.gravity.y, z: request.gravity.z } : liveSettings.gravity,
+          timeStep: liveSettings.timeStep ?? 0.016,
+          subSteps: Math.max(4, liveSettings.subSteps ?? 4),
+          mode: 'accurate',
+          groundY: 600
+        });
+        const allBodies = [...activeShapes, ...converted2DObjects.map(o => ({
+          ...o, position: o.position, velocity: o.physics?.velocity ?? { x: 0, y: 0, z: 0 },
+          mass: o.physics?.mass ?? 1, restitution: o.physics?.restitution ?? 0.5,
+          friction: o.physics?.friction ?? 0.3, isStatic: o.physics?.isStatic ?? false
+        }))];
+        solver.setBodies(allBodies);
+        solver.setConstraints(liveConstraints);
+        const frames = [];
+        const totalSteps = Math.ceil(duration / (liveSettings.timeStep ?? 0.016));
+        for (let i = 0; i < totalSteps; i++) {
+          const snap = solver.step();
+          if (i % 3 === 0) {
+            frames.push({ time: snap.time, states: snap.bodies.map(b => ({ id: b.id, position: b.position, linear_velocity: b.velocity })) });
+          }
+        }
+        setSimulationFrames(frames);
+        setCurrentFrameIndex(0);
+        if (autoPlay && frames.length > 0) setIsPlaying(true);
+        setSimError(null); // Clear error since fallback succeeded
+      } catch (fallbackErr) {
+        setSimError(`Backend offline & local fallback failed: ${fallbackErr.message}`);
+        console.error('[useSimulation] Fallback error:', fallbackErr);
+      }
     } finally {
       setIsSimulating(false);
     }

@@ -889,9 +889,7 @@ export default function DesignWorkspace() {
         resetPlayback();
 
         try {
-            
             const combinedObjects = [
-                
                 ...objects.map(o => {
                     const simObj = normalizeDraftToSimObject(o);
                     if (!simObj) return null;
@@ -913,7 +911,6 @@ export default function DesignWorkspace() {
                         }
                     };
                 }).filter(Boolean),
-                
                 ...shapes3D.map(s => {
                     let geoType = s.type === 'cube' ? 'box' : s.type;
                     let dimX = s.params?.width || s.params?.radius || 1;
@@ -924,18 +921,16 @@ export default function DesignWorkspace() {
                     let posZ = (s.position?.z !== undefined) ? s.position.z : (s.position?.[2] || 0);
 
                     if (s.type === 'extruded_solid') {
-                        geoType = 'box'; 
+                        geoType = 'box';
                         const profile = objects.find(o => o.id === (s.params?.profileId || s.profileId));
                         if (profile) {
                             dimX = profile.width || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
                             dimY = s.params?.distance || s.distance || 10;
                             dimZ = profile.height || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
-                            
                             const dir = s.params?.direction || s.direction || 'positive';
                             let zOffset = 0;
                             if (dir === 'negative') zOffset = -dimY / 2;
                             else if (dir === 'positive') zOffset = dimY / 2;
-
                             posX += profile.x + (profile.width || 0) / 2 || profile.cx || 0;
                             posY += zOffset;
                             posZ += profile.y + (profile.height || 0) / 2 || profile.cy || 0;
@@ -950,10 +945,10 @@ export default function DesignWorkspace() {
                             id: s.id,
                             type: geoType,
                             position: { x: posX, y: posY, z: posZ },
-                            rotation: { 
-                                x: (s.rotation?.x !== undefined) ? s.rotation.x : (s.rotation?.[0] || 0), 
-                                y: (s.rotation?.y !== undefined) ? s.rotation.y : (s.rotation?.[1] || 0), 
-                                z: (s.rotation?.z !== undefined) ? s.rotation.z : (s.rotation?.[2] || 0) 
+                            rotation: {
+                                x: (s.rotation?.x !== undefined) ? s.rotation.x : (s.rotation?.[0] || 0),
+                                y: (s.rotation?.y !== undefined) ? s.rotation.y : (s.rotation?.[1] || 0),
+                                z: (s.rotation?.z !== undefined) ? s.rotation.z : (s.rotation?.[2] || 0)
                             },
                             dimensions: { x: dimX, y: dimY, z: dimZ }
                         },
@@ -969,55 +964,108 @@ export default function DesignWorkspace() {
                 })
             ];
 
-            const payload = {
-                objects: combinedObjects,
-                constraints: constraints.map(c => ({
-                    id: c.id,
-                    type: c.type,
-                    target_a: c.targetA,
-                    target_b: c.targetB,
-                    pivot_a: c.pivotA || { x: 0, y: 0, z: 0 },
-                    pivot_b: c.pivotB || { x: 0, y: 0, z: 0 },
-                    axis: c.axis || { x: 0, y: 1, z: 0 },
-                    distance: c.distance,
-                    angle_limit: c.angleLimit
-                })),
-                gravity: simulationSettings.gravity,
-                point_gravity: simulationSettings.pointGravity,
-                time_step: simulationSettings.timeStep,
-                sub_steps: simulationSettings.subSteps,
-                duration: 2.0
-            };
+            const duration = 2.0;
 
-            
-            useStore.getState().setActiveWorkspace('simulate');
-
-            
+            // ── Step 1: Try the backend API ──────────────────────────────
+            let backendFrames = null;
             const apiBase = import.meta.env.VITE_API_URL;
-            let targetUrl;
-            
-            if (apiBase) {
-                targetUrl = `${apiBase}/simulate`;
-            } else {
-                const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-                targetUrl = `http://${host}:8000/simulate`;
+            const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+            const targetUrl = apiBase ? `${apiBase}/simulate` : `http://${host}:8000/simulate`;
+
+            try {
+                const payload = {
+                    objects: combinedObjects,
+                    constraints: constraints.map(c => ({
+                        id: c.id,
+                        type: c.type,
+                        target_a: c.targetA,
+                        target_b: c.targetB,
+                        pivot_a: c.pivotA || { x: 0, y: 0, z: 0 },
+                        pivot_b: c.pivotB || { x: 0, y: 0, z: 0 },
+                        axis: c.axis || { x: 0, y: 1, z: 0 },
+                        distance: c.distance,
+                        angle_limit: c.angleLimit
+                    })),
+                    gravity: simulationSettings.gravity,
+                    point_gravity: simulationSettings.pointGravity,
+                    time_step: simulationSettings.timeStep,
+                    sub_steps: simulationSettings.subSteps,
+                    duration
+                };
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const req = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (req.ok) {
+                    const res = await req.json();
+                    backendFrames = res.frames;
+                }
+            } catch (apiErr) {
+                console.warn('[handleSimulate] Backend unreachable, using client-side solver:', apiErr.message);
             }
 
-            const req = await fetch(targetUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // ── Step 2: If backend failed, run client-side MechanicsSolver ──
+            if (!backendFrames || backendFrames.length === 0) {
+                try {
+                    const { default: MechanicsSolver } = await import('../utils/solvers/mechanicsSolver.js');
+                    const solver = new MechanicsSolver({
+                        gravity: simulationSettings.gravity,
+                        timeStep: simulationSettings.timeStep ?? 0.016,
+                        subSteps: Math.max(4, simulationSettings.subSteps ?? 4),
+                        mode: 'accurate',
+                        groundY: 600
+                    });
+                    const allBodies = [...objects, ...shapes3D.map(s => ({
+                        ...s,
+                        position: s.position,
+                        velocity: s.initialVelocity ?? { x: 0, y: 0, z: 0 },
+                        mass: s.mass ?? 1,
+                        restitution: s.restitution ?? 0.5,
+                        friction: s.friction ?? 0.3,
+                        isStatic: s.isStatic ?? false
+                    }))];
+                    solver.setBodies(allBodies);
+                    solver.setConstraints(constraints);
 
-            if (!req.ok) throw new Error("Simulation failed on backend");
+                    backendFrames = [];
+                    const totalSteps = Math.ceil(duration / (simulationSettings.timeStep ?? 0.016));
+                    for (let i = 0; i < totalSteps; i++) {
+                        const snap = solver.step();
+                        if (i % 3 === 0) {
+                            backendFrames.push({
+                                time: snap.time,
+                                states: snap.bodies.map(b => ({
+                                    id: b.id,
+                                    position: b.position,
+                                    rotation: b.rotation ?? { x: 0, y: 0, z: 0 },
+                                    linear_velocity: b.velocity,
+                                    angular_velocity: b.angularVelocity ?? { x: 0, y: 0, z: 0 }
+                                }))
+                            });
+                        }
+                    }
+                    console.log(`[handleSimulate] Client-side solver produced ${backendFrames.length} frames`);
+                } catch (solverErr) {
+                    console.error('[handleSimulate] Client-side solver failed:', solverErr);
+                    throw new Error(`Both backend and client solver failed: ${solverErr.message}`);
+                }
+            }
 
-            const res = await req.json();
-            setSimulationFrames(res.frames);
-            togglePlayback(); 
+            // ── Step 3: Store frames THEN switch workspace ───────────────
+            setSimulationFrames(backendFrames);
+            useStore.getState().setActiveWorkspace('simulate');
+            togglePlayback();
 
         } catch (err) {
-            console.error("Simulation Error:", err);
-            alert(`Simulation failed: ${err.message}`);
+            console.error("[handleSimulate] Error:", err);
+            useStore.getState().setSimulationState({ time: 0 });
         } finally {
             setIsSimulating(false);
         }

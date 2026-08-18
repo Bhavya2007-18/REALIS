@@ -164,20 +164,22 @@ const useStore = create(temporal((set) => ({
     activeLayerId: 'default',
 
     
+    // Canonical Materials System (Section 3.2)
     materials: {
-        steel: { density: 7850, restitution: 0.2, friction: 0.4 },
-        rubber: { density: 1100, restitution: 0.8, friction: 0.9 },
-        wood: { density: 700, restitution: 0.4, friction: 0.5 },
-        plastic: { density: 1000, restitution: 0.6, friction: 0.3 }
+        steel:    { density: 7850, restitution: 0.20, static_friction: 0.4,  dynamic_friction: 0.3  },
+        rubber:   { density: 1100, restitution: 0.85, static_friction: 0.9,  dynamic_friction: 0.8  },
+        wood:     { density: 700,  restitution: 0.40, static_friction: 0.5,  dynamic_friction: 0.4  },
+        ice:      { density: 917,  restitution: 0.10, static_friction: 0.05, dynamic_friction: 0.02 },
+        concrete: { density: 2400, restitution: 0.15, static_friction: 0.7,  dynamic_friction: 0.6  },
+        plastic:  { density: 1000, restitution: 0.60, static_friction: 0.3,  dynamic_friction: 0.25 },
+        custom:   { density: 1000, restitution: 0.50, static_friction: 0.3,  dynamic_friction: 0.3  }
     },
     applyMaterial: (objectId, materialKey) => set((state) => {
         const mat = state.materials[materialKey];
         if (!mat) return state;
         const updateShapeOrObject = (list) => list.map(o => {
             if (o.id !== objectId) return o;
-            
-            
-            return { ...o, restitution: mat.restitution, friction: mat.friction };
+            return { ...o, material_id: materialKey, restitution: mat.restitution, friction: mat.dynamic_friction ?? mat.friction ?? 0.3 };
         });
         return {
             objects: updateShapeOrObject(state.objects),
@@ -385,7 +387,33 @@ const useStore = create(temporal((set) => ({
     simulationMode: 'preview', 
     simulationType: 'rigid', 
     simulationPreset: null,
-    
+
+    // Camera state (Section 3.2)
+    camera: { position: { x: 0, y: 0, z: 500 }, zoom: 1.0, mode: '2d' },
+    setCamera: (cam) => set(state => ({ camera: { ...state.camera, ...cam } })),
+
+    // Build Mode tool state
+    activeBuildTool: 'select', // select | create_circle | create_box | create_ramp | wire_joint
+    setActiveBuildTool: (tool) => set({ activeBuildTool: tool }),
+    jointWireSource: null, // body ID of first selected body for joint wiring
+    setJointWireSource: (id) => set({ jointWireSource: id }),
+
+    // Debug Physics Mode
+    debugPhysics: {
+        enabled: false,
+        showBoundingBoxes: false,
+        showVelocityVectors: false,
+        showCollisionNormals: false,
+        showContactPoints: false,
+        showForceVectors: false,
+        showJointAnchors: false,
+        showConstraintLines: false,
+        showCenterOfMass: false,
+        showSleepingBodies: false
+    },
+    setDebugPhysics: (updates) => set(state => ({ debugPhysics: { ...state.debugPhysics, ...updates } })),
+    toggleDebugPhysics: () => set(state => ({ debugPhysics: { ...state.debugPhysics, enabled: !state.debugPhysics.enabled } })),
+
     simulationSettings: {
         gravity: { x: 0, y: 9.81, z: 0 },
         timeStep: 0.016,
@@ -394,7 +422,8 @@ const useStore = create(temporal((set) => ({
         airResistance: 0.01,
         frictionCoeff: 0.3,
         groundY: 0,
-        ambientTemp: 20
+        ambientTemp: 20,
+        timeScale: 1.0
     },
     setSimulationSettings: (settings) => set((state) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
@@ -490,7 +519,51 @@ const useStore = create(temporal((set) => ({
     toggleSketchImport: () => set(state => ({ isSketchImportOpen: !state.isSketchImportOpen })),
     setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
     sketchDraft: null, 
-    setSketchDraft: (draft) => set({ sketchDraft: draft })
+    setSketchDraft: (draft) => set({ sketchDraft: draft }),
+
+    // ── Save/Load Persistence (Section 3.2 JSON round-trip) ──────────────
+    exportSceneJSON: () => {
+        const s = useStore.getState();
+        return JSON.stringify({
+            scene: {
+                metadata: { version: '1.0', exportedAt: new Date().toISOString() },
+                world: { gravity: s.simulationSettings.gravity, timestep: s.simulationSettings.timeStep, substeps: s.simulationSettings.subSteps, units: 'SI' },
+                camera: s.camera,
+                bodies: [...s.objects, ...s.shapes3D],
+                materials: s.materials,
+                constraints: s.constraints || [],
+                forces: [],
+                simulation: { time_scale: s.simulationSettings.timeScale, running: s.isPlaying, elapsed_time: s.simulationState?.time || 0 }
+            }
+        }, null, 2);
+    },
+    importSceneJSON: (jsonStr) => {
+        try {
+            const data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+            const scene = data.scene || data;
+            const state = useStore.getState();
+            state.clearDesign();
+            if (scene.world) {
+                state.setSimulationSettings({
+                    gravity: scene.world.gravity || { x: 0, y: 9.81, z: 0 },
+                    timeStep: scene.world.timestep || 0.016,
+                    subSteps: scene.world.substeps || 1
+                });
+            }
+            if (scene.camera) state.setCamera(scene.camera);
+            if (scene.bodies) {
+                scene.bodies.forEach(b => {
+                    if (b.position || b.type === 'sphere' || b.params) state.addShape3D(b);
+                    else state.addCADObject(b);
+                });
+            }
+            if (scene.constraints) scene.constraints.forEach(c => state.addConstraint(c));
+            return true;
+        } catch (e) {
+            console.error('[importSceneJSON] Error:', e);
+            return false;
+        }
+    }
 }), {
     partialize: HISTORY_PARTIALIZE,
     equality: (past, current) => JSON.stringify(past) === JSON.stringify(current),

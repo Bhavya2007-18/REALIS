@@ -75,33 +75,33 @@ export function normalizeDraftToSimObject(obj) {
 
     if (obj.type === 'rect') {
         dimX = Math.max(0.1, Number(obj.width));
-        dimZ = Math.max(0.1, Number(obj.height));
-        dimY = depth;
+        dimY = Math.max(0.1, Number(obj.height));
+        dimZ = depth;
 
         // Convert top-left (x, y) to center position
         const rawX = Number(obj.x || 0);
         const rawY = Number(obj.y || 0);
         posX = rawX + dimX / 2;
-        posZ = rawY + dimZ / 2;
-        posY = Number(obj.y_override ?? (depth / 2));
+        posY = rawY + dimY / 2;
+        posZ = Number(obj.y_override ?? (depth / 2));
     } else if (obj.type === 'circle') {
         const r = Math.max(0.1, Number(obj.r ?? obj.radius));
         dimX = r * 2;
-        dimZ = r * 2;
-        dimY = obj.vertical3D ? r * 2 : depth;
+        dimY = r * 2;
+        dimZ = obj.vertical3D ? r * 2 : depth;
 
         posX = Number(obj.cx ?? obj.x ?? 0);
-        posZ = Number(obj.cy ?? obj.y ?? 0);
-        posY = Number(obj.y_override ?? (dimY / 2));
+        posY = Number(obj.cy ?? obj.y ?? 0);
+        posZ = Number(obj.y_override ?? (dimZ / 2));
     } else if (obj.type === 'polygon' || obj.type === 'arc') {
         const r = Math.max(0.1, Number(obj.r ?? obj.radius ?? 10));
         dimX = r * 2;
-        dimZ = r * 2;
-        dimY = depth;
+        dimY = r * 2;
+        dimZ = depth;
 
         posX = Number(obj.cx ?? obj.x ?? 0);
-        posZ = Number(obj.cy ?? obj.y ?? 0);
-        posY = Number(obj.y_override ?? (depth / 2));
+        posY = Number(obj.cy ?? obj.y ?? 0);
+        posZ = Number(obj.y_override ?? (depth / 2));
     } else if (obj.type === 'path' || obj.type === 'pencil') {
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         obj.points.forEach(p => {
@@ -111,12 +111,12 @@ export function normalizeDraftToSimObject(obj) {
             if (p.y > maxY) maxY = p.y;
         });
         dimX = Math.max(1.0, maxX - minX);
-        dimZ = Math.max(1.0, maxY - minY);
-        dimY = depth;
+        dimY = Math.max(1.0, maxY - minY);
+        dimZ = depth;
 
         posX = minX + dimX / 2;
-        posZ = minY + dimZ / 2;
-        posY = Number(obj.y_override ?? (depth / 2));
+        posY = minY + dimY / 2;
+        posZ = Number(obj.y_override ?? (depth / 2));
     }
 
     const halfExtents = {

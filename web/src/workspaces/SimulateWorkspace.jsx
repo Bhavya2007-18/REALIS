@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, SkipBack, SkipForward, Activity, Settings, Zap, Globe, Gauge, Trash2, Box, Flame, Droplets, ArrowRightCircle } from 'lucide-react';
+import { 
+    Play, Square, SkipBack, SkipForward, Activity, Settings, Zap, Globe, Gauge, Trash2, Box, Flame, 
+    Droplets, ArrowRightCircle, Download, Upload, RotateCcw, RotateCw, PlusCircle, MousePointer, 
+    Circle as CircleIcon, Eye, EyeOff, Link2, Sliders, Layers, RefreshCw
+} from 'lucide-react';
 import useStore from '../store/useStore';
 import Viewport3D from '../components/Viewport3D';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
@@ -11,6 +15,7 @@ import { SIM_UNITS, FIXED_STEP, clamp, isFiniteNumber, createSimulationLogger } 
 import V6ControlPanel from '../components/V6ControlPanel';
 import ModelControls from '../components/ModelControls';
 import { stepWater } from '../utils/waterPhysics';
+import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoManager';
 
 export default function SimulateWorkspace() {
     
@@ -38,10 +43,35 @@ export default function SimulateWorkspace() {
 
     const activeLayerId = useStore(state => state.activeLayerId);
     
-    
-    const [selectedObjectIds, setSelectedObjectIds] = useState([]);
+    // Build Mode & Debug Physics & Persistence Hooks
+    const activeBuildTool = useStore(state => state.activeBuildTool);
+    const setActiveBuildTool = useStore(state => state.setActiveBuildTool);
+    const jointWireSource = useStore(state => state.jointWireSource);
+    const setJointWireSource = useStore(state => state.setJointWireSource);
+    const debugPhysics = useStore(state => state.debugPhysics);
+    const setDebugPhysics = useStore(state => state.setDebugPhysics);
+    const toggleDebugPhysics = useStore(state => state.toggleDebugPhysics);
+    const exportSceneJSON = useStore(state => state.exportSceneJSON);
+    const importSceneJSON = useStore(state => state.importSceneJSON);
+    const addShape3D = useStore(state => state.addShape3D);
+    const addConstraint = useStore(state => state.addConstraint);
+    const deleteObject = useStore(state => state.deleteObject);
 
+    const [selectedObjectIds, setSelectedObjectIds] = useState([]);
     const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+
+    // AI Read Path Bridge (Section 3.4 & Stage 1 Exit Criteria)
+    useEffect(() => {
+        window.REALIS_AI_QUERY = () => {
+            if (mechSolver.current) {
+                return mechSolver.current.getLiveTelemetry();
+            }
+            return { error: 'Solver not initialized' };
+        };
+        return () => {
+            delete window.REALIS_AI_QUERY;
+        };
+    }, []);
     
     
     const simulationPreset = useStore(state => state.simulationPreset);
@@ -125,15 +155,12 @@ export default function SimulateWorkspace() {
         const changed = prevCounts.current.o !== objects.length || prevCounts.current.s !== shapes3D.length;
         if (changed) {
             prevCounts.current = { o: objects.length, s: shapes3D.length };
-            if (isPlaying) {
-                useStore.getState().togglePlayback();
-            }
             const allBodies = [...shapes3D, ...objects];
             mechSolver.current.setBodies(allBodies);
             thermSolver.current.setBodies(allBodies);
             setRenderBodies(allBodies);
         }
-    }, [objects, shapes3D, isPlaying]);
+    }, [objects, shapes3D]);
     
     
     useEffect(() => {
@@ -332,51 +359,115 @@ export default function SimulateWorkspace() {
             <div className="absolute top-0 left-0 right-0 h-14 bg-slate-950/80 backdrop-blur-md border-b border-white/10 z-30 flex items-center justify-between px-6">
                 
                 {}
-                <div className="flex bg-black/40 p-1 rounded-xl shadow-inner border border-white/5">
+                {/* Presets & Controls Header Toolbar */}
+                <div className="flex bg-black/40 p-1 rounded-xl shadow-inner border border-white/5 items-center gap-1">
                     {[{ id: 'rigid', icon: <Box size={14}/>, label: 'Mechanical' },
                       { id: 'thermal', icon: <Flame size={14}/>, label: 'Thermal' },
                       { id: 'fluid', icon: <Droplets size={14}/>, label: 'Fluid (Beta)' }].map(type => (
                         <button
                             key={type.id}
                             onClick={() => useStore.setState({ simulationType: type.id })}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${simulationType === type.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${simulationType === type.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             {type.icon} {type.label}
                         </button>
                     ))}
+
+                    <div className="h-4 w-px bg-white/10 mx-1"></div>
+
+                    {/* Presets Dropdown */}
+                    <select
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                SimulationDemoManager.loadDemo(e.target.value, useStore.getState());
+                            }
+                        }}
+                        defaultValue=""
+                        className="bg-black/60 border border-white/10 text-white text-[10px] font-mono font-bold rounded-lg px-2 py-1 outline-none cursor-pointer hover:border-primary/50 transition-colors"
+                    >
+                        <option value="" disabled>Load Preset (12 Stage 1 Scenarios)...</option>
+                        {PRESET_CATALOG.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
                 </div>
 
-                {}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Solver Mode</span>
-                        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
-                            <button onClick={() => useStore.setState({ simulationMode: 'preview' })} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all cursor-pointer ${simulationMode === 'preview' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-600 hover:text-white'}`}>Preview</button>
-                            <button onClick={() => useStore.setState({ simulationMode: 'accurate' })} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all cursor-pointer ${simulationMode === 'accurate' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-600 hover:text-white'}`}>Accurate</button>
-                        </div>
+                {/* Center / Right Control Cluster */}
+                <div className="flex items-center gap-3">
+                    {/* Undo / Redo */}
+                    <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
+                        <button 
+                            onClick={() => useStore.temporal?.getState()?.undo()}
+                            className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/10"
+                            title="Undo (Ctrl+Z)"
+                        >
+                            <RotateCcw size={12} />
+                        </button>
+                        <button 
+                            onClick={() => useStore.temporal?.getState()?.redo()}
+                            className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/10"
+                            title="Redo (Ctrl+Shift+Z)"
+                        >
+                            <RotateCw size={12} />
+                        </button>
                     </div>
 
-                    <div className="h-6 w-px bg-white/10 mx-2"></div>
+                    {/* Save / Load Scene JSON */}
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => {
+                                const json = exportSceneJSON();
+                                const blob = new Blob([json], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `realis_scene_${Date.now()}.json`;
+                                a.click();
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-black/40 border border-white/10 text-slate-300 hover:text-white hover:border-primary/50 transition-all cursor-pointer"
+                            title="Export Scene JSON"
+                        >
+                            <Download size={12} /> Save JSON
+                        </button>
 
-                    <div className="flex gap-2">
-                        <button onClick={() => setAnalysisSettings({ showVectors: !analysisSettings.showVectors })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showVectors ? 'border-primary bg-primary/20 text-white shadow-[0_0_10px_rgba(37,106,244,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <ArrowRightCircle size={12} /> Velocity
-                        </button>
-                        <button onClick={() => setAnalysisSettings({ showForces: !analysisSettings.showForces })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showForces ? 'border-amber-500 bg-amber-500/20 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <Gauge size={12} /> Forces
-                        </button>
-                        <button onClick={() => setAnalysisSettings({ showJoints: !analysisSettings.showJoints })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showJoints ? 'border-purple-500 bg-purple-500/20 text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <Box size={12} /> Joints
-                        </button>
-                        <button onClick={() => setAnalysisSettings({ showAnchors: !analysisSettings.showAnchors })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showAnchors ? 'border-pink-500 bg-pink-500/20 text-white shadow-[0_0_10px_rgba(236,72,153,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <Settings size={12} /> Anchors
-                        </button>
-                        <button onClick={() => setAnalysisSettings({ showHeatmap: !analysisSettings.showHeatmap })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.showHeatmap ? 'border-orange-500 bg-orange-500/20 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <Flame size={12} /> Heatmap
-                        </button>
-                        <button onClick={() => setAnalysisSettings({ isExplodedView: !analysisSettings.isExplodedView })} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${analysisSettings.isExplodedView ? 'border-cyan-500 bg-cyan-500/20 text-white shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'border-white/10 text-slate-400 hover:bg-white/5'}`}>
-                            <Box size={12} /> Exploded View
-                        </button>
+                        <label className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-black/40 border border-white/10 text-slate-300 hover:text-white hover:border-primary/50 transition-all cursor-pointer">
+                            <Upload size={12} /> Load JSON
+                            <input
+                                type="file"
+                                accept=".json"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (evt) => importSceneJSON(evt.target.result);
+                                        reader.readAsText(file);
+                                    }
+                                }}
+                            />
+                        </label>
+                    </div>
+
+                    <div className="h-6 w-px bg-white/10 mx-1"></div>
+
+                    {/* Debug Physics Toggle */}
+                    <button
+                        onClick={toggleDebugPhysics}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${
+                            debugPhysics.enabled
+                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                : 'border-white/10 text-slate-400 hover:bg-white/5'
+                        }`}
+                    >
+                        {debugPhysics.enabled ? <Eye size={12} /> : <EyeOff size={12} />} Debug Physics
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Solver</span>
+                        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
+                            <button onClick={() => useStore.setState({ simulationMode: 'preview' })} className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md transition-all cursor-pointer ${simulationMode === 'preview' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-600 hover:text-white'}`}>Preview</button>
+                            <button onClick={() => useStore.setState({ simulationMode: 'accurate' })} className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md transition-all cursor-pointer ${simulationMode === 'accurate' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-600 hover:text-white'}`}>Accurate</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -395,10 +486,10 @@ export default function SimulateWorkspace() {
                                 if (b.position) {
                                     if (Array.isArray(b.position)) {
                                         px = b.position[0];
-                                        py = (b.position[2] !== undefined && b.position[2] !== 0) ? b.position[2] : (b.position[1] ?? py);
+                                        py = b.position[1] ?? py;
                                     } else {
                                         px = b.position.x ?? px;
-                                        py = (b.position.z !== undefined && b.position.z !== 0) ? b.position.z : (b.position.y ?? py);
+                                        py = b.position.y ?? py;
                                     }
                                 }
 
@@ -497,26 +588,108 @@ export default function SimulateWorkspace() {
                     </div>
                 )}
 
-                {}
-                {isV6Active && (
-                    <V6ControlPanel
-                        solver={v6SolverRef.current}
-                        engineState={v6EngineState}
-                        isVisible={showV6Panel}
-                        onClose={() => setShowV6Panel(false)}
-                    />
-                )}
+                {/* ── Build Mode Floating Toolbar (LEGO Construction) ─────────────────────────── */}
+                <div className="absolute top-20 left-6 z-20 flex flex-col gap-1 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/10 shadow-2xl">
+                    <span className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-widest text-center mb-0.5">BUILD</span>
 
-                {}
-                {(analysisSettings.showVectors || analysisSettings.showJoints || analysisSettings.showAnchors) && simulationType === 'rigid' && (
-                    <svg className="absolute inset-0 pointer-events-none w-full h-full z-10" style={{ perspective: '1000px' }}>
+                    <button
+                        onClick={() => { setActiveBuildTool('select'); setJointWireSource(null); }}
+                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                            activeBuildTool === 'select' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'
+                        }`}
+                        title="Select Tool"
+                    >
+                        <MousePointer size={14} />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            addShape3D({
+                                type: 'sphere',
+                                position: [0, 50, 0],
+                                params: { radius: 10 },
+                                color: '#3b82f6',
+                                mass: 1.0,
+                                restitution: 0.5,
+                                friction: 0.3
+                            });
+                        }}
+                        className="p-2 rounded-lg flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                        title="Create Circle / Sphere Body"
+                    >
+                        <CircleIcon size={14} className="text-blue-400" />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            addShape3D({
+                                type: 'rect',
+                                position: [0, 50, 0],
+                                params: { width: 30, height: 30, depth: 30 },
+                                color: '#10b981',
+                                mass: 2.0,
+                                restitution: 0.3,
+                                friction: 0.4
+                            });
+                        }}
+                        className="p-2 rounded-lg flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                        title="Create Box Body"
+                    >
+                        <Box size={14} className="text-emerald-400" />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            addShape3D({
+                                type: 'rect',
+                                position: [0, 120, 0],
+                                params: { width: 160, height: 12, depth: 30 },
+                                rotation: -20,
+                                isStatic: true,
+                                color: '#64748b',
+                                friction: 0.4
+                            });
+                        }}
+                        className="p-2 rounded-lg flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                        title="Create Static Ramp"
+                    >
+                        <Layers size={14} className="text-slate-400" />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setActiveBuildTool(activeBuildTool === 'wire_joint' ? 'select' : 'wire_joint');
+                            setJointWireSource(null);
+                        }}
+                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                            activeBuildTool === 'wire_joint'
+                                ? 'bg-purple-600 text-white shadow-lg animate-pulse'
+                                : 'text-slate-400 hover:text-white hover:bg-white/10'
+                        }`}
+                        title="Wire Joint (Click Body 1 then Body 2)"
+                    >
+                        <Link2 size={14} className="text-purple-400" />
+                    </button>
+                    {activeBuildTool === 'wire_joint' && (
+                        <div className="text-[8px] font-mono text-purple-300 px-1 py-0.5 text-center">
+                            {jointWireSource ? 'Click Target B' : 'Click Body A'}
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Debug Physics Mode Overlay ─────────────────────────────────────────────────── */}
+                {(debugPhysics.enabled || analysisSettings.showVectors || analysisSettings.showJoints || analysisSettings.showAnchors) && simulationType === 'rigid' && (
+                    <svg className="absolute inset-0 pointer-events-none w-full h-full z-10">
                         <defs>
                             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                                 <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
                             </marker>
+                            <marker id="normalarrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                                <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
+                            </marker>
                         </defs>
                         
-                        {}
+                        {/* Constraints Overlay */}
                         {constraints.map((c, i) => {
                             const allBodies = [...(renderBodies || []), ...(objects || []), ...(shapes3D || [])];
                             const bA = allBodies.find(o => String(o.id) === String(c.targetA));
@@ -529,10 +702,10 @@ export default function SimulateWorkspace() {
                                 if (obj.position) {
                                     if (Array.isArray(obj.position)) {
                                         x = obj.position[0];
-                                        y = (obj.position[2] !== undefined && obj.position[2] !== 0) ? obj.position[2] : (obj.position[1] ?? y);
+                                        y = obj.position[1] ?? y;
                                     } else {
                                         x = obj.position.x ?? x;
-                                        y = (obj.position.z !== undefined && obj.position.z !== 0) ? obj.position.z : (obj.position.y ?? y);
+                                        y = obj.position.y ?? y;
                                     }
                                 }
                                 return { x: Number(x) || 0, y: Number(y) || 0 };
@@ -559,22 +732,44 @@ export default function SimulateWorkspace() {
                             );
                         })}
 
-                        {}
+                        {/* Debug Physics Specific Overlays (Bounding Boxes, Contact Points, Normals, Sleeping) */}
+                        {debugPhysics.enabled && renderBodies.map(b => {
+                            const px = b.position?.x ?? b.cx ?? b.x ?? 0;
+                            const py = b.position?.y ?? b.cy ?? b.y ?? 0;
+                            const r = b.radius ?? b.r ?? 15;
+                            const w = b.width ?? b.dimensions?.x ?? (r * 2);
+                            const h = b.height ?? b.dimensions?.y ?? (r * 2);
+
+                            return (
+                                <g key={`debug_body_${b.id}`}>
+                                    {/* Bounding Box */}
+                                    <rect x={px - w/2} y={py - h/2} width={w} height={h} fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" opacity="0.7" />
+                                    {/* Center of Mass Crosshair */}
+                                    <line x1={px - 6} y1={py} x2={px + 6} y2={py} stroke="#ef4444" strokeWidth="1.5" />
+                                    <line x1={px} y1={py - 6} x2={px} y2={py + 6} stroke="#ef4444" strokeWidth="1.5" />
+                                    {/* Sleeping Badge */}
+                                    {b.sleeping && (
+                                        <text x={px} y={py - h/2 - 4} fill="#94a3b8" fontSize="9" textAnchor="middle" fontWeight="bold">zzz</text>
+                                    )}
+                                </g>
+                            );
+                        })}
+
+                        {/* Velocity Vectors Overlay */}
                         {analysisSettings.showVectors && vectors.map((v, i) => {
-                            
-                            const originX = window.innerWidth / 2 + v.origin.x;
-                            const originY = window.innerHeight / 2 - v.origin.y; 
-                            const length = Math.min(100, v.magnitude * analysisSettings.vectorScale); 
+                            const originX = v.origin.x;
+                            const originY = v.origin.y;
+                            const length = Math.min(100, v.magnitude * (analysisSettings.vectorScale || 1));
                             const dirX = v.velocity.x || v.gravityForce.x || 0;
-                            const dirY = -(v.velocity.y || v.gravityForce.y || 0); 
+                            const dirY = v.velocity.y || v.gravityForce.y || 0;
                             const lenOrig = Math.sqrt(dirX*dirX + dirY*dirY) || 1;
-                            
+
                             return length > 1 ? (
-                                <line 
-                                    key={`vector-${i}`} 
-                                    x1={originX} y1={originY} 
-                                    x2={originX + (dirX/lenOrig)*length} 
-                                    y2={originY + (dirY/lenOrig)*length} 
+                                <line
+                                    key={`vector-${i}`}
+                                    x1={originX} y1={originY}
+                                    x2={originX + (dirX/lenOrig)*length}
+                                    y2={originY + (dirY/lenOrig)*length}
                                     stroke="#fbbf24" strokeWidth="2"
                                     markerEnd="url(#arrowhead)"
                                     opacity="0.8"
@@ -584,16 +779,15 @@ export default function SimulateWorkspace() {
                     </svg>
                 )}
 
-                {}
-                <div className="absolute top-20 left-6 z-20 w-64 space-y-4 pointer-events-none">
-                    
+                {/* ── Mechanical Analytics Card ──────────────────────────────────────────────────── */}
+                <div className="absolute top-20 left-20 z-20 w-56 space-y-4 pointer-events-none">
                     {simulationType === 'rigid' && (
-                        <div className="glass-panel p-4 rounded-xl shadow-2xl animate-in slide-in-from-left-4 duration-500">
-                            <div className="flex items-center gap-2 mb-3">
+                        <div className="glass-panel p-3.5 rounded-xl shadow-2xl animate-in slide-in-from-left-4 duration-500">
+                            <div className="flex items-center gap-2 mb-2">
                                 <Activity size={14} className="text-emerald-400" />
-                                <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Mechanical Energy</span>
+                                <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Telemetry & Energy</span>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <div>
                                     <div className="flex justify-between text-[9px] text-slate-500 font-mono mb-1">
                                         <span>KINETIC</span>
@@ -612,148 +806,167 @@ export default function SimulateWorkspace() {
                                         <div className="h-full bg-blue-400 transition-all duration-300" style={{ width: `${Math.min(100, simulationState.energy.potential / 100)}%` }}/>
                                     </div>
                                 </div>
-                                <div className="pt-2 border-t border-white/10 flex justify-between text-[10px] font-mono font-bold">
-                                    <span className="text-slate-400">TOTAL</span>
+                                <div className="pt-1.5 border-t border-white/10 flex justify-between text-[10px] font-mono font-bold">
+                                    <span className="text-slate-400">TOTAL ENERGY</span>
                                     <span className="text-amber-400">{simulationState.energy.total.toFixed(1)} J</span>
                                 </div>
                             </div>
                         </div>
                     )}
-
-                    {simulationType === 'thermal' && (
-                        <div className="glass-panel p-4 rounded-xl shadow-2xl animate-in slide-in-from-left-4 duration-500">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Flame size={14} className="text-orange-500" />
-                                <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Thermal Analytics</span>
-                            </div>
-                            <div className="space-y-3 font-mono text-[10px]">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Peak Temp</span>
-                                    <span className="text-red-400">{simulationState.thermalAnalytics.maxTemp.toFixed(1)} °C</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Avg Temp</span>
-                                    <span className="text-orange-300">{simulationState.thermalAnalytics.avgTemp.toFixed(1)} °C</span>
-                                </div>
-                                <div className="pt-2 border-t border-white/10 flex justify-between font-bold">
-                                    <span className="text-slate-400">Risk Level</span>
-                                    <span className={`px-2 py-0.5 rounded text-[9px] border ${
-                                        simulationState.thermalAnalytics.heatRisk === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border-red-500/50' : 
-                                        simulationState.thermalAnalytics.heatRisk === 'HIGH' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
-                                        'bg-green-500/20 text-green-400 border-green-500/50'
-                                    }`}>
-                                        {simulationState.thermalAnalytics.heatRisk}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                 </div>
 
-                {}
-                <div className={`absolute top-20 right-6 bottom-28 z-20 transition-all duration-300 ${isInspectorOpen ? 'translate-x-0 w-72' : 'translate-x-[calc(100%+24px)] w-0'}`}>
+                {/* ── Engineering Inspector Control Panel (Per-Body & Global) ──────────────────── */}
+                <div className={`absolute top-20 right-6 bottom-24 z-20 transition-all duration-300 ${isInspectorOpen ? 'translate-x-0 w-80' : 'translate-x-[calc(100%+24px)] w-0'}`}>
                     <div className="h-full glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                        <div className="px-5 py-3 flex items-center justify-between border-b border-white/10 bg-white/5">
+                        <div className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/5">
                             <div className="flex items-center gap-2">
-                                <Settings size={14} className="text-primary" />
-                                <h3 className="text-xs font-bold tracking-widest uppercase text-slate-200">Environment</h3>
+                                <Sliders size={14} className="text-primary" />
+                                <h3 className="text-xs font-bold tracking-widest uppercase text-slate-200">Engineering Inspector</h3>
                             </div>
                             <button onClick={() => setIsInspectorOpen(false)} className="text-slate-500 hover:text-white cursor-pointer">
                                 <Settings size={12} />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-                            
-                            {}
-                            {simulationType === 'rigid' && (
-                                <>
-                                    <section>
-                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Globe size={10}/> Gravity Vector</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {['x', 'y', 'z'].map(axis => (
-                                                <div key={axis} className="bg-black/40 border border-white/5 rounded-lg p-1.5 flex flex-col items-center">
-                                                    <span className="text-[8px] text-slate-500 uppercase font-bold">{axis}</span>
-                                                    <input 
-                                                        type="number" step="0.1"
-                                                        value={simulationSettings.gravity[axis]} 
-                                                        onChange={(e) => updateGravity(axis, e.target.value)}
-                                                        className="w-full bg-transparent text-center text-[10px] text-white outline-none font-mono mt-0.5"
+                        <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
+                            {/* Object Selection & Per-Body Material Assignment */}
+                            <section className="space-y-3">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Box size={10}/> Body Inspector ({renderBodies.length} Bodies)
+                                </label>
+                                
+                                <select
+                                    value={selectedObjectIds[0] || ''}
+                                    onChange={(e) => setSelectedObjectIds(e.target.value ? [e.target.value] : [])}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-xs text-white outline-none font-mono cursor-pointer"
+                                >
+                                    <option value="">Select Body to Inspect / Edit...</option>
+                                    {renderBodies.map(b => (
+                                        <option key={b.id} value={b.id}>
+                                            [{b.id}] {b.type} (m: {b.mass || 1}kg, mat: {b.material_id || 'default'})
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {selectedObjectIds[0] && (() => {
+                                    const selectedBody = renderBodies.find(b => String(b.id) === String(selectedObjectIds[0]));
+                                    if (!selectedBody) return null;
+                                    return (
+                                        <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-3 text-xs">
+                                            <div className="flex justify-between items-center pb-2 border-b border-white/10 font-bold">
+                                                <span className="text-primary uppercase tracking-wide">ID: {selectedBody.id}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        deleteObject(selectedBody.id);
+                                                        setSelectedObjectIds([]);
+                                                    }}
+                                                    className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
+                                                    title="Delete Body"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+
+                                            {/* Material System Selection */}
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-mono text-slate-400 uppercase">Material Library</label>
+                                                <select
+                                                    value={selectedBody.material_id || 'custom'}
+                                                    onChange={(e) => applyMaterial(selectedBody.id, e.target.value)}
+                                                    className="w-full bg-slate-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none cursor-pointer"
+                                                >
+                                                    {Object.keys(materials).map(mKey => (
+                                                        <option key={mKey} value={mKey}>{mKey.toUpperCase()}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Physical Properties */}
+                                            <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                                                <div>
+                                                    <span className="text-slate-500">Mass (kg)</span>
+                                                    <input
+                                                        type="number" step="0.1" min="0.01"
+                                                        value={selectedBody.mass || 1}
+                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { mass: parseFloat(e.target.value) || 1 })}
+                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
                                                     />
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </section>
-
-                                    <section className="space-y-4">
-                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Gauge size={10}/> Global Parameters</label>
-                                        
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                                <span>Air Resistance (Drag)</span>
-                                                <span className="text-white">{simulationSettings.airResistance}</span>
+                                                <div>
+                                                    <span className="text-slate-500">Restitution (e)</span>
+                                                    <input
+                                                        type="number" step="0.05" min="0" max="1"
+                                                        value={selectedBody.restitution ?? 0.5}
+                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { restitution: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Friction (μ)</span>
+                                                    <input
+                                                        type="number" step="0.05" min="0" max="1"
+                                                        value={selectedBody.friction ?? 0.3}
+                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { friction: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col justify-end">
+                                                    <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!selectedBody.isStatic}
+                                                            onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { isStatic: e.target.checked })}
+                                                            className="accent-primary"
+                                                        />
+                                                        Static Pin
+                                                    </label>
+                                                </div>
                                             </div>
-                                            <input 
-                                                type="range" min="0" max="0.1" step="0.001"
-                                                value={simulationSettings.airResistance}
-                                                onChange={e => updateSetting('airResistance', parseFloat(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-full accent-primary outline-none"
-                                            />
-                                        </div>
 
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                                <span>Friction Coefficient</span>
-                                                <span className="text-white">{simulationSettings.frictionCoeff}</span>
+                                            {/* Velocity Telemetry */}
+                                            <div className="pt-2 border-t border-white/10 text-[9px] font-mono text-slate-400 flex justify-between">
+                                                <span>Vel: ({selectedBody.velocity?.x?.toFixed(1) || 0}, {selectedBody.velocity?.y?.toFixed(1) || 0}) m/s</span>
+                                                <span className={selectedBody.sleeping ? 'text-amber-400 font-bold' : 'text-emerald-400'}>
+                                                    {selectedBody.sleeping ? 'SLEEPING' : 'AWAKE'}
+                                                </span>
                                             </div>
-                                            <input 
-                                                type="range" min="0" max="1" step="0.01"
-                                                value={simulationSettings.frictionCoeff}
-                                                onChange={e => updateSetting('frictionCoeff', parseFloat(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-full accent-orange-500 outline-none"
-                                            />
                                         </div>
-                                    </section>
-                                </>
-                            )}
+                                    );
+                                })()}
+                            </section>
 
-                            {}
-                            {simulationType === 'thermal' && (
-                                <section className="space-y-4">
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Flame size={10}/> Thermal Settings</label>
-                                    
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                            <span>Ambient Temp (°C)</span>
-                                            <span className="text-white">{simulationSettings.ambientTemp}</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="-100" max="1000" step="1"
-                                            value={simulationSettings.ambientTemp}
-                                            onChange={e => updateSetting('ambientTemp', parseFloat(e.target.value))}
-                                            className="w-full h-1 bg-white/10 rounded-full accent-orange-500 outline-none"
-                                        />
+                            {/* Gravity Vector Controls */}
+                            {simulationType === 'rigid' && (
+                                <section>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Globe size={10}/> Gravity Vector (m/s²)</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['x', 'y', 'z'].map(axis => (
+                                            <div key={axis} className="bg-black/40 border border-white/5 rounded-lg p-1.5 flex flex-col items-center">
+                                                <span className="text-[8px] text-slate-500 uppercase font-bold">{axis}</span>
+                                                <input 
+                                                    type="number" step="0.1"
+                                                    value={simulationSettings.gravity[axis]} 
+                                                    onChange={(e) => updateGravity(axis, e.target.value)}
+                                                    className="w-full bg-transparent text-center text-[10px] text-white outline-none font-mono mt-0.5"
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
-                                    <p className="text-[9px] text-slate-500 leading-relaxed mt-2 italic">
-                                        Objects will gradually normalize to ambient temperature based on conductivity.
-                                    </p>
                                 </section>
                             )}
-                            
-                            {}
+
                             <ModelControls />
-                            
-                            {}
-                            <section className="pt-4 border-t border-white/10 space-y-4">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Solver Precision</label>
+
+                            {/* Solver Precision */}
+                            <section className="pt-4 border-t border-white/10 space-y-3">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Solver Frequency & Sub-steps</label>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                        <span>Time Step (s)</span>
-                                        <span className="text-emerald-400">{simulationSettings.timeStep}</span>
+                                        <span>Time Step (dt)</span>
+                                        <span className="text-emerald-400">{simulationSettings.timeStep}s</span>
                                     </div>
                                     <input 
-                                        type="range" min="0.001" max="0.1" step="0.001"
+                                        type="range" min="0.001" max="0.05" step="0.001"
                                         value={simulationSettings.timeStep}
                                         onChange={e => updateSetting('timeStep', parseFloat(e.target.value))}
                                         className="w-full h-1 bg-white/10 rounded-full accent-emerald-500 outline-none"
@@ -761,11 +974,11 @@ export default function SimulateWorkspace() {
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                        <span>Sub-steps</span>
+                                        <span>Sub-steps per frame</span>
                                         <span className="text-white">{simulationSettings.subSteps}</span>
                                     </div>
                                     <input 
-                                        type="range" min="1" max="20" step="1"
+                                        type="range" min="1" max="16" step="1"
                                         value={simulationSettings.subSteps}
                                         onChange={e => updateSetting('subSteps', parseInt(e.target.value))}
                                         className="w-full h-1 bg-white/10 rounded-full accent-slate-400 outline-none"
@@ -783,39 +996,65 @@ export default function SimulateWorkspace() {
                 )}
             </div>
 
-            {}
-            <div className="h-20 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-8 flex items-center gap-12 z-30 shrink-0">
-                {}
-                <div className="flex items-center gap-3">
-                    <button onClick={() => { resetPlayback(); useStore.setState({ simulationState: { ...simulationState, time: 0 }}) }} className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg">
-                        <SkipBack size={16} />
+            {/* ── Timeline & Engine Inspector Control Bar ────────────────────────────────────────── */}
+            <div className="h-16 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center gap-8 z-30 shrink-0">
+                {/* Playback Controls */}
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => { resetPlayback(); useStore.setState({ simulationState: { ...simulationState, time: 0 }}) }} 
+                        className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
+                        title="Reset Simulation"
+                    >
+                        <RefreshCw size={14} />
                     </button>
+
                     <button 
                         onClick={togglePlayback} 
-                        className="h-10 px-6 bg-primary hover:bg-blue-500 text-white rounded-xl shadow-[0_0_15px_rgba(37,106,244,0.4)] flex items-center justify-center transition-all cursor-pointer font-bold tracking-wider uppercase text-[10px]"
+                        className="h-9 px-5 bg-primary hover:bg-blue-500 text-white rounded-xl shadow-[0_0_15px_rgba(37,106,244,0.4)] flex items-center justify-center transition-all cursor-pointer font-bold tracking-wider uppercase text-[10px]"
                     >
-                        {isPlaying ? <><Square size={12} fill="currentColor" className="mr-2"/> PAUSE</> : <><Play size={14} fill="currentColor" className="mr-2"/> SIMULATE</>}
+                        {isPlaying ? <><Square size={12} fill="currentColor" className="mr-1.5"/> PAUSE</> : <><Play size={14} fill="currentColor" className="mr-1.5"/> RUN</>}
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg">
-                        <SkipForward size={16} />
+
+                    <button 
+                        onClick={() => {
+                            if (!isPlaying && mechSolver.current) {
+                                mechSolver.current.step();
+                                setSimulationState({ time: mechSolver.current.time, energy: mechSolver.current.getSnapshot().energy });
+                            }
+                        }}
+                        className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
+                        title="Single Step Forward"
+                    >
+                        <SkipForward size={14} />
                     </button>
                 </div>
 
-                {}
-                <div className="flex-1 flex flex-col gap-1.5">
+                {/* Time-Scale Speed Slider */}
+                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                    <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">Speed</span>
+                    <input
+                        type="range" min="0.1" max="5.0" step="0.1"
+                        value={simulationSettings.timeScale || 1.0}
+                        onChange={(e) => updateSetting('timeScale', parseFloat(e.target.value))}
+                        className="w-20 h-1 bg-white/10 rounded-full accent-primary outline-none cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-primary font-bold">{simulationSettings.timeScale || 1.0}x</span>
+                </div>
+
+                {/* Progress Bar & Telemetry */}
+                <div className="flex-1 flex flex-col gap-1">
                     <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest hover:text-primary transition-colors cursor-pointer font-mono">
-                            Time: {simulationState.time.toFixed(3)} s
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                            Elapsed Time: {simulationState.time.toFixed(3)} s
                         </span>
                         <div className="flex items-center gap-2">
-                            <div className={`size-1.5 rounded-full ${isPlaying ? 'bg-primary animate-pulse' : 'bg-slate-600'}`}></div>
+                            <div className={`size-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
                             <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">
-                                {isPlaying ? 'RUNNING' : 'IDLE'}
+                                {isPlaying ? 'SIMULATING' : 'PAUSED'}
                             </span>
                         </div>
                     </div>
                     <div className="relative w-full h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
-                        <div className="absolute top-0 left-0 h-full bg-primary/40 w-full animate-pulse opacity-50"></div>
                         <div className="absolute top-0 left-0 h-full bg-primary transition-all duration-75" style={{ width: `${(simulationState.time % 10) / 10 * 100}%` }}></div>
                     </div>
                 </div>

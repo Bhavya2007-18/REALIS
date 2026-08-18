@@ -21,6 +21,7 @@ set(REALIS_SOURCES
     core/timestep.cpp
     core/integrator.cpp
     core/world.cpp
+    core/simulation.cpp
     dynamics/rigid_body.cpp
     dynamics/force_registry.cpp
     dynamics/inertia.cpp
@@ -30,6 +31,11 @@ set(REALIS_SOURCES
     collision/solver.cpp
     constraints/contact_constraint.cpp
     constraints/constraint_solver.cpp
+    constraints/distance_constraint.cpp
+    constraints/fixed_constraint.cpp
+    constraints/hinge_constraint.cpp
+    constraints/slider_constraint.cpp
+    constraints/spring_constraint.cpp
     cad/cad_importer.cpp
     cad/cad_validator.cpp
     geometry/contact_generator.cpp
@@ -37,6 +43,9 @@ set(REALIS_SOURCES
     # Phase 7: Geometry Layer
     geometry/topology_validator.cpp
     geometry/mesh_quality.cpp
+    
+    simulation/rigid_body_simulation.cpp
+    simulation/simulation_c_api.cpp
     
     coupling/rigid_fem_coupler.cpp
     energy/energy_monitor.cpp
@@ -97,6 +106,36 @@ target_link_libraries(realis_simulator realis_core)
 # add_subdirectory(../tools/pybind11 pybind11)
 # pybind11_add_module(py_realis ../tools/python_bindings/py_realis.cpp)
 # target_link_libraries(py_realis PUBLIC realis_core)
+
+# Emscripten/WASM Build Target
+if(EMSCRIPTEN)
+    add_executable(realis_sim_wasm simulation/simulation_c_api.cpp)
+    target_link_libraries(realis_sim_wasm realis_core)
+    set_target_properties(realis_sim_wasm PROPERTIES
+        OUTPUT_NAME "realis_sim"
+        SUFFIX ".js"
+    )
+    target_compile_options(realis_sim_wasm PRIVATE
+        -sEXPORTED_FUNCTIONS="['_realis_sim_create','_realis_sim_destroy','_realis_sim_initialize','_realis_sim_step','_realis_sim_step_dt','_realis_sim_reset','_realis_sim_pause','_realis_sim_resume','_realis_sim_is_paused','_realis_sim_get_state','_realis_sim_set_state','_realis_sim_add_body','_realis_sim_remove_body','_realis_sim_add_constraint','_realis_sim_remove_constraint','_realis_sim_clear','_realis_sim_get_frame','_realis_sim_free_frame','_realis_sim_apply_force','_realis_sim_apply_torque','_realis_sim_set_velocity','_realis_sim_set_angular_velocity','_realis_sim_has_body','_realis_sim_compute_energy','_realis_sim_validate']"
+        -sEXPORTED_RUNTIME_METHODS="['ccall','cwrap','HEAPF32','HEAPU8','malloc','free']"
+        -sMODULARIZE=1
+        -sEXPORT_NAME="createRealisSim"
+        -sENVIRONMENT="web"
+        -sALLOW_MEMORY_GROWTH=1
+        -sINITIAL_MEMORY=64MB
+        -sNO_EXIT_RUNTIME=1
+    )
+    target_link_options(realis_sim_wasm PRIVATE
+        -sEXPORTED_FUNCTIONS="['_realis_sim_create','_realis_sim_destroy','_realis_sim_initialize','_realis_sim_step','_realis_sim_step_dt','_realis_sim_reset','_realis_sim_pause','_realis_sim_resume','_realis_sim_is_paused','_realis_sim_get_state','_realis_sim_set_state','_realis_sim_add_body','_realis_sim_remove_body','_realis_sim_add_constraint','_realis_sim_remove_constraint','_realis_sim_clear','_realis_sim_get_frame','_realis_sim_free_frame','_realis_sim_apply_force','_realis_sim_apply_torque','_realis_sim_set_velocity','_realis_sim_set_angular_velocity','_realis_sim_has_body','_realis_sim_compute_energy','_realis_sim_validate']"
+        -sEXPORTED_RUNTIME_METHODS="['ccall','cwrap','HEAPF32','HEAPU8','malloc','free']"
+        -sMODULARIZE=1
+        -sEXPORT_NAME="createRealisSim"
+        -sENVIRONMENT="web"
+        -sALLOW_MEMORY_GROWTH=1
+        -sINITIAL_MEMORY=64MB
+        -sNO_EXIT_RUNTIME=1
+    )
+endif()
 
 # Install rules
 install(TARGETS realis_core DESTINATION lib)
