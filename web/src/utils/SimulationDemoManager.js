@@ -199,6 +199,19 @@ const PRESETS = {
         materials: [], forces: [], constraints: [],
         simulation: { time_scale: 1.0 },
         overlay: { title: 'Inclined Friction Ramp', description: 'Static vs Dynamic Friction\nBlue: μ=0.1 | Red: μ=0.8' }
+    },
+    free_fall: {
+        metadata: { id: 'free_fall', name: 'Free Fall', version: '1.0' },
+        world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 4 },
+        bodies: [
+            { id: 'ground', type: 'rect', x: -200, y: 150, width: 500, height: 20, isStatic: true, friction: 0.5, restitution: 0.3 },
+            { id: 'sphere', type: 'sphere', position: [-100, 200, 0], params: { radius: 15 }, color: '#ef4444', mass: 5, restitution: 0.4, friction: 0.3, initialVelocity: { x: 0, y: 0, z: 0 } }
+        ],
+        materials: [],
+        forces: [],
+        constraints: [],
+        simulation: { time_scale: 1.0 },
+        overlay: { title: 'Free Fall', description: 'Sphere dropped from height under gravity\nImpact against ground plane' }
     }
 };
 
