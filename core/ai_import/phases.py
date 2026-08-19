@@ -97,8 +97,11 @@ def run_phase_7_5(graph: SceneGraph) -> ValidationResult:
     static_exists = any(n.mass <= 0.0 for n in graph.nodes)
     if not static_exists and len(graph.nodes) > 0:
         warnings.append("No static anchors found; system may fall infinitely.")
+        valid = False
+    else:
+        valid = True
     
-    return ValidationResult(valid=True, warnings=warnings)
+    return ValidationResult(valid=valid, warnings=warnings)
 
 def run_phase_8(graph: SceneGraph) -> EnginePayload:
     """Phase 8: Compilation Layer (Core IR -> Tool Server Payload format)"""

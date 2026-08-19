@@ -99,6 +99,24 @@ Where Python meets C++, but nowhere else.
 - `visualization/` - Debug viewers and plotters
 - `converters/` - Data format converters
 
+### Running the Python Backend
+
+The FastAPI server in `tools/server.py` requires Python dependencies. Install them from the **root** directory:
+
+```bash
+cd REALIS
+pip install -r requirements.txt
+```
+
+Then start the server:
+
+```bash
+cd tools
+uvicorn server:app --reload --port 8000
+```
+
+**Note:** Do NOT run `pip install` from the `web/` directory, as that is a Node.js/Vite frontend project with a separate `package.json` and `node_modules`.
+
 ### data/ - Reproducible Truth
 
 - `materials/` - Material properties database
