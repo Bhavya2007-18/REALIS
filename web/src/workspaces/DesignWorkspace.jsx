@@ -1971,15 +1971,18 @@ export default function DesignWorkspace() {
                 <div className="flex items-center gap-1">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Demos</span>
                     {[
-                        { id: 'gravity', label: 'Drop', title: 'Gravity Drop Test' },
-                        { id: 'pendulum', label: 'Pivot', title: 'Pendulum Constraint' },
-                        { id: 'collision', label: 'Impact', title: 'Elastic Collision' },
-                        { id: 'dominos', label: 'Domino', title: 'Domino Chain' },
-                        { id: 'orbit', label: 'Orbit', title: 'Orbital Motion' },
+                        { id: 'free_fall', label: 'Drop', title: 'Free Fall (100m Drop)' },
+                        { id: 'single_pendulum', label: 'Pivot', title: 'Pendulum Constraint' },
+                        { id: 'elastic_inelastic_collision', label: 'Impact', title: 'Elastic Collision' },
+                        { id: 'domino_chain', label: 'Domino', title: 'Domino Chain' },
+                        { id: 'orbital_mechanics', label: 'Orbit', title: 'Orbital Motion' },
                     ].map(demo => (
                         <button
                             key={demo.id}
-                            onClick={() => SimulationDemoManager.loadDemo(demo.id, useStore.getState())}
+                            onClick={() => {
+                                SimulationDemoManager.loadDemo(demo.id, useStore.getState());
+                                useStore.getState().setActiveWorkspace('simulate');
+                            }}
                             className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-slate-800/50 text-slate-400 hover:bg-primary/20 hover:text-primary transition-all cursor-pointer border border-transparent hover:border-primary/30"
                             title={demo.title}
                         >

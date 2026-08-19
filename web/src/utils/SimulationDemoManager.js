@@ -9,22 +9,26 @@
 
 const PRESETS = {
     projectile_motion: {
-        metadata: { id: 'projectile_motion', name: 'Projectile Motion', version: '1.0' },
+        metadata: { id: 'projectile_motion', name: 'Projectile Motion (Parabolic Arc)', version: '1.1' },
         world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 4 },
+        lab: {
+            type: 'projectile', v0: 20, angle: 45, y0: 0, gravity: 9.81
+        },
         bodies: [
-            { id: 'ground', type: 'rect', x: -200, y: 150, width: 500, height: 20, stroke: '#64748b', fill: 'rgba(100,116,139,0.4)', isStatic: true, friction: 0.5, restitution: 0.3 },
-            { id: 'target_1', type: 'rect', x: 120, y: 100, width: 20, height: 50, stroke: '#f59e0b', fill: 'rgba(245,158,11,0.3)', mass: 2, restitution: 0.3, friction: 0.5 },
-            { id: 'target_2', type: 'rect', x: 150, y: 100, width: 20, height: 50, stroke: '#f59e0b', fill: 'rgba(245,158,11,0.3)', mass: 2, restitution: 0.3, friction: 0.5 },
-            { id: 'projectile', type: 'sphere', position: [-100, 120, 0], params: { radius: 8 }, color: '#ef4444', mass: 3, restitution: 0.4, friction: 0.3, initialVelocity: { x: 80, y: -60, z: 0 } }
+            { id: 'ground', type: 'rect', x: -20, y: 470, width: 640, height: 10, stroke: '#64748b', fill: 'rgba(100,116,139,0.4)', isStatic: true, friction: 0.5, restitution: 0.3 },
+            { id: 'projectile', type: 'sphere', position: [-20, 440, 0], params: { radius: 8 }, color: '#f59e0b', mass: 1, restitution: 0.3, friction: 0.2, initialVelocity: { x: 0, y: 0, z: 0 } }
         ],
         materials: [], forces: [], constraints: [],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'Projectile Motion', description: 'Parabolic trajectory with gravity\nImpact against target blocks' }
+        overlay: { title: 'Projectile Motion', description: 'Parabolic trajectory from kinematic equations\nvx = v₀cosθ (constant) · vy = v₀sinθ - gt\nDefault: v₀=20 m/s, θ=45°, T≈2.88s, R≈40.77m, H≈10.19m' }
     },
 
     single_pendulum: {
         metadata: { id: 'single_pendulum', name: 'Single Pendulum', version: '1.0' },
         world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 4 },
+        lab: {
+            type: 'pendulum', length: 2.0, angle0: 60, gravity: 9.81
+        },
         bodies: [
             { id: 'pivot', type: 'sphere', position: [0, 50, 0], params: { radius: 3 }, color: '#fbbf24', isStatic: true },
             { id: 'bob', type: 'sphere', position: [80, 50, 0], params: { radius: 8 }, color: '#3b82f6', mass: 5.0, restitution: 0.2 }

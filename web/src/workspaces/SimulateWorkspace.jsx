@@ -7,6 +7,8 @@ import {
 import useStore from '../store/useStore';
 import Viewport3D from '../components/Viewport3D';
 import FreeFallLab from '../components/FreeFallLab';
+import ProjectileLab from '../components/ProjectileLab';
+import PendulumLab from '../components/PendulumLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -17,6 +19,14 @@ import V6ControlPanel from '../components/V6ControlPanel';
 import ModelControls from '../components/ModelControls';
 import { stepWater } from '../utils/waterPhysics';
 import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoManager';
+
+// Centralized routing map: simulation preset -> dedicated laboratory screen.
+// Add new lab demos here; avoid scattering string comparisons elsewhere.
+const LAB_SCREENS = {
+    free_fall: FreeFallLab,
+    projectile_motion: ProjectileLab,
+    single_pendulum: PendulumLab,
+};
 
 export default function SimulateWorkspace() {
     
@@ -76,8 +86,12 @@ export default function SimulateWorkspace() {
     
     
     const simulationPreset = useStore(state => state.simulationPreset);
+    const ActiveLab = LAB_SCREENS[simulationPreset] || null;
     const isV6Active = simulationPreset === 'v6_engine_simulation';
     const isFreeFallActive = simulationPreset === 'free_fall';
+    const isProjectileActive = simulationPreset === 'projectile_motion';
+    const isPendulumActive = simulationPreset === 'single_pendulum';
+    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive;
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());
@@ -184,7 +198,7 @@ export default function SimulateWorkspace() {
     const lastTelemetryTimeRef = useRef(0);
 
     useEffect(() => {
-        if (!isPlaying || isFreeFallActive) {
+        if (!isPlaying || isLabActive) {
             cancelAnimationFrame(reqRef.current);
             accumulatorRef.current = 0;
             return;
@@ -308,7 +322,7 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isFreeFallActive, setShapes3D, setSimulationState]);
+    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isLabActive, setShapes3D, setSimulationState]);
 
     
     useEffect(() => {
@@ -476,8 +490,21 @@ export default function SimulateWorkspace() {
 
             {}
             <div className="flex-1 relative pt-14">
-                {isFreeFallActive ? (
-                    <FreeFallLab />
+                {ActiveLab ? (
+                    <ActiveLab />
+                ) : simulationPreset && renderBodies.length === 0 && !is3DView ? (
+                    <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-4">
+                        <div className="text-2xl font-bold tracking-widest text-red-400/80">SIMULATION UNAVAILABLE</div>
+                        <div className="text-xs text-slate-500 font-mono max-w-md text-center">
+                            No renderer exists for simulation preset "{simulationPreset}". Return to the design workspace to load a valid scene or preset.
+                        </div>
+                        <button
+                            onClick={() => useStore.getState().setActiveWorkspace('design')}
+                            className="px-4 py-2 rounded-lg bg-primary/20 border border-primary/40 text-primary text-xs font-bold uppercase tracking-wider hover:bg-primary/30 transition-all cursor-pointer"
+                        >
+                            Return to Design
+                        </button>
+                    </div>
                 ) : is3DView ? (
                     <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
                 ) : (
