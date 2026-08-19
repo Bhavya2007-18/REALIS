@@ -60,6 +60,8 @@ export default function ProjectileLab() {
     const isPlaying = useStore(state => state.isPlaying);
     const togglePlayback = useStore(state => state.togglePlayback);
     const resetPlayback = useStore(state => state.resetPlayback);
+    const setLabData = useStore(state => state.setLabData);
+    const clearLabData = useStore(state => state.clearLabData);
 
     // Initial laboratory configuration (Section 25 defaults)
     const [v0, setV0] = useState(20.0);          // initial velocity m/s
@@ -91,8 +93,35 @@ export default function ProjectileLab() {
     const showMaxHeightMarker = true;
 
     const [snapshot, setSnapshot] = useState(solver.getSnapshot());
+
+    // Push lab data to store for Properties panel
+    useEffect(() => {
+        setLabData({
+            type: 'projectile_motion',
+            title: 'Projectile Motion Laboratory',
+            snapshot: snapshot,
+            config: { v0, angle, y0, gravity, timeScale }
+        });
+        return () => clearLabData();
+    }, [snapshot, v0, angle, y0, gravity, timeScale]);
+
     const reqRef = useRef(null);
     const lastTimeRef = useRef(0);
+
+    // Listen for config changes from Properties panel
+    useEffect(() => {
+        const handleConfigChange = (event) => {
+            const { type, key, value } = event.detail
+            if (type !== 'projectile_motion') return
+            if (key === 'v0') setV0(value)
+            else if (key === 'angle') setAngle(value)
+            else if (key === 'y0') setY0(value)
+            else if (key === 'gravity') setGravity(value)
+            else if (key === 'timeScale') setTimeScale(value)
+        }
+        window.addEventListener('lab-config-change', handleConfigChange)
+        return () => window.removeEventListener('lab-config-change', handleConfigChange)
+    }, [])
 
     // Update solver when configuration changes
     useEffect(() => {

@@ -59,6 +59,8 @@ export default function FreeFallLab() {
     const isPlaying = useStore(state => state.isPlaying);
     const togglePlayback = useStore(state => state.togglePlayback);
     const resetPlayback = useStore(state => state.resetPlayback);
+    const setLabData = useStore(state => state.setLabData);
+    const clearLabData = useStore(state => state.clearLabData);
 
     // Initial laboratory configuration
     const [initialHeight, setInitialHeight] = useState(100.0); // meters
@@ -87,6 +89,39 @@ export default function FreeFallLab() {
     }));
 
     const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+    
+    // Push lab data to store for Properties panel
+    useEffect(() => {
+        setLabData({
+            type: 'free_fall',
+            title: 'Free-Fall Physics Laboratory',
+            snapshot: snapshot,
+            config: {
+                initialHeight,
+                selectedPlanet,
+                restitution,
+                mass,
+                timeScale
+            }
+        });
+        return () => clearLabData();
+    }, [snapshot, initialHeight, selectedPlanet, restitution, mass, timeScale]);
+
+    // Listen for config changes from Properties panel
+    useEffect(() => {
+        const handleConfigChange = (event) => {
+            const { type, key, value } = event.detail
+            if (type !== 'free_fall') return
+            if (key === 'initialHeight') setInitialHeight(value)
+            else if (key === 'restitution') setRestitution(value)
+            else if (key === 'mass') setMass(value)
+            else if (key === 'selectedPlanet') setSelectedPlanet(value)
+            else if (key === 'timeScale') setTimeScale(value)
+        }
+        window.addEventListener('lab-config-change', handleConfigChange)
+        return () => window.removeEventListener('lab-config-change', handleConfigChange)
+    }, [])
+
     const [impactFlash, setImpactFlash] = useState(false);
     const prevBounceCount = useRef(0);
     const reqRef = useRef(null);

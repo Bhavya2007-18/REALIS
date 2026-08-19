@@ -389,6 +389,11 @@ const useStore = create(temporal((set) => ({
     simulationPreset: null,
     setSimulationPreset: (preset) => set({ simulationPreset: preset }),
 
+    // Lab data for Properties panel
+    labData: null,
+    setLabData: (data) => set({ labData: data }),
+    clearLabData: () => set({ labData: null }),
+
     // Camera state (Section 3.2)
     camera: { position: { x: 0, y: 0, z: 500 }, zoom: 1.0, mode: '2d' },
     setCamera: (cam) => set(state => ({ camera: { ...state.camera, ...cam } })),

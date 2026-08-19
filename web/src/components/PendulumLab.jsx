@@ -58,6 +58,8 @@ export default function PendulumLab() {
     const isPlaying = useStore(state => state.isPlaying);
     const togglePlayback = useStore(state => state.togglePlayback);
     const resetPlayback = useStore(state => state.resetPlayback);
+    const setLabData = useStore(state => state.setLabData);
+    const clearLabData = useStore(state => state.clearLabData);
 
     // Initial laboratory configuration
     const [length, setLength] = useState(2.0);       // rod length L (m)
@@ -85,6 +87,45 @@ export default function PendulumLab() {
     }));
 
     const [snapshot, setSnapshot] = useState(solver.getSnapshot());
+
+    // Push lab data to store for Properties panel
+    useEffect(() => {
+        setLabData({
+            type: 'single_pendulum',
+            title: 'Simple Pendulum Laboratory',
+            snapshot: snapshot,
+            config: { length, angle0, gravity, mass, damping, timeScale }
+        });
+        return () => clearLabData();
+    }, [snapshot, length, angle0, gravity, mass, damping, timeScale]);
+
+    // Push lab data to store for Properties panel
+    useEffect(() => {
+        setLabData({
+            type: 'single_pendulum',
+            title: 'Simple Pendulum Laboratory',
+            snapshot: snapshot,
+            config: { length, angle0, gravity, mass, damping, timeScale }
+        });
+        return () => clearLabData();
+    }, [snapshot, length, angle0, gravity, mass, damping, timeScale]);
+
+    // Listen for config changes from Properties panel
+    useEffect(() => {
+        const handleConfigChange = (event) => {
+            const { type, key, value } = event.detail
+            if (type !== 'single_pendulum') return
+            if (key === 'length') setLength(value)
+            else if (key === 'angle0') setAngle0(value)
+            else if (key === 'gravity') setGravity(value)
+            else if (key === 'mass') setMass(value)
+            else if (key === 'damping') setDamping(value)
+            else if (key === 'timeScale') setTimeScale(value)
+        }
+        window.addEventListener('lab-config-change', handleConfigChange)
+        return () => window.removeEventListener('lab-config-change', handleConfigChange)
+    }, [])
+
     const reqRef = useRef(null);
     const lastTimeRef = useRef(0);
 
