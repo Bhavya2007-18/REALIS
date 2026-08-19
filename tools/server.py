@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-import subprocess
 import os
 import sys
 
@@ -13,7 +12,7 @@ from core.ai_import.pipeline import AISketchPipeline
 
 ai_pipeline = AISketchPipeline()
 
-app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
+app = FastAPI(title="REALIS Physics API", description="Python physics engine (C++ build temporarily disabled)")
 
 # ENORMOUSLY PERMISSIVE CORS FOR DEBUGGING
 app.add_middleware(
@@ -141,8 +140,8 @@ def run_ai_import(req: AIImportRequest):
 @app.post("/simulate", response_model=SimulationResponse)
 def run_simulation(req: SimulationRequest):
     """
-    Accepts a scene definition, runs it through the C++ engine.
-    Falls back to a Python physics engine if the C++ engine is unavailable or crashes.
+    Runs a physics simulation using the Python fallback engine.
+    C++ engine build is temporarily disabled due to linker errors.
     """
     import math
 
@@ -255,136 +254,7 @@ def run_simulation(req: SimulationRequest):
 
         return SimulationResponse(frames=frames, energy_drift=0.0001)
 
-    # --- Try C++ engine first ---
-    sim_path = os.getenv("REALIS_SIM_PATH")
-    if not sim_path:
-        binary_name = "realis_simulator.exe" if os.name == 'nt' else "realis_simulator"
-        sim_path = os.path.join(os.getcwd(), "engine", "build", binary_name)
-        if not os.path.exists(sim_path):
-            sim_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "engine", "build", binary_name)
-
-    if not os.path.exists(sim_path):
-        print(f">>> C++ engine not found at {sim_path}, using Python fallback")
-        return run_python_physics(req)
-
-    # Build command list for C++ engine
-    input_lines = [
-        f"SET_DT {req.time_step}",
-        f"SET_DURATION {req.duration}",
-        f"SET_SUBSTEPS {req.sub_steps}",
-        f"SET_GRAVITY {req.gravity.x} {req.gravity.y} {req.gravity.z}"
-    ]
-
-    if req.point_gravity:
-        pg = req.point_gravity
-        center = pg.get('center', {'x': 0, 'y': 0, 'z': 0})
-        strength = pg.get('strength', 1000.0)
-        input_lines.append(f"ADD_POINT_GRAVITY {center['x']} {center['y']} {center['z']} {strength}")
-    
-    for obj in req.objects:
-        pos = obj.geometry.position
-        rot = obj.geometry.rotation
-        phys = obj.physics
-        is_static = 1 if phys.is_static else 0
-        
-        if obj.geometry.type == "box":
-            hx = obj.geometry.dimensions.x * 0.5
-            hy = obj.geometry.dimensions.y * 0.5
-            hz = obj.geometry.dimensions.z * 0.5
-            input_lines.append(f"ADD_BOX {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {hx} {hy} {hz} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
-        elif obj.geometry.type == "sphere":
-            radius = obj.geometry.dimensions.x
-            input_lines.append(f"ADD_SPHERE {obj.id} {pos.x} {pos.y} {pos.z} {rot.x} {rot.y} {rot.z} {radius} {phys.mass} {phys.restitution} {phys.friction} {is_static}")
-        
-        vel = phys.initial_velocity
-        ang_vel = phys.initial_angular_velocity
-        if vel.x != 0 or vel.y != 0 or vel.z != 0 or ang_vel.x != 0 or ang_vel.y != 0 or ang_vel.z != 0:
-            input_lines.append(f"SET_VELOCITY {obj.id} {vel.x} {vel.y} {vel.z} {ang_vel.x} {ang_vel.y} {ang_vel.z}")
-    
-    for con in req.constraints:
-        if con.type == "distance":
-            input_lines.append(f"ADD_DISTANCE {con.target_a} {con.target_b} {con.distance}")
-        elif con.type in ("hinge", "fixed") and con.pivot_a and con.pivot_b:
-            input_lines.append(f"ADD_POINT_JOINT {con.target_a} {con.target_b} {con.pivot_a.x} {con.pivot_a.y} {con.pivot_a.z} {con.pivot_b.x} {con.pivot_b.y} {con.pivot_b.z}")
-
-    input_lines.append("RUN")
-    input_str = "\n".join(input_lines) + "\n"
-    print(f">>> Sending {len(input_lines)} commands to C++ engine")
-
-    try:
-        process = subprocess.Popen(
-            [sim_path],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        stdout, stderr = process.communicate(input=input_str, timeout=30)
-        
-        if process.returncode != 0:
-            print(f">>> C++ engine error: {stderr[:500]}, falling back to Python")
-            return run_python_physics(req)
-
-        # Parse C++ engine output
-        frames = []
-        current_frame_time = None
-        current_states = []
-        current_contacts = []
-        
-        for line in stdout.splitlines():
-            parts = line.split()
-            if not parts:
-                continue
-            
-            if parts[0] == "FRAME":
-                # Save previous frame
-                if current_frame_time is not None:
-                    frames.append(SimulationFrame(
-                        time=current_frame_time,
-                        states=current_states,
-                        contacts=current_contacts
-                    ))
-                current_frame_time = float(parts[1])
-                current_states = []
-                current_contacts = []
-
-            elif parts[0] == "OBJ" and len(parts) >= 12:
-                # OBJ [id] [px] [py] [pz] [qw] [qx] [qy] [qz] [vx] [vy] [vz] [wx] [wy] [wz]
-                obj_id = parts[1]
-                px, py, pz = float(parts[2]), float(parts[3]), float(parts[4])
-                vx = float(parts[9]) if len(parts) > 9 else 0
-                vy = float(parts[10]) if len(parts) > 10 else 0
-                vz = float(parts[11]) if len(parts) > 11 else 0
-                wx = float(parts[12]) if len(parts) > 12 else 0
-                wy = float(parts[13]) if len(parts) > 13 else 0
-                wz = float(parts[14]) if len(parts) > 14 else 0
-                current_states.append(ObjectState(
-                    id=obj_id,
-                    position=Vector3(x=px, y=py, z=pz),
-                    rotation=Vector3(x=0, y=0, z=0),
-                    linear_velocity=Vector3(x=vx, y=vy, z=vz),
-                    angular_velocity=Vector3(x=wx, y=wy, z=wz)
-                ))
-
-        # Append final frame
-        if current_frame_time is not None and current_states:
-            frames.append(SimulationFrame(
-                time=current_frame_time,
-                states=current_states,
-                contacts=current_contacts
-            ))
-
-        if not frames:
-            print(">>> C++ engine produced no frames, falling back to Python")
-            return run_python_physics(req)
-
-        print(f">>> C++ engine produced {len(frames)} frames")
-        return SimulationResponse(frames=frames, energy_drift=0.0001)
-        
-    except Exception as e:
-        print(f">>> C++ engine exception: {str(e)}, falling back to Python")
-        return run_python_physics(req)
-
+    return run_python_physics(req)
 
 
 @app.post("/api/chat", response_model=ChatResponse)
