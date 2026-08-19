@@ -79,6 +79,9 @@ web/dist/
 # OS Files
 Thumbs.db
 
+# Git Bash null-device artifact (created when a command writes "> nul")
+nul
+
 # C++ Tools and Caches
 .clangd/
 .cache/
