@@ -387,6 +387,7 @@ const useStore = create(temporal((set) => ({
     simulationMode: 'preview', 
     simulationType: 'rigid', 
     simulationPreset: null,
+    setSimulationPreset: (preset) => set({ simulationPreset: preset }),
 
     // Camera state (Section 3.2)
     camera: { position: { x: 0, y: 0, z: 500 }, zoom: 1.0, mode: '2d' },

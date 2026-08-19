@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import Viewport3D from '../components/Viewport3D';
+import FreeFallLab from '../components/FreeFallLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -76,6 +77,7 @@ export default function SimulateWorkspace() {
     
     const simulationPreset = useStore(state => state.simulationPreset);
     const isV6Active = simulationPreset === 'v6_engine_simulation';
+    const isFreeFallActive = simulationPreset === 'free_fall';
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());
@@ -182,7 +184,7 @@ export default function SimulateWorkspace() {
     const lastTelemetryTimeRef = useRef(0);
 
     useEffect(() => {
-        if (!isPlaying) {
+        if (!isPlaying || isFreeFallActive) {
             cancelAnimationFrame(reqRef.current);
             accumulatorRef.current = 0;
             return;
@@ -306,7 +308,7 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, setShapes3D, setSimulationState]);
+    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isFreeFallActive, setShapes3D, setSimulationState]);
 
     
     useEffect(() => {
@@ -474,7 +476,9 @@ export default function SimulateWorkspace() {
 
             {}
             <div className="flex-1 relative pt-14">
-                {is3DView ? (
+                {isFreeFallActive ? (
+                    <FreeFallLab />
+                ) : is3DView ? (
                     <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
                 ) : (
                     <div className="absolute inset-0 bg-slate-950/80">

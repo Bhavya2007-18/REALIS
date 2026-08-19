@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling, PenTool, Download } from 'lucide-react'
-import { SimulationDemoManager } from '../utils/SimulationDemoManager';
+import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoManager';
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
@@ -1949,6 +1949,25 @@ export default function DesignWorkspace() {
                 <div className="h-8 w-[1px] bg-slate-700/50"></div>
 
                 {}
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Presets</span>
+                    <select
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                SimulationDemoManager.loadDemo(e.target.value, useStore.getState());
+                                useStore.getState().setActiveWorkspace('simulate');
+                            }
+                        }}
+                        defaultValue=""
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:border-primary/50 transition-colors shadow-inner"
+                    >
+                        <option value="" disabled>Select Physics Preset...</option>
+                        {PRESET_CATALOG.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="h-8 w-[1px] bg-slate-700/50"></div>
                 <div className="flex items-center gap-1">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Demos</span>
                     {[

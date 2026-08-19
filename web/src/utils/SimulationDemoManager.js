@@ -201,17 +201,17 @@ const PRESETS = {
         overlay: { title: 'Inclined Friction Ramp', description: 'Static vs Dynamic Friction\nBlue: μ=0.1 | Red: μ=0.8' }
     },
     free_fall: {
-        metadata: { id: 'free_fall', name: 'Free Fall', version: '1.0' },
-        world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 4 },
+        metadata: { id: 'free_fall', name: 'Free Fall (100m Drop)', version: '1.0' },
+        world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 8 },
         bodies: [
-            { id: 'ground', type: 'rect', x: -200, y: 150, width: 500, height: 20, isStatic: true, friction: 0.5, restitution: 0.3 },
-            { id: 'sphere', type: 'sphere', position: [-100, 200, 0], params: { radius: 15 }, color: '#ef4444', mass: 5, restitution: 0.4, friction: 0.3, initialVelocity: { x: 0, y: 0, z: 0 } }
+            { id: 'ground', type: 'rect', x: -250, y: 380, width: 600, height: 25, stroke: '#64748b', fill: 'rgba(100,116,139,0.5)', isStatic: true, friction: 0.6, restitution: 0.35 },
+            { id: 'falling_sphere', type: 'sphere', position: [0, 80, 0], params: { radius: 18 }, color: '#3b82f6', fill: 'rgba(59,130,246,0.3)', stroke: '#3b82f6', mass: 10.0, restitution: 0.45, friction: 0.2, initialVelocity: { x: 0, y: 0, z: 0 } }
         ],
         materials: [],
         forces: [],
         constraints: [],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'Free Fall', description: 'Sphere dropped from height under gravity\nImpact against ground plane' }
+        overlay: { title: 'Free Fall (100m Drop)', description: 'Sphere dropped from height under Earth gravity (9.81 m/s²)\nHard surface impact, precise bounce, and rest via backend physics' }
     }
 };
 
@@ -232,10 +232,11 @@ export class SimulationDemoManager {
         const preset = PRESETS[presetId];
         if (!preset) return;
 
-        const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings, setDemoOverlay, resetPlayback, setIsPlaying, setSimulationState } = store;
+        const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings, setDemoOverlay, resetPlayback, setIsPlaying, setSimulationState, setSimulationPreset } = store;
         clearDesign();
         if (resetPlayback) resetPlayback();
         if (setSimulationState) setSimulationState({ time: 0, energy: { kinetic: 0, potential: 0, total: 0 } });
+        if (setSimulationPreset) setSimulationPreset(presetId);
 
         // Load world settings
         const world = preset.world;
