@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers, ChevronDown, Activity as ActivityIcon, SlidersHorizontal as SlidersIcon, Wrench, BookOpen, Compass, Gauge, ArrowDown, Sparkles } from 'lucide-react'
+import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers, ChevronDown, Activity as ActivityIcon, SlidersHorizontal as SlidersIcon, Wrench, BookOpen, Compass, Gauge, ArrowDown, Sparkles, TrendingUp } from 'lucide-react'
 import useStore from '../store/useStore'
 import { isClosedProfile } from '../utils/ProfileValidator'
 import { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver'
@@ -88,6 +88,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `t ${labData.snapshot.time.toFixed(2)}s · θ₁ ${labData.snapshot.angle1.toFixed(1)}° · θ₂ ${labData.snapshot.angle2.toFixed(1)}°`
                         : labData.type === 'spring_oscillator'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(2)}m · v ${labData.snapshot.v.toFixed(2)}m/s · ω₀ ${labData.snapshot.omega0.toFixed(1)} rad/s`
+                        : labData.type === 'orbital_mechanics'
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · r ${labData.snapshot.position.r.toFixed(1)}km · v ${labData.snapshot.velocity.v.toFixed(2)}km/s · ${labData.snapshot.orbit.type.toLowerCase()}`
                         : `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(1)}m · y ${labData.snapshot.y.toFixed(1)}m · v ${labData.snapshot.speed.toFixed(1)}m/s`
                     }
                 >
@@ -141,7 +143,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     sectionKey="params"
                     openSections={openSections}
                     toggleSection={toggleSection}
-                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : 'INITIAL CONDITIONS'}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : 'INITIAL CONDITIONS'}
                     icon={<SlidersHorizontal size={13} />}
                     accent="text-amber-400"
                     summary={labData.type === 'free_fall' 
@@ -152,6 +154,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `m₁ ${labData.config.mass1}kg · m₂ ${labData.config.mass2}kg · θ₁ ${labData.config.theta1}° · θ₂ ${labData.config.theta2}°`
                         : labData.type === 'spring_oscillator'
                         ? `m ${labData.config.mass}kg · k ${labData.config.springConstant}N/m · x₀ ${labData.config.x0}m · g ${labData.config.gravity}m/s²`
+                        : labData.type === 'orbital_mechanics'
+                        ? `r₀ ${labData.config.r0}km · v₀ ${labData.config.v0}km/s · θ₀ ${labData.config.theta0}° · μ ${labData.config.mu}`
                         : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
@@ -463,6 +467,122 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                             </>
                         )}
+                        {labData.type === 'orbital_mechanics' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITATIONAL PARAMETER (μ)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.mu}</span>
+                                    </div>
+                                    <input type="range" min="10" max="400000" step="10" value={labData.config.mu}
+                                        onChange={(e) => handleLabConfigChange('mu', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL RADIUS (r₀)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.r0} km</span>
+                                    </div>
+                                    <input type="range" min="30" max="20000" step="10" value={labData.config.r0}
+                                        onChange={(e) => handleLabConfigChange('r0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL ANGLE (θ₀)</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.theta0}°</span>
+                                    </div>
+                                    <input type="range" min="-360" max="360" step="5" value={labData.config.theta0}
+                                        onChange={(e) => handleLabConfigChange('theta0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL SPEED (v₀)</span>
+                                        <span className="text-violet-400 font-bold">{labData.config.v0} km/s</span>
+                                    </div>
+                                    <input type="range" min="0" max="15" step="0.001" value={labData.config.v0}
+                                        onChange={(e) => handleLabConfigChange('v0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">VELOCITY ANGLE (φ)</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.velAngle}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="360" step="5" value={labData.config.velAngle}
+                                        onChange={(e) => handleLabConfigChange('velAngle', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">CENTRAL BODY MASS (M)</span>
+                                        <span className="text-white font-bold">{labData.config.centralMass} kg</span>
+                                    </div>
+                                    <input type="range" min="1e21" max="1e24" step="1e21" value={labData.config.centralMass}
+                                        onChange={(e) => handleLabConfigChange('centralMass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">SATELLITE MASS (m)</span>
+                                        <span className="text-slate-300 font-bold">{labData.config.satelliteMass} kg</span>
+                                    </div>
+                                    <input type="range" min="10" max="100000" step="10" value={labData.config.satelliteMass}
+                                        onChange={(e) => handleLabConfigChange('satelliteMass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-slate-300" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">CENTRAL RADIUS</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.centralRadius} km</span>
+                                    </div>
+                                    <input type="range" min="5" max="500" step="1" value={labData.config.centralRadius}
+                                        onChange={(e) => handleLabConfigChange('centralRadius', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">TIME SCALE</span>
+                                        <span className="text-purple-400 font-bold">{labData.config.timeScale}x</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="1000" step="0.1" value={labData.config.timeScale}
+                                        onChange={(e) => handleLabConfigChange('timeScale', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INTEGRATION STEP Δt</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.dt}s</span>
+                                    </div>
+                                    <input type="range" min="0.001" max="10" step="0.001" value={labData.config.dt}
+                                        onChange={(e) => handleLabConfigChange('dt', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => {
+                                            handleLabConfigChange('v0', Math.sqrt(labData.config.mu / labData.config.r0))
+                                            handleLabConfigChange('velAngle', 90)
+                                            handleLabConfigChange('needsFit', true)
+                                        }}
+                                        className="px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-500/50 hover:bg-sky-500/30 text-sky-300 font-mono text-[10px] transition-colors cursor-pointer"
+                                    >CIRCULAR (v = √(μ/r))</button>
+                                    <button
+                                        onClick={() => {
+                                            handleLabConfigChange('v0', Math.sqrt(2 * labData.config.mu / labData.config.r0))
+                                            handleLabConfigChange('velAngle', 90)
+                                            handleLabConfigChange('needsFit', true)
+                                        }}
+                                        className="px-3 py-2 rounded-lg bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/30 text-rose-300 font-mono text-[10px] transition-colors cursor-pointer"
+                                    >ESCAPE (v = √(2μ/r))</button>
+                                </div>
+                                <div className="px-3 py-2 rounded-lg bg-slate-950 border border-white/5 text-[9px] font-mono text-slate-400 grid grid-cols-2 gap-1">
+                                    <span className="text-sky-300">V_circ = {Number.isFinite(Math.sqrt(labData.config.mu / labData.config.r0)) ? Math.sqrt(labData.config.mu / labData.config.r0).toFixed(3) : '∞'} km/s</span>
+                                    <span className="text-rose-300">V_esc = {Number.isFinite(Math.sqrt(2 * labData.config.mu / labData.config.r0)) ? Math.sqrt(2 * labData.config.mu / labData.config.r0).toFixed(3) : '∞'} km/s</span>
+                                </div>
+                            </>
+                        )}
                         {labData.type === 'projectile_motion' && (
                             <>
                                 <div className="space-y-1">
@@ -524,6 +644,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config.dt}s`
                         : labData.type === 'spring_oscillator'
                         ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config.dt}s · frame-rate independent`
+                        : labData.type === 'orbital_mechanics'
+                        ? `Orbital mechanics · RK4 · Δt ${labData.snapshot.config.dt}s · ${labData.snapshot.orbit.type.toLowerCase()}`
                         : `Projectile · Analytical · Δt ${labData.snapshot.config.dt}s`
                     }
                 >
@@ -573,6 +695,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping} N·s/m</span></div>
                                 </>
                             )}
+                            {labData.type === 'orbital_mechanics' && (
+                                <>
+                                    <div>• Central body: <span className="text-slate-200">μ = {labData.snapshot.orbit.mu} km³/s² · M = {labData.snapshot.orbit.centralMass} kg</span></div>
+                                    <div>• Satellite: <span className="text-slate-200">m = {labData.snapshot.orbit.satelliteMass} kg</span></div>
+                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit.type.toLowerCase()} · e = {labData.snapshot.orbit.ecc.toFixed(4)}</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (fixed timestep)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
+                                </>
+                            )}
                             <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
                         </div>
                         
@@ -618,6 +749,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• num − ana: <span className="text-orange-300">{labData.snapshot.analyticalError?.toFixed(5) ?? 'N/A'} m</span></div>
                                 </>
                             )}
+                            {labData.type === 'orbital_mechanics' && (
+                                <>
+                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit.type.toLowerCase()}</span></div>
+                                    <div>• Semi-major (a): <span className="text-white font-bold">{Number.isFinite(labData.snapshot.orbit.semiMajor) ? labData.snapshot.orbit.semiMajor.toFixed(1) : '∞'} km</span></div>
+                                    <div>• Peri / Apoapsis: <span className="text-slate-200">{labData.snapshot.orbit.rp.toFixed(1)} / {Number.isFinite(labData.snapshot.orbit.ra) ? labData.snapshot.orbit.ra.toFixed(1) : '∞'} km</span></div>
+                                    <div>• Period: <span className="text-slate-200">{Number.isFinite(labData.snapshot.orbit.period) ? labData.snapshot.orbit.period.toFixed(2) : '∞'} s</span></div>
+                                    <div>• v_circ / v_esc: <span className="text-slate-200">{labData.snapshot.orbit.vCirc.toFixed(2)} / {labData.snapshot.orbit.vEsc.toFixed(2)} km/s</span></div>
+                                </>
+                            )}
                         </div>
                         
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
@@ -628,6 +768,14 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 <Stat label="Velocity (v)" value={labData.snapshot.v.toFixed(2)} unit="m/s" color="text-sky-400" />
                                 <Stat label="Acceleration (a)" value={labData.snapshot.a.toFixed(2)} unit="m/s²" color="text-amber-400" />
                                 <Stat label="ω₀ = √(k/m)" value={labData.snapshot.omega0.toFixed(2)} unit="rad/s" color="text-violet-400" />
+                            </div>
+                        )}
+                        {labData.type === 'orbital_mechanics' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Radius (r)" value={labData.snapshot.position.r.toFixed(1)} unit="km" color="text-sky-400" />
+                                <Stat label="Speed (v)" value={labData.snapshot.velocity.v.toFixed(2)} unit="km/s" color="text-emerald-400" />
+                                <Stat label="Orbit Type" value={labData.snapshot.orbit.type} unit="" color={labData.snapshot.orbit.type === 'CIRCULAR' ? 'text-sky-400' : 'text-violet-400'} />
+                                <Stat label="Orbits" value={labData.snapshot.orbitCount.toFixed(2)} unit="n" color="text-amber-400" />
                             </div>
                         )}
                         
@@ -648,11 +796,224 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Energy drift: <span className="text-amber-300">ΔE/E ≈ {labData.snapshot.energyErrorPct ?? '—'} %</span></div>
                                 </>
                             )}
+                            {labData.type === 'orbital_mechanics' && (
+                                <>
+                                    <div>• KE: <span className="text-emerald-300">{labData.snapshot.kinetic.toExponential(3)} J</span></div>
+                                    <div>• PE: <span className="text-sky-300">{labData.snapshot.potential.toExponential(3)} J</span></div>
+                                    <div>• Specific energy (ε): <span className="text-amber-300">{labData.snapshot.orbit.eps.toExponential(3)} km²/s²</span></div>
+                                    <div>• Ang. momentum (h): <span className="text-violet-300">{labData.snapshot.orbit.h.toExponential(3)} km²/s</span></div>
+                                    <div>• Apsis rp / ra: <span className="text-slate-300">{labData.snapshot.orbit.rp.toFixed(1)} / {Number.isFinite(labData.snapshot.orbit.ra) ? labData.snapshot.orbit.ra.toFixed(1) : '∞'} km</span></div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </PropertySection>
             )}
+        {labData.type === 'orbital_mechanics' && (
+                <OrbitalLabPanels
+                    labData={labData}
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                />
+            )}
         </div>
+    )
+}
+
+function fmtOrb(v, digits = 4) {
+    if (!Number.isFinite(v)) return '∞'
+    if (v === 0) return '0'
+    if (Math.abs(v) >= 1e6 || Math.abs(v) < 1e-4) return v.toExponential(2)
+    return v.toFixed(digits)
+}
+
+function formatOrbTime(sec) {
+    if (!Number.isFinite(sec)) return '∞'
+    if (sec < 1) return `${(sec * 1000).toFixed(0)} ms`
+    if (sec < 120) return `${sec.toFixed(1)} s`
+    const min = Math.floor(sec / 60)
+    const rem = sec % 60
+    if (min < 60) return `${min}m ${rem.toFixed(0)}s`
+    const hrs = Math.floor(min / 60)
+    const mins = min % 60
+    return `${hrs}h ${mins}m`
+}
+
+const ORBIT_ACCENT = {
+    CIRCULAR: '#38bdf8',
+    ELLIPTICAL: '#a78bfa',
+    PARABOLIC: '#fbbf24',
+    HYPERBOLIC: '#f472b6',
+}
+
+function OrbEnergyGraph({ history }) {
+    if (!history || !history.time || history.time.length < 2) {
+        return (
+            <div className="h-24 bg-slate-950 rounded-lg border border-white/5 flex items-center justify-center font-mono text-[10px] text-slate-500">
+                Collecting energy samples…
+            </div>
+        )
+    }
+    const KE = '63, 240, 250'
+    const PE = '251, 191, 36'
+    const TE = '251, 113, 133'
+    const t = history.time
+    const kes = history.kinetic
+    const pes = history.potential
+    const tes = history.total
+    let keMax = 0, peMax = 0, teMax = 0
+    const keMin = Math.min(...kes), peMin = Math.min(...pes), teMin = Math.min(...tes)
+    const tMin = Math.min(...t), tMax = Math.max(...t)
+    kes.forEach(v => { if (Math.abs(v) > keMax) keMax = Math.abs(v) })
+    pes.forEach(v => { if (Math.abs(v) > peMax) peMax = Math.abs(v) })
+    tes.forEach(v => { if (Math.abs(v) > teMax) teMax = Math.abs(v) })
+    const keRng = Math.max(keMax - keMin, 1e-9)
+    const peRng = Math.max(peMax - peMin, 1e-9)
+    const teRng = Math.max(teMax - teMin, 1e-9)
+    const tRng = Math.max(tMax - tMin, 1e-9)
+    const x = i => 0 + (t[i] - tMin) / tRng * 300
+    const y = (v, rng, mn) => 92 - (v - mn) / rng * 72
+    const pth = (vals, rng, mn) => vals.map((v, i) => `${x(i).toFixed(1)},${y(v, rng, mn).toFixed(1)}`).join(' ')
+    const keP = pth(kes, keRng, keMin)
+    const peP = pth(pes, peRng, peMin)
+    const teP = pth(tes, teRng, teMin)
+    return (
+        <div className="w-full">
+            <svg width="300" height="92" viewBox="0 0 300 92" className="w-full h-auto">
+                <line x1="0" y1="0" x2="0" y2="92" stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" />
+                <line x1="300" y1="0" x2="300" y2="92" stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" />
+                <line x1="0" y1="92" x2="300" y2="92" stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" />
+                <line x1="0" y1="0" x2="300" y2="0" stroke="rgba(148, 163, 184, 0.2)" strokeWidth="1" />
+                <line x1="0" y1="46" x2="300" y2="46" stroke="rgba(148, 163, 184, 0.1)" strokeWidth="1" />
+                <polyline points={teP} fill="none" stroke={`rgb(${TE})`} strokeWidth="1.5" opacity="0.95" />
+                <polyline points={keP} fill="none" stroke={`rgb(${KE})`} strokeWidth="1.5" opacity="0.9" />
+                <polyline points={peP} fill="none" stroke={`rgb(${PE})`} strokeWidth="1.5" opacity="0.9" />
+            </svg>
+            <div className="flex justify-between text-[9px] font-mono text-slate-500 mt-1">
+                <span className="text-cyan-500">t {fmtOrb(tMin, 2)}s</span>
+                <span className="text-slate-500">ENERGY vs TIME</span>
+                <span className="text-rose-400">t {fmtOrb(tMax, 2)}s</span>
+            </div>
+            <div className="flex gap-3 text-[9px] font-mono mt-1">
+                <span className="text-cyan-400">— KE</span>
+                <span className="text-amber-400">— PE</span>
+                <span className="text-rose-400">— Total E</span>
+            </div>
+        </div>
+    )
+}
+
+function OrbitalLabPanels({ labData, openSections, toggleSection }) {
+    const sc = labData.snapshot
+    const ob = sc.orbit
+    const statusText = sc.impacted ? 'IMPACT' : (ob.type === 'CIRCULAR' ? 'ORBITING' : 'IN FLIGHT')
+    const telemetrySummary = `t ${formatOrbTime(sc.time)} · r ${fmtOrb(sc.position.r, 3)} km · v ${fmtOrb(sc.velocity.v, 3)} km/s · ${statusText}`
+    const elementsSummary = `a ${fmtOrb(ob.semiMajor, 3)} km · e ${fmtOrb(ob.ecc, 3)} · ε ${fmtOrb(ob.eps, 3)} km²/s² · h ${fmtOrb(ob.h, 3)} km²/s`
+    const energySummary = `E = ${fmtOrb(sc.totalEnergy, 3)} J · KE ${fmtOrb(sc.kinetic, 3)} J · PE ${fmtOrb(sc.potential, 3)} J`
+    const keplerSummary = `${sc.orbitCount.toFixed(2)} orbits · T ${formatOrbTime(ob.period)} · swept ${sc.sectors.length} sectors`
+    const orbitAccent = ORBIT_ACCENT[ob.type] || ORBIT_ACCENT.CIRCULAR
+    const sectionHeader = (title, icon, accent, summary) => ({ title, icon, accent, summary })
+    return (
+        <>
+            <PropertySection
+                {...sectionHeader('Live Orbital Telemetry', <Activity size={13} />, 'text-emerald-400', telemetrySummary)}
+                sectionKey="orbital-telemetry"
+                openSections={openSections}
+                toggleSection={toggleSection}
+            >
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Stat label="Sim Time (t)" value={formatOrbTime(sc.time)} color="text-white" />
+                        <Stat label="Orbits Completed" value={sc.orbitCount.toFixed(2)} color="text-sky-400" />
+                        <Stat label="Radius (r)" value={fmtOrb(sc.position.r, 4)} unit="km" color="text-emerald-400" />
+                        <Stat label="Speed (|v|)" value={fmtOrb(sc.velocity.v, 4)} unit="km/s" color="text-cyan-400" />
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Stat label="Position x" value={fmtOrb(sc.position.x, 3)} unit="km" />
+                        <Stat label="Position y" value={fmtOrb(sc.position.y, 3)} unit="km" />
+                        <Stat label="vx" value={fmtOrb(sc.velocity.x, 3)} unit="km/s" />
+                        <Stat label="vy" value={fmtOrb(sc.velocity.y, 3)} unit="km/s" />
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Stat label="Acceleration |a|" value={fmtOrb(sc.acceleration.magnitude, 3)} unit="km/s²" color="text-fuchsia-400" />
+                        <Stat label="Acceleration ax" value={fmtOrb(sc.acceleration.x, 3)} unit="km/s²" />
+                        <Stat label="Acceleration ay" value={fmtOrb(sc.acceleration.y, 3)} unit="km/s²" />
+                        <Stat label="Gravity g = μ/r²" value={fmtOrb(sc.acceleration.magnitude, 3)} unit="km/s²" color="text-amber-400" />
+                    </div>
+                    {sc.impacted && (
+                        <div className="bg-red-950/40 border border-red-500/40 px-3 py-2 rounded-lg text-xs font-mono text-red-300">
+                            ⚠ IMPACT — satellite reached the central body's physical radius (r ≤ R_c = {fmtOrb(sc.config.centralRadius, 3)} km). Impact speed: {fmtOrb(sc.impactSpeed, 3)} km/s at t = {formatOrbTime(sc.impactTime)}.
+                        </div>
+                    )}
+                </div>
+            </PropertySection>
+            <PropertySection
+                {...sectionHeader('Orbital Elements · Energy · Momentum', <Gauge size={13} />, 'text-sky-400', elementsSummary)}
+                sectionKey="orbital-elements"
+                openSections={openSections}
+                toggleSection={toggleSection}
+            >
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Stat label="μ = GM" value={fmtOrb(ob.mu, 5)} unit="km³/s²" color="text-amber-400" />
+                        <Stat label="Circular Velocity" value={fmtOrb(ob.vCirc, 4)} unit="km/s" color="text-sky-400" />
+                        <Stat label="Escape Velocity" value={fmtOrb(ob.vEsc, 4)} unit="km/s" color="text-rose-400" />
+                        <Stat label="Current |v|" value={fmtOrb(sc.velocity.v, 4)} unit="km/s" color="text-cyan-400" />
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                        <Stat label="Semi-major a" value={Number.isFinite(ob.semiMajor) ? fmtOrb(ob.semiMajor, 4) : '∞'} unit="km" color="text-purple-400" />
+                        <Stat label="Eccentricity e" value={fmtOrb(ob.ecc, 4)} color="text-purple-300" />
+                        <Stat label="Periapsis rp" value={Number.isFinite(ob.rp) ? fmtOrb(ob.rp, 4) : '∞'} unit="km" color="text-emerald-400" />
+                        <Stat label="Apoapsis ra" value={Number.isFinite(ob.ra) ? fmtOrb(ob.ra, 4) : '∞'} unit="km" color="text-rose-400" />
+                        <Stat label="Orbital Period T" value={Number.isFinite(ob.period) ? formatOrbTime(ob.period) : '∞'} color="text-amber-400" />
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Stat label="Kinetic Energy" value={fmtOrb(sc.kinetic, 4)} unit="J" color="text-emerald-400" />
+                        <Stat label="Potential Energy" value={fmtOrb(sc.potential, 4)} unit="J" color="text-sky-400" />
+                        <Stat label="Specific Energy ε" value={fmtOrb(ob.eps, 4)} unit="km²/s²" color={ob.eps < 0 ? 'text-emerald-400' : ob.eps > 0 ? 'text-rose-400' : 'text-amber-400'} />
+                        <Stat label="Angular Mom. h" value={fmtOrb(ob.h, 4)} unit="km²/s" color="text-violet-400" />
+                    </div>
+                    <div className="bg-slate-950/60 px-3 py-2 rounded-lg font-mono text-[9px] text-slate-500 border border-white/5">
+                        <span className="text-slate-300 font-bold">ORBIT CLASSIFICATION → </span>
+                        <span style={{ color: orbitAccent }} className="font-bold">{ob.type}</span>
+                        <span className="text-slate-500"> · {ob.eps < 0 ? 'ε < 0 → bound orbit' : ob.eps > 0 ? 'ε > 0 → unbound' : 'ε = 0 → parabolic escape boundary'}</span>
+                    </div>
+                </div>
+            </PropertySection>
+            <PropertySection
+                {...sectionHeader('Energy Graph (real sampled data)', <TrendingUp size={13} />, 'text-emerald-400', energySummary)}
+                sectionKey="orbital-energy-graph"
+                openSections={openSections}
+                toggleSection={toggleSection}
+            >
+                <div className="space-y-1">
+                    <OrbEnergyGraph history={sc.energyHistory} />
+                    <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                        <span>KE {fmtOrb(sc.kinetic, 5)} J</span>
+                        <span>PE {fmtOrb(sc.potential, 5)} J</span>
+                        <span className="text-rose-400">E = KE + PE {fmtOrb(sc.totalEnergy, 5)} J</span>
+                    </div>
+                </div>
+            </PropertySection>
+            <PropertySection
+                {...sectionHeader('Kepler’s Laws', <BookOpen size={13} />, 'text-amber-400', keplerSummary)}
+                sectionKey="orbital-kepler"
+                openSections={openSections}
+                toggleSection={toggleSection}
+            >
+                <div className="space-y-3">
+                    <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 space-y-1">
+                        <div><span className="text-amber-300 font-bold">1st Law — </span>Elliptical orbits with the central body at one focus. Here a = {Number.isFinite(ob.semiMajor) ? fmtOrb(ob.semiMajor, 3) : '∞'} km, e = {ob.ecc.toFixed(4)}.</div>
+                        <div><span className="text-amber-300 font-bold">2nd Law — </span>Equal areas are swept in equal times: the sector shading in the canvas shows {sc.sectors.length} consecutive equal-time areas. Near periapsis the satellite moves faster.</div>
+                        <div><span className="text-amber-300 font-bold">3rd Law — </span>T² = (4π²/μ)·a³. Numerical: T²/a³ = {Number.isFinite(ob.period) && Number.isFinite(ob.semiMajor) ? (ob.period ** 2 / ob.semiMajor ** 3).toExponential(3) : '∞'} s²/km³.</div>
+                        <div className="text-slate-500 pt-1 border-t border-white/5">Points: {sc.trail.length} · Sectors: {sc.sectors.length} · Orbit count: {sc.orbitCount.toFixed(2)}</div>
+                    </div>
+                    {sc.sectors.slice(-8).map((s, i) => (
+                        <Stat key={i} label={`Sector ${sc.sectors.length - 8 + i + 1}`} value={fmtOrb(s.area, 3)} unit="km²" color="text-amber-400" />
+                    ))}
+                </div>
+            </PropertySection>
+        </>
     )
 }
 

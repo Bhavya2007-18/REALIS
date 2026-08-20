@@ -1,44 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Play, Square, RefreshCw, SkipForward, ChevronDown, Activity,
-    Sliders, ZoomIn, ZoomOut, Maximize, Crosshair, RotateCcw,
-    Satellite, TrendingUp, BookOpen, Zap, Gauge
+    Play, Square, RefreshCw, SkipForward,
+    ZoomIn, ZoomOut, Maximize, Crosshair, RotateCcw,
+    Satellite, Zap
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import OrbitalPhysicsSolver, { ORBITAL_PRESETS, clamp } from '../utils/solvers/orbitalSolver';
-
-// ── Collapsible Engineering Information Bar (Accordion Section) ───────────────
-function InfoBar({ icon, title, accent, summary, status, open, onToggle, children }) {
-    return (
-        <div className={`border-t border-white/10 transition-colors duration-200 ${open ? 'bg-slate-900/60' : 'bg-slate-950/90'}`}>
-            <button
-                onClick={onToggle}
-                className={`w-full flex items-center gap-3 px-5 py-2 text-left cursor-pointer transition-colors duration-200 group ${open ? 'bg-slate-900/70' : 'hover:bg-slate-900/50'}`}
-                aria-expanded={open}
-            >
-                <span className={`shrink-0 transition-colors ${open ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>{icon}</span>
-                <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${open ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>{title}</span>
-                <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
-                {status}
-                <ChevronDown size={13} className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`} />
-            </button>
-            <div className="grid" style={{ gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}>
-                <div className="overflow-hidden min-h-0">{children}</div>
-            </div>
-        </div>
-    );
-}
-
-function Stat({ label, value, unit, color = 'text-white' }) {
-    return (
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
-            <div className={`text-sm font-bold font-mono ${color}`}>
-                {value} <span className="text-[10px] font-normal text-slate-500">{unit}</span>
-            </div>
-        </div>
-    );
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(v, digits = 4) {
@@ -76,44 +43,6 @@ const ORBIT_ACCENT = {
     HYPERBOLIC: '#f472b6',
 };
 
-// ── Energy Graph (real sampled data) ─────────────────────────────────────────
-function EnergyGraph({ history }) {
-    const { time, kinetic, potential, total } = history;
-    if (!time || time.length < 2) {
-        return (
-            <div className="h-40 flex items-center justify-center text-[10px] font-mono text-slate-600">
-                Collecting energy samples…
-            </div>
-        );
-    }
-    const W = 560, H = 150, PAD = 10;
-    const t0 = time[0], t1 = time[time.length - 1];
-    let lo = Infinity, hi = -Infinity;
-    for (let i = 0; i < time.length; i++) {
-        lo = Math.min(lo, potential[i], kinetic[i], total[i]);
-        hi = Math.max(hi, potential[i], kinetic[i], total[i]);
-    }
-    if (hi - lo < 1e-9) { hi += 1; lo -= 1; }
-    const X = (t) => PAD + ((t - t0) / (t1 - t0 || 1)) * (W - PAD * 2);
-    const Y = (v) => H - PAD - ((v - lo) / (hi - lo)) * (H - PAD * 2);
-    const line = (arr) => arr.map((v, i) => `${X(time[i]).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-    const gridY = [0, 0.25, 0.5, 0.75, 1].map(f => lo + f * (hi - lo));
-    return (
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-h-40">
-            {gridY.map((gv, i) => (
-                <line key={i} x1={PAD} y1={Y(gv)} x2={W - PAD} y2={Y(gv)} stroke="#1e293b" strokeWidth="1" />
-            ))}
-            <polyline points={line(potential)} fill="none" stroke="#38bdf8" strokeWidth="1.5" />
-            <polyline points={line(kinetic)} fill="none" stroke="#34d399" strokeWidth="1.5" />
-            <polyline points={line(total)} fill="none" stroke="#fbbf24" strokeWidth="2.2" />
-            <text x={W - PAD} y={Y(gridY[gridY.length - 1]) + 10} textAnchor="end" fill="#38bdf8" fontSize="8" fontFamily="monospace">PE</text>
-            <text x={W - PAD} y={Y(gridY[gridY.length - 1]) + 20} textAnchor="end" fill="#34d399" fontSize="8" fontFamily="monospace">KE</text>
-            <text x={W - PAD} y={Y(gridY[gridY.length - 1]) + 30} textAnchor="end" fill="#fbbf24" fontSize="8" fontFamily="monospace">E_total</text>
-        </svg>
-    );
-}
-
-// ── Orbital Mechanics Laboratory ──────────────────────────────────────────────
 export default function OrbitalLab() {
     const isPlaying = useStore(state => state.isPlaying);
     const togglePlayback = useStore(state => state.togglePlayback);
@@ -146,10 +75,6 @@ export default function OrbitalLab() {
     const [camera, setCamera] = useState({ cx: 0, cy: 0, zoom: 1 });
     const [cameraMode, setCameraMode] = useState('fit'); // 'fit' | 'follow'
     const [needsFit, setNeedsFit] = useState(true);
-
-    // ── Accordion state ──────────────────────────────────────────────────────
-    const [openSection, setOpenSection] = useState('telemetry');
-    const toggleSection = (key) => setOpenSection(prev => (prev === key ? null : key));
 
     // ── Physics solver ───────────────────────────────────────────────────────
     const solverRef = useRef(new OrbitalPhysicsSolver({
@@ -209,6 +134,7 @@ export default function OrbitalLab() {
             else if (key === 'velAngle') setVelAngle(value);
             else if (key === 'dt') setDt(value);
             else if (key === 'timeScale') setTimeScale(value);
+            else if (key === 'needsFit') setNeedsFit(value);
         };
         window.addEventListener('lab-config-change', handleConfigChange);
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
@@ -404,16 +330,6 @@ export default function OrbitalLab() {
         const s = w2s(p.x, p.y);
         return `${s.x.toFixed(1)},${s.y.toFixed(1)}`;
     }).join(' ');
-
-    // Telemetry summaries
-    const statusText = snapshot.impacted
-        ? 'IMPACT'
-        : (isPlaying ? (ob.type === 'CIRCULAR' ? 'ORBITING' : 'IN FLIGHT') : 'READY');
-    const telemetrySummary = `t ${formatSimTime(snapshot.time)} · r ${fmt(snapshot.position.r, 3)} km · v ${fmt(snapshot.velocity.v, 3)} km/s · ${ob.type}`;
-    const elementsSummary = `a ${fmt(ob.semiMajor, 3)} km · e ${fmt(ob.ecc, 3)} · ε ${fmt(ob.eps, 3)} km²/s² · h ${fmt(ob.h, 3)} km²/s`;
-    const energySummary = `E = ${fmt(snapshot.totalEnergy, 3)} J · KE ${fmt(snapshot.kinetic, 3)} J · PE ${fmt(snapshot.potential, 3)} J`;
-    const keplerSummary = `${snapshot.orbitCount.toFixed(2)} orbits · T ${formatSimTime(ob.period)} · swept ${snapshot.sectors.length} sectors`;
-    const setupSummary = `μ ${fmt(mu, 3)} · r₀ ${fmt(r0, 3)} km · v₀ ${fmt(v0, 3)} km/s · Δt ${dt}s · ${timeScale}×`;
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-[#0a0f1a] overflow-hidden select-none font-sans flex flex-col">
@@ -692,206 +608,6 @@ export default function OrbitalLab() {
                 </svg>
             </div>
 
-            {/* ── Collapsible Engineering Information Bars ─────────────────────── */}
-            <div className="shrink-0 relative z-20 max-h-[38vh] overflow-y-auto">
-                {/* LIVE TELEMETRY */}
-                <InfoBar
-                    icon={<Activity size={13} />}
-                    accent="text-emerald-400"
-                    title="Live Orbital Telemetry"
-                    summary={telemetrySummary}
-                    open={openSection === 'telemetry'}
-                    onToggle={() => toggleSection('telemetry')}
-                    status={
-                        <span className={`shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded ${snapshot.impacted ? 'bg-red-500/20 text-red-400' : (isPlaying ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' : 'bg-amber-500/20 text-amber-400')}`}>
-                            {statusText}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Sim Time (t)" value={formatSimTime(snapshot.time)} color="text-white" />
-                            <Stat label="Orbits Completed" value={snapshot.orbitCount.toFixed(2)} color="text-sky-400" />
-                            <Stat label="Radius (r)" value={fmt(snapshot.position.r, 4)} unit="km" color="text-emerald-400" />
-                            <Stat label="Speed (|v|)" value={fmt(snapshot.velocity.v, 4)} unit="km/s" color="text-cyan-400" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Position x" value={fmt(snapshot.position.x, 3)} unit="km" />
-                            <Stat label="Position y" value={fmt(snapshot.position.y, 3)} unit="km" />
-                            <Stat label="vx" value={fmt(snapshot.velocity.x, 3)} unit="km/s" />
-                            <Stat label="vy" value={fmt(snapshot.velocity.y, 3)} unit="km/s" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Acceleration |a|" value={fmt(snapshot.acceleration.magnitude, 3)} unit="km/s²" color="text-fuchsia-400" />
-                            <Stat label="Acceleration ax" value={fmt(snapshot.acceleration.x, 3)} unit="km/s²" />
-                            <Stat label="Acceleration ay" value={fmt(snapshot.acceleration.y, 3)} unit="km/s²" />
-                            <Stat label="Gravity g = μ/r²" value={fmt(snapshot.acceleration.magnitude, 3)} unit="km/s²" color="text-amber-400" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                            <Stat label="Gravitational Force |F|" value={fmt(snapshot.force.magnitude, 3)} unit="N" color="text-amber-400" />
-                            <Stat label="Force Fx" value={fmt(snapshot.force.x, 3)} unit="N" />
-                            <Stat label="Force Fy" value={fmt(snapshot.force.y, 3)} unit="N" />
-                        </div>
-                        {snapshot.impacted && (
-                            <div className="bg-red-950/40 border border-red-500/40 px-3 py-2 rounded-lg text-xs font-mono text-red-300">
-                                ⚠ IMPACT — satellite reached the central body's physical radius (r ≤ R_c = {fmt(snapshot.config.centralRadius, 3)} km). Impact speed: {fmt(snapshot.impactSpeed, 3)} km/s at t = {formatSimTime(snapshot.impactTime)}.
-                            </div>
-                        )}
-                    </div>
-                </InfoBar>
-
-                {/* ORBITAL ELEMENTS & ENERGY */}
-                <InfoBar
-                    icon={<Gauge size={13} />}
-                    accent="text-purple-400"
-                    title="Orbital Elements · Energy · Momentum"
-                    summary={elementsSummary}
-                    open={openSection === 'elements'}
-                    onToggle={() => toggleSection('elements')}
-                    status={<span className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">{ob.type}</span>}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="μ = GM" value={fmt(ob.mu, 5)} unit="km³/s²" color="text-amber-400" />
-                            <Stat label="Circular Velocity" value={fmt(ob.vCirc, 4)} unit="km/s" color="text-sky-400" />
-                            <Stat label="Escape Velocity" value={fmt(ob.vEsc, 4)} unit="km/s" color="text-rose-400" />
-                            <Stat label="Current |v|" value={fmt(snapshot.velocity.v, 4)} unit="km/s" color="text-cyan-400" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                            <Stat label="Semi-major a" value={Number.isFinite(ob.semiMajor) ? fmt(ob.semiMajor, 4) : '∞'} unit="km" color="text-purple-400" />
-                            <Stat label="Eccentricity e" value={fmt(ob.ecc, 4)} color="text-purple-300" />
-                            <Stat label="Periapsis r_p" value={Number.isFinite(ob.rp) ? fmt(ob.rp, 4) : '—'} unit="km" color="text-emerald-400" />
-                            <Stat label="Apoapsis r_a" value={Number.isFinite(ob.ra) ? fmt(ob.ra, 4) : '∞'} unit="km" color="text-rose-400" />
-                            <Stat label="Period T" value={Number.isFinite(ob.period) ? formatSimTime(ob.period) : '∞'} color="text-sky-300" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Kinetic Energy" value={fmt(snapshot.kinetic, 4)} unit="J" color="text-emerald-400" />
-                            <Stat label="Potential Energy" value={fmt(snapshot.potential, 4)} unit="J" color="text-sky-400" />
-                            <Stat label="Total Energy E" value={fmt(snapshot.totalEnergy, 4)} unit="J" color="text-amber-400" />
-                            <Stat label="Specific ε = v²/2−μ/r" value={fmt(ob.eps, 4)} unit="km²/s²" color={ob.eps < 0 ? 'text-emerald-400' : (ob.eps > 0 ? 'text-rose-400' : 'text-amber-400')} />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                            <Stat label="Angular Mom. h (spec.)" value={fmt(ob.h, 4)} unit="km²/s" color="text-fuchsia-400" />
-                            <Stat label="Angular Mom. H" value={fmt(ob.hMomentum, 4)} unit="kg·km²/s" color="text-fuchsia-300" />
-                            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 flex flex-col justify-center">
-                                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">Orbit Classification</span>
-                                <span className="text-sm font-bold font-mono" style={{ color: orbitAccent }}>{ob.type}</span>
-                                <span className="text-[9px] font-mono text-slate-500">
-                                    {ob.eps < 0 ? 'ε < 0 → bound' : (ob.eps > 0 ? 'ε > 0 → unbound' : 'ε = 0 → parabolic boundary')}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="bg-slate-950/60 px-3 py-2 rounded-lg font-mono text-[9px] text-slate-400 space-y-0.5 border border-white/5">
-                            <div className="text-slate-300 font-bold">CONSERVED QUANTITIES (ideal two-body)</div>
-                            <div>ε = v²/2 − μ/r &nbsp;·&nbsp; h = x·v_y − y·v_x &nbsp;·&nbsp; E_total should remain constant</div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* GRAPHS */}
-                <InfoBar
-                    icon={<TrendingUp size={13} />}
-                    accent="text-sky-400"
-                    title="Energy Graph (real sampled data)"
-                    summary={energySummary}
-                    open={openSection === 'graphs'}
-                    onToggle={() => toggleSection('graphs')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5">
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                            <div className="flex justify-between text-[9px] font-mono text-slate-400 mb-1">
-                                <span>ENERGY vs TIME</span>
-                                <span>Total E drift: {snapshot.energyHistory.total.length > 1 ? `${fmt(Math.abs(snapshot.energyHistory.total[snapshot.energyHistory.total.length - 1] - snapshot.energyHistory.total[0]), 4)} J over window` : '—'}</span>
-                            </div>
-                            <EnergyGraph history={snapshot.energyHistory} />
-                            <div className="text-[9px] font-mono text-slate-500 mt-1">
-                                In an ideal two-body problem total orbital energy is conserved — the amber line stays flat.
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* KEPLER */}
-                <InfoBar
-                    icon={<BookOpen size={13} />}
-                    accent="text-amber-400"
-                    title="Kepler's Laws"
-                    summary={keplerSummary}
-                    open={openSection === 'kepler'}
-                    onToggle={() => toggleSection('kepler')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Orbit Count" value={snapshot.orbitCount.toFixed(2)} color="text-sky-400" />
-                            <Stat label="Semi-major a" value={Number.isFinite(ob.semiMajor) ? fmt(ob.semiMajor, 4) : '∞'} unit="km" />
-                            <Stat label="Period T" value={Number.isFinite(ob.period) ? formatSimTime(ob.period) : '∞'} />
-                            <Stat label="T² ∝ a³" value={Number.isFinite(ob.period) && Number.isFinite(ob.semiMajor) ? fmt(Math.pow(ob.period, 2) / Math.pow(ob.semiMajor, 3), 3) : '—'} unit="s²/km³" color="text-amber-300" />
-                        </div>
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5 space-y-1 font-mono text-[9px] text-slate-400">
-                            <div className="text-amber-300 font-bold text-[10px]">1st LAW — Elliptical orbits with the central body at one focus</div>
-                            <div>The central body sits at a focus, NOT the geometric center (see PERIAPSIS / APOAPSIS markers).</div>
-                            <div className="text-emerald-300 font-bold text-[10px] mt-1">2nd LAW — Equal areas swept in equal times</div>
-                            <div>
-                                Consecutive swept sectors are recorded over equal time intervals ({formatSimTime(snapshot.sectors.length ? snapshot.sectors[snapshot.sectors.length - 1].t1 - snapshot.sectors[snapshot.sectors.length - 1].t0 : 0)} each).
-                                Near periapsis the satellite moves faster; near apoapsis slower.
-                            </div>
-                            <div className="text-sky-300 font-bold text-[10px] mt-1">3rd LAW — T² ∝ a³</div>
-                            <div>T = 2π√(a³/μ) → T²/a³ = 4π²/μ is constant for a fixed central body.</div>
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            {snapshot.sectors.slice(-12).map((s, i) => (
-                                <Stat key={i} label={`Sector t=${fmt(s.t0, 2)}s`} value={fmt(s.area, 3)} unit="km²" color="text-amber-400" />
-                            ))}
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ORBIT SETUP */}
-                <InfoBar
-                    icon={<Sliders size={13} />}
-                    accent="text-slate-300"
-                    title="Orbit Setup (Initial Conditions)"
-                    summary={setupSummary}
-                    open={openSection === 'setup'}
-                    onToggle={() => toggleSection('setup')}
-                    status={
-                        <button
-                            onClick={(e) => { e.stopPropagation(); applyPreset('circular'); }}
-                            className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 hover:bg-sky-500/40 cursor-pointer transition-colors"
-                            title="Set v = √(μ/r) circular velocity"
-                        >
-                            ⨀ Circular v
-                        </button>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[46vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-4">
-                            <SliderField label="μ = GM (km³/s²)" value={mu} min={50} max={200000} step={10} onChange={setMu} fmt={fmt(mu, 4)} />
-                            <SliderField label="Central radius R (km)" value={centralRadius} min={1} max={400} step={1} onChange={setCentralRadius} fmt={fmt(centralRadius, 3)} />
-                            <SliderField label="Initial radius r₀ (km)" value={r0} min={20} max={2000} step={5} onChange={setR0} fmt={fmt(r0, 3)} />
-                            <SliderField label="Initial angle θ₀ (deg)" value={theta0} min={0} max={359} step={1} onChange={setTheta0} fmt={`${theta0.toFixed(0)}°`} />
-                            <SliderField label="Initial speed v₀ (km/s)" value={v0} min={0.1} max={30} step={0.01} onChange={setV0} fmt={fmt(v0, 4)} />
-                            <SliderField label="Velocity direction φ (deg)" value={velAngle} min={0} max={359} step={1} onChange={setVelAngle} fmt={`${velAngle.toFixed(0)}°`} />
-                            <SliderField label="Satellite mass m (kg)" value={satelliteMass} min={100} max={10000} step={100} onChange={setSatelliteMass} fmt={fmt(satelliteMass, 4)} />
-                            <SliderField label="Central mass M (kg)" value={centralMass} min={1e20} max={1e25} step={1e20} onChange={setCentralMass} fmt={centralMass.toExponential(2)} />
-                            <SliderField label="Physics Δt (s)" value={dt} min={0.01} max={2} step={0.01} onChange={setDt} fmt={`${dt.toFixed(2)} s`} />
-                            <SliderField label="Simulation speed" value={timeScale} min={1} max={500} step={1} onChange={setTimeScale} fmt={`${timeScale}×`} />
-                        </div>
-                        <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-2">
-                            <button onClick={() => { setV0(Number(Math.sqrt(mu / r0).toFixed(4))); }} className="px-3 py-2 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[10px] font-bold uppercase tracking-wider hover:bg-sky-500/25 transition-colors cursor-pointer">
-                                v = √(μ/r₀) — Circular
-                            </button>
-                            <button onClick={() => { setV0(Number(Math.sqrt(2 * mu / r0).toFixed(4))); }} className="px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider hover:bg-amber-500/25 transition-colors cursor-pointer">
-                                v = √(2μ/r₀) — Escape
-                            </button>
-                            <div className="px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-[9px] font-mono text-slate-400 flex items-center justify-center">
-                                v_c = {fmt(Math.sqrt(mu / r0), 3)} · v_esc = {fmt(Math.sqrt(2 * mu / r0), 3)} km/s
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-            </div>
-
             {/* ── Bottom Playback & Timeline Bar ───────────────────────────────── */}
             <div className="h-16 bg-slate-950/95 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center justify-between z-30 shrink-0">
                 <div className="flex items-center gap-3">
@@ -952,25 +668,5 @@ function ToggleBtn({ on, set, label, color }) {
         >
             <Zap size={10} style={{ color: on ? color : undefined }} /> {label}
         </button>
-    );
-}
-
-function SliderField({ label, value, min, max, step, onChange, fmt }) {
-    return (
-        <div className="space-y-1">
-            <div className="flex justify-between text-[10px] font-mono">
-                <span className="text-slate-400">{label}</span>
-                <span className="text-sky-400 font-bold">{fmt}</span>
-            </div>
-            <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={value}
-                onChange={(e) => onChange(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-            />
-        </div>
     );
 }
