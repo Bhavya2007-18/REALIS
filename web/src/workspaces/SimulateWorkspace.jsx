@@ -9,6 +9,7 @@ import Viewport3D from '../components/Viewport3D';
 import FreeFallLab from '../components/FreeFallLab';
 import ProjectileLab from '../components/ProjectileLab';
 import PendulumLab from '../components/PendulumLab';
+import DoublePendulumLab from '../components/DoublePendulumLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -26,6 +27,7 @@ const LAB_SCREENS = {
     free_fall: FreeFallLab,
     projectile_motion: ProjectileLab,
     single_pendulum: PendulumLab,
+    double_pendulum: DoublePendulumLab,
 };
 
 export default function SimulateWorkspace() {
@@ -90,7 +92,8 @@ export default function SimulateWorkspace() {
     const isFreeFallActive = simulationPreset === 'free_fall';
     const isProjectileActive = simulationPreset === 'projectile_motion';
     const isPendulumActive = simulationPreset === 'single_pendulum';
-    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive;
+    const isDoublePendulumActive = simulationPreset === 'double_pendulum';
+    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isDoublePendulumActive;
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());
@@ -847,6 +850,8 @@ export default function SimulateWorkspace() {
             </div>
 
             {/* ── Timeline & Engine Inspector Control Bar ────────────────────────────────────────── */}
+            {/* Hidden inside dedicated labs so the physics canvas gets their full viewport height. */}
+            {!isLabActive && (
             <div className="h-16 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center gap-8 z-30 shrink-0">
                 {/* Playback Controls */}
                 <div className="flex items-center gap-2">
@@ -909,6 +914,7 @@ export default function SimulateWorkspace() {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }

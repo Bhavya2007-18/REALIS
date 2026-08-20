@@ -40,8 +40,14 @@ const PRESETS = {
     },
 
     double_pendulum: {
-        metadata: { id: 'double_pendulum', name: 'Double Pendulum', version: '1.0' },
+        metadata: { id: 'double_pendulum', name: 'Double Pendulum (Chaos Lab)', version: '2.0' },
         world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 8 },
+        lab: {
+            type: 'double_pendulum', mass1: 1, mass2: 1,
+            length1: 1.0, length2: 1.0,
+            theta1: 120, theta2: 120, omega1: 0, omega2: 0,
+            gravity: 9.81, damping: 0
+        },
         bodies: [
             { id: 'anchor', type: 'sphere', position: [0, 30, 0], params: { radius: 3 }, color: '#fbbf24', isStatic: true },
             { id: 'bob1', type: 'sphere', position: [50, 30, 0], params: { radius: 7 }, color: '#3b82f6', mass: 3.0 },
@@ -53,7 +59,7 @@ const PRESETS = {
             { type: 'distance', targetA: 'bob1', targetB: 'bob2', distance: 50 }
         ],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'Double Pendulum', description: 'Chaotic Dynamics\nSensitive to Initial Conditions' }
+        overlay: { title: 'Double Pendulum', description: 'Chaotic Dynamics (RK4)\nCoupled nonlinear equations\nθ₁ ↔ θ₂ coupling' }
     },
 
     spring_oscillator: {
