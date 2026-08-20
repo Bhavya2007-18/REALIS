@@ -315,8 +315,13 @@ const useStore = create(temporal((set) => ({
     isAIPanelOpen: false,
     toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
 
-    
-    
+    isAIImportOpen: false,
+    toggleAIImport: () => set((state) => ({ isAIImportOpen: !state.isAIImportOpen })),
+    aiImportData: null,
+    setAIImportData: (data) => set({ aiImportData: data }),
+
+    // File Tree state
+    // Selection state
     selectedIds: [],
     setSelectedIds: (ids) => set({ selectedIds: typeof ids === 'function' ? ids(useStore.getState().selectedIds) : ids }),
 

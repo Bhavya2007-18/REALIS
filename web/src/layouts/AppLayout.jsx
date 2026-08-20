@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import AIChatBot from '../components/AIChatBot'
 import BottomBar from '../components/BottomBar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
+import AIImportPanel from '../components/AIImportPanel'
 import PropertiesPanel from '../components/PropertiesPanel'
 import SketchImportPanel from '../components/SketchImportPanel'
 import SketchPreviewOverlay from '../components/SketchPreviewOverlay'
@@ -59,6 +60,7 @@ export default function AppLayout() {
                         <AIChatBot toggleAIPanel={toggleAIPanel} />
                     </div>
                 )}
+                <AIImportPanel />
             </main>
             <BottomBar />
         </div>
