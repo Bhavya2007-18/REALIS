@@ -5,17 +5,20 @@ from typing import List, Optional, Dict
 import os
 import sys
 
-
-
-
 try:
     from tools.sketch_ai.api import router as sketch_router
 except ImportError:
-    
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from tools.sketch_ai.api import router as sketch_router
 
-app = FastAPI(title="REALIS Physics API", description="Bridge between Web CAD and C++ Deterministic Engine")
+# Ensure REALIS root is in scope for core.ai_import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.ai_import.models import AIImportRequest, AIImportResponse
+from core.ai_import.pipeline import AISketchPipeline
+
+ai_pipeline = AISketchPipeline()
+
+app = FastAPI(title="REALIS Physics API", description="Python physics engine (C++ build temporarily disabled)")
 
 # In-memory storage of the last simulation result, used by /api/context for the AI.
 last_sim_result = None
@@ -129,6 +132,19 @@ class ChatResponse(BaseModel):
 def read_root():
     return {"status": "REALIS API Online"}
 
+@app.post("/api/ai_import", response_model=AIImportResponse)
+def run_ai_import(req: AIImportRequest):
+    """
+    Executes the 11-phase AI Sketch-to-Simulation compiler pipeline.
+    """
+    try:
+        res = ai_pipeline.process(req)
+        return res
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/health")
 def health_check():
     return {
@@ -226,7 +242,6 @@ def run_simulation(req: SimulationRequest):
             ]
             frames.append(SimulationFrame(time=f["time"], states=states, contacts=contacts))
 
-        # Store last result for the AI context endpoint (Phase 4).
         global last_sim_result
         last_sim_result = {
             "duration": req.duration,
@@ -260,7 +275,6 @@ def get_simulation_context():
         "has_simulation": True,
         "summary": last_sim_result
     }
-
 
 
 @app.post("/api/chat", response_model=ChatResponse)
