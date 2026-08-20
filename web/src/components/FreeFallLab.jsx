@@ -1,59 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Play, Square, RefreshCw, SkipForward, Globe, Activity, Layers,
-    Sliders, Sparkles, ArrowDown, ChevronDown, Wrench, BookOpen
+    Play, Square, RefreshCw, SkipForward, Globe, Layers,
+    Sparkles, ArrowDown, Activity
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import FreeFallPhysicsSolver, { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
-
-// ── Collapsible Engineering Information Bar (Accordion Section) ───────────────
-// Full-width horizontal bar: icon + title + one-line live summary + expand
-// indicator. Expanded state smoothly reveals full content. Accordion manages
-// which single section (if any) is open.
-function InfoBar({ icon, title, accent, summary, status, open, onToggle, children }) {
-    return (
-        <div className={`border-t border-white/10 transition-colors duration-200 ${open ? 'bg-slate-900/60' : 'bg-slate-950/90'}`}>
-            <button
-                onClick={onToggle}
-                className={`w-full flex items-center gap-3 px-5 py-2.5 text-left cursor-pointer transition-colors duration-200 group ${open ? 'bg-slate-900/70' : 'hover:bg-slate-900/50'}`}
-                aria-expanded={open}
-            >
-                <span className={`shrink-0 transition-colors ${open ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>
-                    {icon}
-                </span>
-                <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${open ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                    {title}
-                </span>
-                <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
-                {status}
-                <ChevronDown
-                    size={13}
-                    className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`}
-                />
-            </button>
-            <div
-                className="grid"
-                style={{ gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}
-            >
-                <div className="overflow-hidden min-h-0">
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ── Compact stat tile used inside expanded sections ──────────────────────────
-function Stat({ label, value, unit, color = 'text-white' }) {
-    return (
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
-            <div className={`text-base font-bold font-mono ${color}`}>
-                {value} <span className="text-xs font-normal text-slate-500">{unit}</span>
-            </div>
-        </div>
-    );
-}
 
 export default function FreeFallLab() {
     const isPlaying = useStore(state => state.isPlaying);
@@ -74,10 +25,6 @@ export default function FreeFallLab() {
     const [showVelocityVector, setShowVelocityVector] = useState(true);
     const [showGravityVector, setShowGravityVector] = useState(true);
     const [showStrobeTrail, setShowStrobeTrail] = useState(true);
-
-    // Accordion state — at most ONE engineering bar open at a time, all collapsed by default
-    const [openSection, setOpenSection] = useState(null); // 'telemetry' | 'params' | 'inspector'
-    const toggleSection = (key) => setOpenSection(prev => (prev === key ? null : key));
 
     // Physics solver instance ref
     const solverRef = useRef(new FreeFallPhysicsSolver({
@@ -251,12 +198,6 @@ export default function FreeFallLab() {
         }
         return ticks;
     }, [initialHeight, tickInterval]);
-
-    // One-line live summaries shown on the collapsed bars
-    const flightStatus = snapshot.isResting ? 'AT REST' : (isPlaying ? 'ACCELERATING' : 'READY');
-    const telemetrySummary = `t ${snapshot.time.toFixed(2)}s · y ${snapshot.height.toFixed(1)}m · v ${snapshot.velocity.toFixed(1)}m/s · Δy ${snapshot.distanceFallen.toFixed(1)}m`;
-    const paramsSummary = `h₀ ${initialHeight}m · e ${restitution.toFixed(2)} · m ${mass}kg · g ${PLANETARY_GRAVITY[selectedPlanet]?.g ?? 9.81}m/s²`;
-    const inspectorSummary = `Falling sphere · Semi-implicit Euler · Δt ${snapshot.config.dt}s`;
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-[#0a0f1a] overflow-hidden select-none font-sans flex flex-col">
@@ -634,199 +575,6 @@ export default function FreeFallLab() {
                     </g>
                 </svg>
 
-            </div>
-
-            {/* ── Collapsible Engineering Information Bars (accordion) ── */}
-            <div className="shrink-0 relative z-20">
-                {/* ── LIVE TELEMETRY ── */}
-                <InfoBar
-                    icon={<Activity size={13} />}
-                    accent="text-emerald-400"
-                    title="Live Telemetry"
-                    summary={telemetrySummary}
-                    open={openSection === 'telemetry'}
-                    onToggle={() => toggleSection('telemetry')}
-                    status={
-                        <span className={`shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded ${
-                            snapshot.isResting
-                                ? 'bg-slate-700 text-slate-300'
-                                : (isPlaying ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' : 'bg-amber-500/20 text-amber-400')
-                        }`}>
-                            {flightStatus}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Altitude (y)" value={snapshot.height.toFixed(2)} unit="m" color="text-sky-400" />
-                            <Stat label="Time (t)" value={snapshot.time.toFixed(2)} unit="s" />
-                            <Stat label="Velocity (v)" value={snapshot.velocity.toFixed(2)} unit="m/s" color={snapshot.velocity < 0 ? 'text-cyan-400' : 'text-emerald-400'} />
-                            <Stat label="Acceleration (g)" value={snapshot.config.gravity.toFixed(2)} unit="m/s²" color="text-amber-400" />
-                        </div>
-                        <div className="text-[9px] font-mono text-slate-500">
-                            ({(snapshot.velocity * 3.6).toFixed(1)} km/h)
-                        </div>
-
-                        <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
-                            <span className="text-slate-400 text-[10px]">DISTANCE FALLEN (Δy):</span>
-                            <span className="text-rose-400 font-bold">{snapshot.distanceFallen.toFixed(2)} m</span>
-                        </div>
-
-                        {/* Live Energy Conservation Bar: PE -> KE */}
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5 space-y-1.5">
-                            <div className="flex justify-between text-[9px] font-mono">
-                                <span className="text-sky-400">PE: {Math.round(snapshot.energy.potential).toLocaleString()} J</span>
-                                <span className="text-emerald-400">KE: {Math.round(snapshot.energy.kinetic).toLocaleString()} J</span>
-                            </div>
-                            <div className="h-2 bg-slate-950 rounded-full overflow-hidden flex border border-white/10">
-                                <div
-                                    className="h-full bg-sky-500 transition-all duration-75"
-                                    style={{ width: `${(snapshot.energy.potential / (snapshot.energy.initialTotal || 1)) * 100}%` }}
-                                    title="Potential Energy (mgh)"
-                                />
-                                <div
-                                    className="h-full bg-emerald-400 transition-all duration-75"
-                                    style={{ width: `${(snapshot.energy.kinetic / (snapshot.energy.initialTotal || 1)) * 100}%` }}
-                                    title="Kinetic Energy (1/2 m v^2)"
-                                />
-                            </div>
-                            <div className="flex justify-between text-[9px] font-mono text-slate-400">
-                                <span>TOTAL ENERGY</span>
-                                <span className="text-amber-400 font-bold">{Math.round(snapshot.energy.total).toLocaleString()} J</span>
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ── EXPERIMENT PARAMETERS ── */}
-                <InfoBar
-                    icon={<Sliders size={13} />}
-                    accent="text-amber-400"
-                    title="Experiment Parameters"
-                    summary={paramsSummary}
-                    open={openSection === 'params'}
-                    onToggle={() => toggleSection('params')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-5">
-                            {/* Drop Height h0 */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">DROP HEIGHT (h₀)</span>
-                                    <span className="text-sky-400 font-bold">{initialHeight} m</span>
-                                </div>
-                                <input type="range" min="10" max="250" step="5" value={initialHeight}
-                                    onChange={(e) => setInitialHeight(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
-                            </div>
-
-                            {/* Restitution / Bounce Elasticity (e) */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">SURFACE BOUNCE (e)</span>
-                                    <span className="text-amber-400 font-bold">{restitution.toFixed(2)}</span>
-                                </div>
-                                <input type="range" min="0.0" max="0.85" step="0.05" value={restitution}
-                                    onChange={(e) => setRestitution(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                                <div className="flex justify-between text-[8px] font-mono text-slate-500">
-                                    <span>0.0 (Steel Plop)</span>
-                                    <span>0.45 (Concrete)</span>
-                                    <span>0.85 (Superball)</span>
-                                </div>
-                            </div>
-
-                            {/* Sphere Mass (m) */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">SPHERE MASS (m)</span>
-                                    <span className="text-white font-bold">{mass} kg</span>
-                                </div>
-                                <input type="range" min="1" max="50" step="1" value={mass}
-                                    onChange={(e) => setMass(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
-                            </div>
-
-                            {/* Theoretical Formula Preview Card */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-sky-400 font-bold text-[10px]">EXACT PHYSICAL FORMULAS:</div>
-                                <div>• y(t) = h₀ - ½ g t²</div>
-                                <div>• v(t) = -g t</div>
-                                <div>• Time to ground: <span className="text-white font-bold">{snapshot.theoretical.firstImpactTime}s</span></div>
-                                <div>• Impact velocity: <span className="text-white font-bold">{snapshot.theoretical.impactVelocity} m/s</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ── ENGINEERING INSPECTOR ── */}
-                <InfoBar
-                    icon={<Wrench size={13} />}
-                    accent="text-purple-400"
-                    title="Engineering Inspector"
-                    summary={inspectorSummary}
-                    open={openSection === 'inspector'}
-                    onToggle={() => toggleSection('inspector')}
-                    status={
-                        <span className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                            Δt {snapshot.config.dt}s
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* System / Solver Info */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-purple-400 font-bold text-[10px]">SYSTEM</div>
-                                <div>• Object: <span className="text-slate-200">Falling sphere ({snapshot.config.mass} kg)</span></div>
-                                <div>• Radius: <span className="text-slate-200">{snapshot.config.radius} m</span></div>
-                                <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (4 substeps)</span></div>
-                                <div>• Timestep: <span className="text-slate-200">Δt = {snapshot.config.dt}s</span></div>
-                                <div>• Restitution: <span className="text-slate-200">e = {snapshot.config.restitution.toFixed(2)}</span></div>
-                                <div>• State: <span className="text-slate-200">{flightStatus}</span></div>
-                            </div>
-
-                            {/* Theoretical Prediction */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-amber-400 font-bold text-[10px]">ANALYTICAL SOLUTION</div>
-                                <div>• Height law: <span className="text-slate-200">y(t) = h₀ - ½gt²</span></div>
-                                <div>• Velocity law: <span className="text-slate-200">v(t) = -g·t</span></div>
-                                <div>• Time to ground: <span className="text-white font-bold">{snapshot.theoretical.firstImpactTime} s</span></div>
-                                <div>• Impact velocity: <span className="text-white font-bold">{snapshot.theoretical.impactVelocity} m/s</span></div>
-                                <div className="text-slate-500">t₁ = √(2h₀/g) · v₁ = √(2gh₀)</div>
-                            </div>
-
-                            {/* Energy / Validation */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-emerald-400 font-bold text-[10px]">ENERGY BALANCE</div>
-                                <div>• Initial total: <span className="text-slate-200">{Math.round(snapshot.energy.initialTotal).toLocaleString()} J</span></div>
-                                <div>• Current total: <span className="text-slate-200">{Math.round(snapshot.energy.total).toLocaleString()} J</span></div>
-                                <div>• Dissipated: <span className="text-rose-400 font-bold">{Math.round(snapshot.energy.dissipated).toLocaleString()} J</span></div>
-                                <div>• Bounces: <span className="text-slate-200">{snapshot.bounceCount}</span></div>
-                                <div className="text-slate-500">{snapshot.isResting ? 'Energy fully dissipated — sphere at rest.' : 'PE ⇄ KE conserved while airborne.'}</div>
-                            </div>
-                        </div>
-
-                        {/* Educational explanation */}
-                        <div className="mt-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <BookOpen size={12} className="text-purple-400" />
-                                <span className="text-[10px] font-bold tracking-widest text-slate-300 uppercase">Why the ball speeds up</span>
-                            </div>
-                            <div className="font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-amber-400 font-bold">NEWTON'S 2ND LAW (net force)</div>
-                                <div>→ F = m·g → a = g (independent of mass)</div>
-                                <div className="text-emerald-400 font-bold mt-1">GALILEO'S LAW OF FALLING BODIES</div>
-                                <div>→ v(t) = g·t · y(t) = h₀ - ½·g·t²</div>
-                                <div className="text-rose-400 font-bold mt-1">ON BOUNCE (restitution e)</div>
-                                <div>→ v' = e·|v| — kinetic energy is lost as heat/sound each impact</div>
-                            </div>
-                            <div className="mt-2 text-[9px] text-slate-500 font-mono">
-                                All falling objects share the same downward acceleration g regardless of mass.
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
             </div>
 
             {/* ── Bottom Laboratory Timeline & Playback Control Bar ── */}

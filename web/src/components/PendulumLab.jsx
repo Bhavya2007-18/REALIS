@@ -1,58 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Play, Square, RefreshCw, SkipForward, Activity, Layers,
-    Sliders, Sparkles, ArrowDown, ChevronDown, Wrench, BookOpen,
+    Play, Square, RefreshCw, SkipForward, Layers,
+    Sparkles, ArrowDown,
     Compass, Gauge
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import PendulumPhysicsSolver from '../utils/solvers/pendulumSolver';
 import { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
-
-// ── Collapsible Engineering Information Bar (Accordion Section) ───────────────
-function InfoBar({ icon, title, accent, summary, status, open, onToggle, children }) {
-    return (
-        <div className={`border-t border-white/10 transition-colors duration-200 ${open ? 'bg-slate-900/60' : 'bg-slate-950/90'}`}>
-            <button
-                onClick={onToggle}
-                className={`w-full flex items-center gap-3 px-5 py-2.5 text-left cursor-pointer transition-colors duration-200 group ${open ? 'bg-slate-900/70' : 'hover:bg-slate-900/50'}`}
-                aria-expanded={open}
-            >
-                <span className={`shrink-0 transition-colors ${open ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>
-                    {icon}
-                </span>
-                <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${open ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                    {title}
-                </span>
-                <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
-                {status}
-                <ChevronDown
-                    size={13}
-                    className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`}
-                />
-            </button>
-            <div
-                className="grid"
-                style={{ gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}
-            >
-                <div className="overflow-hidden min-h-0">
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ── Compact stat tile used inside expanded sections ──────────────────────────
-function Stat({ label, value, unit, color = 'text-white' }) {
-    return (
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
-            <div className={`text-base font-bold font-mono ${color}`}>
-                {value} <span className="text-xs font-normal text-slate-500">{unit}</span>
-            </div>
-        </div>
-    );
-}
 
 export default function PendulumLab() {
     const isPlaying = useStore(state => state.isPlaying);
@@ -76,10 +30,6 @@ export default function PendulumLab() {
     const [showVelocityVector, setShowVelocityVector] = useState(true);
     const [showTensionVector, setShowTensionVector] = useState(true);
     const [showAngleArc, setShowAngleArc] = useState(true);
-
-    // Accordion state — at most ONE engineering bar open at a time, all collapsed by default
-    const [openSection, setOpenSection] = useState(null); // 'telemetry' | 'params' | 'inspector'
-    const toggleSection = (key) => setOpenSection(prev => (prev === key ? null : key));
 
     // Physics solver instance (stable state holder, mutated externally by the loop)
     const [solver] = useState(() => new PendulumPhysicsSolver({
@@ -240,12 +190,6 @@ export default function PendulumLab() {
         }
         return pts.join(' ');
     }, [snapshot.theta, pivotX, pivotY, rodPx]);
-
-    // Live collapsed-bar summaries
-    const flightStatus = snapshot.isResting ? 'AT REST' : (isPlaying ? 'SWINGING' : 'READY');
-    const telemetrySummary = `θ ${snapshot.angle}° · ω ${snapshot.omega} rad/s · v ${snapshot.speed}m/s · T ${snapshot.tension}N`;
-    const paramsSummary = `L ${length}m · θ₀ ${angle0}° · m ${mass}kg · g ${gravity}m/s²`;
-    const inspectorSummary = `Single pendulum · Semi-implicit Euler · Δt ${snapshot.config.dt}s`;
 
     const handlePlanetSelect = (pKey) => {
         setSelectedPlanet(pKey);
@@ -492,215 +436,6 @@ export default function PendulumLab() {
                         </text>
                     </g>
                 </svg>
-            </div>
-
-            {/* ── Collapsible Engineering Information Bars (accordion) ── */}
-            <div className="shrink-0 relative z-20">
-                {/* ── LIVE TELEMETRY ── */}
-                <InfoBar
-                    icon={<Activity size={13} />}
-                    accent="text-emerald-400"
-                    title="Live Telemetry"
-                    summary={telemetrySummary}
-                    open={openSection === 'telemetry'}
-                    onToggle={() => toggleSection('telemetry')}
-                    status={
-                        <span className={`shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded ${
-                            snapshot.isResting
-                                ? 'bg-slate-700 text-slate-300'
-                                : (isPlaying ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' : 'bg-amber-500/20 text-amber-400')
-                        }`}>
-                            {flightStatus}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto space-y-3">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                            <Stat label="Time (t)" value={snapshot.time.toFixed(2)} unit="s" />
-                            <Stat label="Angle (θ)" value={snapshot.angle.toFixed(1)} unit="°" color="text-sky-400" />
-                            <Stat label="Ang. Vel (ω)" value={snapshot.omega.toFixed(2)} unit="rad/s" color="text-cyan-400" />
-                            <Stat label="Speed (|v|)" value={snapshot.speed.toFixed(2)} unit="m/s" color="text-emerald-400" />
-                            <Stat label="Tension (T)" value={snapshot.tension.toFixed(2)} unit="N" color="text-amber-400" />
-                            <Stat label="Swings" value={snapshot.swingCount} unit="" />
-                        </div>
-
-                        {/* Energy Conservation Bar: PE -> KE */}
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5 space-y-1.5">
-                            <div className="flex justify-between text-[9px] font-mono">
-                                <span className="text-amber-400">PE: {snapshot.energy.potential.toFixed(1)} J</span>
-                                <span className="text-emerald-400">KE: {snapshot.energy.kinetic.toFixed(1)} J</span>
-                            </div>
-                            <div className="h-2 bg-slate-950 rounded-full overflow-hidden flex border border-white/10">
-                                <div
-                                    className="h-full bg-amber-500 transition-all duration-75"
-                                    style={{ width: `${(snapshot.energy.potential / (snapshot.energy.initialTotal || 1)) * 100}%` }}
-                                    title="Potential Energy (mgh)"
-                                />
-                                <div
-                                    className="h-full bg-emerald-400 transition-all duration-75"
-                                    style={{ width: `${(snapshot.energy.kinetic / (snapshot.energy.initialTotal || 1)) * 100}%` }}
-                                    title="Kinetic Energy (½ m L² ω²)"
-                                />
-                            </div>
-                            <div className="flex justify-between text-[9px] font-mono text-slate-400">
-                                <span>TOTAL ENERGY (conserved)</span>
-                                <span className="text-amber-400 font-bold">{snapshot.energy.total.toFixed(2)} J</span>
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ── EXPERIMENT PARAMETERS ── */}
-                <InfoBar
-                    icon={<Sliders size={13} />}
-                    accent="text-amber-400"
-                    title="Experiment Parameters"
-                    summary={paramsSummary}
-                    open={openSection === 'params'}
-                    onToggle={() => toggleSection('params')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-5">
-                            {/* Rod Length L */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">ROD LENGTH (L)</span>
-                                    <span className="text-amber-400 font-bold">{length} m</span>
-                                </div>
-                                <input type="range" min="0.5" max="5.0" step="0.1" value={length}
-                                    onChange={(e) => setLength(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                            </div>
-
-                            {/* Initial Release Angle θ0 */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">RELEASE ANGLE (θ₀)</span>
-                                    <span className="text-sky-400 font-bold">{angle0}°</span>
-                                </div>
-                                <input type="range" min="5" max="175" step="1" value={angle0}
-                                    onChange={(e) => setAngle0(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
-                                <div className="flex justify-between text-[8px] font-mono text-slate-500">
-                                    <button onClick={() => setAngle0(10)} className="hover:text-white">10° (SHM)</button>
-                                    <button onClick={() => setAngle0(60)} className="hover:text-white">60°</button>
-                                    <button onClick={() => setAngle0(150)} className="hover:text-white">150° (nonlinear)</button>
-                                </div>
-                            </div>
-
-                            {/* Bob Mass m */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">BOB MASS (m)</span>
-                                    <span className="text-white font-bold">{mass} kg</span>
-                                </div>
-                                <input type="range" min="0.5" max="10" step="0.5" value={mass}
-                                    onChange={(e) => setMass(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
-                                <div className="text-[8px] font-mono text-slate-500">Period is independent of mass (Galileo).</div>
-                            </div>
-
-                            {/* Gravity g */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">GRAVITY (g)</span>
-                                    <span className="text-amber-400 font-bold">{gravity} m/s²</span>
-                                </div>
-                                <input type="range" min="0" max="25" step="0.1" value={gravity}
-                                    onChange={(e) => { setGravity(parseFloat(e.target.value)); setSelectedPlanet(null); }}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                            </div>
-
-                            {/* Pivot Damping */}
-                            <div className="space-y-1 lg:col-span-2">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">PIVOT DAMPING (friction)</span>
-                                    <span className="text-rose-400 font-bold">{damping.toFixed(2)} /s</span>
-                                </div>
-                                <input type="range" min="0" max="1.0" step="0.05" value={damping}
-                                    onChange={(e) => setDamping(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
-                                <div className="flex justify-between text-[8px] font-mono text-slate-500">
-                                    <span>0.00 (Ideal, perpetual)</span>
-                                    <span>0.5 (Weak air drag)</span>
-                                    <span>1.0 (Heavy damping)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ── ENGINEERING INSPECTOR ── */}
-                <InfoBar
-                    icon={<Wrench size={13} />}
-                    accent="text-purple-400"
-                    title="Engineering Inspector"
-                    summary={inspectorSummary}
-                    open={openSection === 'inspector'}
-                    onToggle={() => toggleSection('inspector')}
-                    status={
-                        <span className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                            Δt {snapshot.config.dt}s
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* System / Solver Info */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-purple-400 font-bold text-[10px]">SYSTEM</div>
-                                <div>• Object: <span className="text-slate-200">Simple pendulum ({snapshot.config.mass} kg)</span></div>
-                                <div>• Rod length: <span className="text-slate-200">L = {snapshot.config.length} m</span></div>
-                                <div>• Damping: <span className="text-slate-200">{snapshot.config.damping.toFixed(2)} /s</span></div>
-                                <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (8 substeps)</span></div>
-                                <div>• Timestep: <span className="text-slate-200">Δt = {snapshot.config.dt}s</span></div>
-                                <div>• State: <span className="text-slate-200">{flightStatus}</span></div>
-                                <div>• Swings: <span className="text-slate-200">{snapshot.swingCount}</span></div>
-                            </div>
-
-                            {/* Analytical Solution */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-amber-400 font-bold text-[10px]">ANALYTICAL SOLUTION</div>
-                                <div>• Equation: <span className="text-slate-200">θ'' + (g/L)·sin θ = 0</span></div>
-                                <div>• Small-angle period: <span className="text-white font-bold">{snapshot.analytics.smallAnglePeriod} s</span></div>
-                                <div>• Exact period (elliptic): <span className="text-white font-bold">{snapshot.analytics.exactPeriod} s</span></div>
-                                <div>• Max speed (bottom): <span className="text-white font-bold">{snapshot.analytics.speedAtBottom} m/s</span></div>
-                                <div>• Max ω (small-angle): <span className="text-white font-bold">{snapshot.analytics.omegaMaxSmallAngle} rad/s</span></div>
-                                <div className="text-slate-500">T = 2π√(L/g) · v_max = √(2gL(1−cosθ₀))</div>
-                            </div>
-
-                            {/* Numerical Validation */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-emerald-400 font-bold text-[10px]">NUMERICAL VALIDATION</div>
-                                <div>• Engine vs reference Δθ: <span className="text-slate-200">{snapshot.validation.angleErrorDeg}°</span></div>
-                                <div>• Energy drift: <span className={`font-bold ${Math.abs(snapshot.validation.energyDriftPercent) < 0.5 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {snapshot.validation.energyDriftPercent}%
-                                </span></div>
-                                <div>• Initial energy E₀: <span className="text-slate-200">{snapshot.energy.initialTotal} J</span></div>
-                                <div className="text-slate-500">Reference runs at 0.5 ms resolution; drift ~0 confirms energy conservation.</div>
-                            </div>
-                        </div>
-
-                        {/* Educational explanation */}
-                        <div className="mt-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <BookOpen size={12} className="text-purple-400" />
-                                <span className="text-[10px] font-bold tracking-widest text-slate-300 uppercase">Why it oscillates</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 font-mono text-[9px] text-slate-400">
-                                <div className="text-amber-400 font-bold">NEWTON'S 2ND LAW (rotation)</div>
-                                <div className="text-sky-400 font-bold">SMALL-ANGLE SHM</div>
-                                <div>τ = I·α → -m g L·sinθ = m L²·θ''</div>
-                                <div>θ ≈ θ₀·cos(√(g/L)·t) for θ₀ &lt; 10°</div>
-                                <div>θ'' + (g/L)·sin θ = 0 (exact)</div>
-                                <div>ω² = g/L · T = 2π/ω</div>
-                            </div>
-                            <div className="mt-2 text-[9px] text-slate-500 font-mono">
-                                Gravity's torque pulls the bob toward the vertical; inertia carries it past, converting KE back to PE. The exact period grows with amplitude (elliptic integral) — a hallmark of nonlinear dynamics.
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
             </div>
 
             {/* ── Bottom Laboratory Timeline & Playback Control Bar ── */}
