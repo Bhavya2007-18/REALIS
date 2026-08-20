@@ -9,7 +9,7 @@ import Viewport3D from '../components/Viewport3D';
 import FreeFallLab from '../components/FreeFallLab';
 import ProjectileLab from '../components/ProjectileLab';
 import PendulumLab from '../components/PendulumLab';
-import OrbitalLab from '../components/OrbitalLab';
+import DoublePendulumLab from '../components/DoublePendulumLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -27,7 +27,7 @@ const LAB_SCREENS = {
     free_fall: FreeFallLab,
     projectile_motion: ProjectileLab,
     single_pendulum: PendulumLab,
-    orbital_mechanics: OrbitalLab,
+    double_pendulum: DoublePendulumLab,
 };
 
 export default function SimulateWorkspace() {
@@ -71,7 +71,6 @@ export default function SimulateWorkspace() {
     const deleteObject = useStore(state => state.deleteObject);
 
     const [selectedObjectIds, setSelectedObjectIds] = useState([]);
-    const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 
     // AI Read Path Bridge (Section 3.4 & Stage 1 Exit Criteria)
     useEffect(() => {
@@ -93,8 +92,8 @@ export default function SimulateWorkspace() {
     const isFreeFallActive = simulationPreset === 'free_fall';
     const isProjectileActive = simulationPreset === 'projectile_motion';
     const isPendulumActive = simulationPreset === 'single_pendulum';
-    const isOrbitalActive = simulationPreset === 'orbital_mechanics';
-    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isOrbitalActive;
+    const isDoublePendulumActive = simulationPreset === 'double_pendulum';
+    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isDoublePendulumActive;
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());
@@ -848,189 +847,11 @@ export default function SimulateWorkspace() {
                         </div>
                     )}
                 </div>
-
-                {/* ── Engineering Inspector Control Panel (Per-Body & Global) ──────────────────── */}
-                <div className={`absolute top-20 right-6 bottom-24 z-20 transition-all duration-300 ${isInspectorOpen ? 'translate-x-0 w-80' : 'translate-x-[calc(100%+24px)] w-0'}`}>
-                    <div className="h-full glass-panel rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-                        <div className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/5">
-                            <div className="flex items-center gap-2">
-                                <Sliders size={14} className="text-primary" />
-                                <h3 className="text-xs font-bold tracking-widest uppercase text-slate-200">Engineering Inspector</h3>
-                            </div>
-                            <button onClick={() => setIsInspectorOpen(false)} className="text-slate-500 hover:text-white cursor-pointer">
-                                <Settings size={12} />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
-                            {/* Object Selection & Per-Body Material Assignment */}
-                            <section className="space-y-3">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Box size={10}/> Body Inspector ({renderBodies.length} Bodies)
-                                </label>
-                                
-                                <select
-                                    value={selectedObjectIds[0] || ''}
-                                    onChange={(e) => setSelectedObjectIds(e.target.value ? [e.target.value] : [])}
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-xs text-white outline-none font-mono cursor-pointer"
-                                >
-                                    <option value="">Select Body to Inspect / Edit...</option>
-                                    {renderBodies.map(b => (
-                                        <option key={b.id} value={b.id}>
-                                            [{b.id}] {b.type} (m: {b.mass || 1}kg, mat: {b.material_id || 'default'})
-                                        </option>
-                                    ))}
-                                </select>
-
-                                {selectedObjectIds[0] && (() => {
-                                    const selectedBody = renderBodies.find(b => String(b.id) === String(selectedObjectIds[0]));
-                                    if (!selectedBody) return null;
-                                    return (
-                                        <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-3 text-xs">
-                                            <div className="flex justify-between items-center pb-2 border-b border-white/10 font-bold">
-                                                <span className="text-primary uppercase tracking-wide">ID: {selectedBody.id}</span>
-                                                <button
-                                                    onClick={() => {
-                                                        deleteObject(selectedBody.id);
-                                                        setSelectedObjectIds([]);
-                                                    }}
-                                                    className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
-                                                    title="Delete Body"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </div>
-
-                                            {/* Material System Selection */}
-                                            <div className="space-y-1">
-                                                <label className="text-[9px] font-mono text-slate-400 uppercase">Material Library</label>
-                                                <select
-                                                    value={selectedBody.material_id || 'custom'}
-                                                    onChange={(e) => applyMaterial(selectedBody.id, e.target.value)}
-                                                    className="w-full bg-slate-900 border border-white/10 rounded p-1.5 text-xs text-white outline-none cursor-pointer"
-                                                >
-                                                    {Object.keys(materials).map(mKey => (
-                                                        <option key={mKey} value={mKey}>{mKey.toUpperCase()}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Physical Properties */}
-                                            <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
-                                                <div>
-                                                    <span className="text-slate-500">Mass (kg)</span>
-                                                    <input
-                                                        type="number" step="0.1" min="0.01"
-                                                        value={selectedBody.mass || 1}
-                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { mass: parseFloat(e.target.value) || 1 })}
-                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <span className="text-slate-500">Restitution (e)</span>
-                                                    <input
-                                                        type="number" step="0.05" min="0" max="1"
-                                                        value={selectedBody.restitution ?? 0.5}
-                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { restitution: parseFloat(e.target.value) || 0 })}
-                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <span className="text-slate-500">Friction (μ)</span>
-                                                    <input
-                                                        type="number" step="0.05" min="0" max="1"
-                                                        value={selectedBody.friction ?? 0.3}
-                                                        onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { friction: parseFloat(e.target.value) || 0 })}
-                                                        className="w-full bg-slate-900 border border-white/10 rounded p-1 text-white outline-none"
-                                                    />
-                                                </div>
-                                                <div className="flex flex-col justify-end">
-                                                    <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!selectedBody.isStatic}
-                                                            onChange={(e) => mechSolver.current.updateLiveBody(selectedBody.id, { isStatic: e.target.checked })}
-                                                            className="accent-primary"
-                                                        />
-                                                        Static Pin
-                                                    </label>
-                                                </div>
-                                            </div>
-
-                                            {/* Velocity Telemetry */}
-                                            <div className="pt-2 border-t border-white/10 text-[9px] font-mono text-slate-400 flex justify-between">
-                                                <span>Vel: ({selectedBody.velocity?.x?.toFixed(1) || 0}, {selectedBody.velocity?.y?.toFixed(1) || 0}) m/s</span>
-                                                <span className={selectedBody.sleeping ? 'text-amber-400 font-bold' : 'text-emerald-400'}>
-                                                    {selectedBody.sleeping ? 'SLEEPING' : 'AWAKE'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </section>
-
-                            {/* Gravity Vector Controls */}
-                            {simulationType === 'rigid' && (
-                                <section>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Globe size={10}/> Gravity Vector (m/s²)</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['x', 'y', 'z'].map(axis => (
-                                            <div key={axis} className="bg-black/40 border border-white/5 rounded-lg p-1.5 flex flex-col items-center">
-                                                <span className="text-[8px] text-slate-500 uppercase font-bold">{axis}</span>
-                                                <input 
-                                                    type="number" step="0.1"
-                                                    value={simulationSettings.gravity[axis]} 
-                                                    onChange={(e) => updateGravity(axis, e.target.value)}
-                                                    className="w-full bg-transparent text-center text-[10px] text-white outline-none font-mono mt-0.5"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            )}
-
-                            <ModelControls />
-
-                            {/* Solver Precision */}
-                            <section className="pt-4 border-t border-white/10 space-y-3">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Solver Frequency & Sub-steps</label>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                        <span>Time Step (dt)</span>
-                                        <span className="text-emerald-400">{simulationSettings.timeStep}s</span>
-                                    </div>
-                                    <input 
-                                        type="range" min="0.001" max="0.05" step="0.001"
-                                        value={simulationSettings.timeStep}
-                                        onChange={e => updateSetting('timeStep', parseFloat(e.target.value))}
-                                        className="w-full h-1 bg-white/10 rounded-full accent-emerald-500 outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                                        <span>Sub-steps per frame</span>
-                                        <span className="text-white">{simulationSettings.subSteps}</span>
-                                    </div>
-                                    <input 
-                                        type="range" min="1" max="16" step="1"
-                                        value={simulationSettings.subSteps}
-                                        onChange={e => updateSetting('subSteps', parseInt(e.target.value))}
-                                        className="w-full h-1 bg-white/10 rounded-full accent-slate-400 outline-none"
-                                    />
-                                </div>
-                            </section>
-                        </div>
-                    </div>
-                </div>
-
-                {!isInspectorOpen && (
-                    <button onClick={() => setIsInspectorOpen(true)} className="absolute top-20 right-6 z-20 size-8 glass-panel rounded-lg flex items-center justify-center text-primary hover:bg-white/10 transition-all cursor-pointer">
-                        <Settings size={14} />
-                    </button>
-                )}
             </div>
 
             {/* ── Timeline & Engine Inspector Control Bar ────────────────────────────────────────── */}
+            {/* Hidden inside dedicated labs so the physics canvas gets their full viewport height. */}
+            {!isLabActive && (
             <div className="h-16 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center gap-8 z-30 shrink-0">
                 {/* Playback Controls */}
                 <div className="flex items-center gap-2">
@@ -1093,6 +914,7 @@ export default function SimulateWorkspace() {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }

@@ -1,60 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Play, Square, RefreshCw, SkipForward, Gauge, Activity,
-    Sliders, Sparkles, ArrowDown, ChevronDown, Wrench, Crosshair,
-    Compass, TrendingUp, BookOpen, Layers
+    Play, Square, RefreshCw, SkipForward, Gauge,
+    Sparkles, ArrowDown, ChevronDown, Crosshair,
+    Compass, TrendingUp, Layers
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import ProjectilePhysicsSolver from '../utils/solvers/projectileSolver';
-
-// ── Collapsible Engineering Information Bar (Accordion Section) ───────────────
-// Full-width horizontal bar: icon + title + one-line live summary + expand
-// indicator. Expanded state smoothly reveals full content. Accordion manages
-// which single section (if any) is open.
-function InfoBar({ icon, title, accent, summary, status, open, onToggle, children }) {
-    return (
-        <div className={`border-t border-white/10 transition-colors duration-200 ${open ? 'bg-slate-900/60' : 'bg-slate-950/90'}`}>
-            <button
-                onClick={onToggle}
-                className={`w-full flex items-center gap-3 px-5 py-2.5 text-left cursor-pointer transition-colors duration-200 group ${open ? 'bg-slate-900/70' : 'hover:bg-slate-900/50'}`}
-                aria-expanded={open}
-            >
-                <span className={`shrink-0 transition-colors ${open ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>
-                    {icon}
-                </span>
-                <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${open ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                    {title}
-                </span>
-                <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
-                {status}
-                <ChevronDown
-                    size={13}
-                    className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`}
-                />
-            </button>
-            <div
-                className="grid"
-                style={{ gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}
-            >
-                <div className="overflow-hidden min-h-0">
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// ── Compact stat tile used inside expanded sections ──────────────────────────
-function Stat({ label, value, unit, color = 'text-white' }) {
-    return (
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
-            <div className={`text-base font-bold font-mono ${color}`}>
-                {value} <span className="text-xs font-normal text-slate-500">{unit}</span>
-            </div>
-        </div>
-    );
-}
 
 export default function ProjectileLab() {
     const isPlaying = useStore(state => state.isPlaying);
@@ -77,10 +28,6 @@ export default function ProjectileLab() {
     const [showComponents, setShowComponents] = useState(true);
     const [showGravityVector, setShowGravityVector] = useState(true);
     const [cameraMode, setCameraMode] = useState('fit'); // 'fit' | 'follow'
-
-    // Accordion state — at most ONE engineering bar open at a time, all collapsed by default
-    const [openSection, setOpenSection] = useState(null); // 'telemetry' | 'params' | 'inspector'
-    const toggleSection = (key) => setOpenSection(prev => (prev === key ? null : key));
 
     // Physics solver instance (stable state holder, mutated externally by the loop)
     const [solver] = useState(() => new ProjectilePhysicsSolver({
@@ -280,13 +227,6 @@ export default function ProjectileLab() {
     }
 
     const wrap = (x, y) => ({ x: x - camOffsetX, y: y - camOffsetY });
-
-    // ── Collapsed-bar live summaries (from live snapshot — never hardcoded) ──
-    const telemetrySummary = `t ${snapshot.time.toFixed(2)}s · x ${snapshot.x.toFixed(2)}m · y ${snapshot.y.toFixed(2)}m · |v| ${snapshot.speed.toFixed(2)}m/s`;
-    const paramsSummary = `v₀ ${v0}m/s · θ ${angle}° · y₀ ${y0}m · g ${gravity}m/s²`;
-    const inspectorSummary = `Projectile · Analytical closed-form · Δt ${snapshot.config.dt}s`;
-
-    const flightStatus = snapshot.isLanded ? 'LANDED' : (isPlaying ? 'IN FLIGHT' : 'READY');
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-[#0a0f1a] overflow-hidden select-none font-sans flex flex-col">
@@ -596,205 +536,6 @@ export default function ProjectileLab() {
                         );
                     })()}
                 </svg>
-            </div>
-
-            {/* ── Collapsible Engineering Information Bars (accordion) ── */}
-            <div className="shrink-0 relative z-20">
-                {/* ── LIVE TELEMETRY ── */}
-                <InfoBar
-                    icon={<Activity size={13} />}
-                    accent="text-emerald-400"
-                    title="Live Telemetry"
-                    summary={telemetrySummary}
-                    open={openSection === 'telemetry'}
-                    onToggle={() => toggleSection('telemetry')}
-                    status={
-                        <span className={`shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded ${
-                            snapshot.isLanded
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : (isPlaying ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' : 'bg-amber-500/20 text-amber-400')
-                        }`}>
-                            {flightStatus}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                            <Stat label="Time (t)" value={snapshot.time.toFixed(2)} unit="s" />
-                            <Stat label="Height (h)" value={snapshot.height.toFixed(2)} unit="m" color="text-amber-400" />
-                            <Stat label="Position X" value={snapshot.x.toFixed(2)} unit="m" color="text-sky-400" />
-                            <Stat label="Position Y" value={snapshot.y.toFixed(2)} unit="m" color="text-sky-400" />
-                            <Stat label="Distance (Δx)" value={snapshot.distanceX.toFixed(2)} unit="m" color="text-sky-400" />
-                            <Stat label="Speed (|V|)" value={snapshot.speed.toFixed(2)} unit="m/s" color="text-cyan-400" />
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                            <Stat label="Velocity Vx" value={snapshot.vx.toFixed(2)} unit="m/s" color="text-emerald-400" />
-                            <Stat label="Velocity Vy" value={snapshot.vy.toFixed(2)} unit="m/s" color="text-rose-400" />
-                            <Stat label="Direction (φ)" value={snapshot.phi.toFixed(1)} unit="°" />
-                            <Stat label="Accel. Ay" value={snapshot.ay.toFixed(2)} unit="m/s²" color="text-amber-400" />
-                        </div>
-
-                        {/* Post-landing final result */}
-                        {snapshot.isLanded && snapshot.landingInfo && (
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl mt-3">
-                                <div className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-1.5">Final Result</div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-[10px] font-mono text-slate-400">Flight time T</span>
-                                        <span className="text-sm font-bold font-mono text-white">{snapshot.landingInfo.time.toFixed(2)} s</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-[10px] font-mono text-slate-400">Range R</span>
-                                        <span className="text-sm font-bold font-mono text-emerald-300">{snapshot.landingInfo.range.toFixed(2)} m</span>
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-[10px] font-mono text-slate-400">Max height H</span>
-                                        <span className="text-sm font-bold font-mono text-purple-300">{(snapshot.apexPoint ? snapshot.apexPoint.y - snapshot.groundY : 0).toFixed(2)} m</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </InfoBar>
-
-                {/* ── LAUNCH PARAMETERS ── */}
-                <InfoBar
-                    icon={<Sliders size={13} />}
-                    accent="text-amber-400"
-                    title="Launch Parameters"
-                    summary={paramsSummary}
-                    open={openSection === 'params'}
-                    onToggle={() => toggleSection('params')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-4">
-                            {/* Initial Velocity V0 */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">INITIAL VELOCITY (v₀)</span>
-                                    <span className="text-cyan-400 font-bold">{v0} m/s</span>
-                                </div>
-                                <input type="range" min="2" max="60" step="1" value={v0}
-                                    onChange={(e) => setV0(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
-                            </div>
-
-                            {/* Launch Angle θ */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">LAUNCH ANGLE (θ)</span>
-                                    <span className="text-amber-400 font-bold">{angle}°</span>
-                                </div>
-                                <input type="range" min="0" max="90" step="1" value={angle}
-                                    onChange={(e) => setAngle(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                                <div className="flex justify-between text-[8px] font-mono text-slate-500">
-                                    <span>0°</span>
-                                    <button onClick={() => setAngle(45)} className={`px-1 rounded ${angle === 45 ? 'text-amber-400 font-bold' : 'text-slate-500 hover:text-white'}`}>45° (max range)</button>
-                                    <span>90°</span>
-                                </div>
-                            </div>
-
-                            {/* Initial Height y0 */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">LAUNCH HEIGHT (y₀)</span>
-                                    <span className="text-white font-bold">{y0} m</span>
-                                </div>
-                                <input type="range" min="0" max="40" step="1" value={y0}
-                                    onChange={(e) => setY0(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
-                            </div>
-
-                            {/* Gravity g */}
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">GRAVITY (g)</span>
-                                    <span className="text-amber-400 font-bold">{gravity} m/s²</span>
-                                </div>
-                                <input type="range" min="0" max="25" step="0.1" value={gravity}
-                                    onChange={(e) => setGravity(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                                <div className="flex justify-between text-[8px] font-mono text-slate-500">
-                                    <button onClick={() => setGravity(9.81)} className="hover:text-white">Earth 9.81</button>
-                                    <button onClick={() => setGravity(1.62)} className="hover:text-white">Moon 1.62</button>
-                                    <button onClick={() => setGravity(3.71)} className="hover:text-white">Mars 3.71</button>
-                                    <button onClick={() => setGravity(0)} className="hover:text-white">Zero-g</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ── ENGINEERING INSPECTOR ── */}
-                <InfoBar
-                    icon={<Wrench size={13} />}
-                    accent="text-purple-400"
-                    title="Engineering Inspector"
-                    summary={inspectorSummary}
-                    open={openSection === 'inspector'}
-                    onToggle={() => toggleSection('inspector')}
-                    status={
-                        <span className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                            Δt {snapshot.config.dt}s
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[40vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* System / Solver Info */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-purple-400 font-bold text-[10px]">SYSTEM</div>
-                                <div>• Object: <span className="text-slate-200">Projectile ({snapshot.config.mass} kg)</span></div>
-                                <div>• Radius: <span className="text-slate-200">{snapshot.config.radius} m</span></div>
-                                <div>• Solver: <span className="text-slate-200">Analytical closed-form</span></div>
-                                <div>• Timestep: <span className="text-slate-200">Δt = {snapshot.config.dt}s</span></div>
-                                <div>• Air resistance: <span className="text-slate-200">OFF (ideal)</span></div>
-                                <div>• State: <span className="text-slate-200">{flightStatus}</span></div>
-                            </div>
-
-                            {/* Theoretical Prediction */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-amber-400 font-bold text-[10px]">ANALYTICAL SOLUTION</div>
-                                <div>• v₀x = <span className="text-white font-bold">{snapshot.analytics.v0x.toFixed(2)} m/s</span> (const)</div>
-                                <div>• v₀y = <span className="text-white font-bold">{snapshot.analytics.v0y.toFixed(2)} m/s</span></div>
-                                <div>• Flight time: <span className="text-white font-bold">{Number.isFinite(snapshot.analytics.timeOfFlight) ? snapshot.analytics.timeOfFlight.toFixed(2) : '∞'} s</span></div>
-                                <div>• Max height: <span className="text-white font-bold">{snapshot.analytics.maxHeight !== null ? snapshot.analytics.maxHeight.toFixed(2) : '∞'} m</span></div>
-                                <div>• Range: <span className="text-white font-bold">{snapshot.analytics.range !== null ? snapshot.analytics.range.toFixed(2) : '∞'} m</span></div>
-                            </div>
-
-                            {/* Numerical Validation */}
-                            <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
-                                <div className="text-emerald-400 font-bold text-[10px]">NUMERICAL VALIDATION</div>
-                                <div>• Method: <span className="text-slate-200">Euler reference vs Analytic</span></div>
-                                <div>• Δx = <span className="text-slate-200">{snapshot.validation.error.x.toExponential(2)} m</span></div>
-                                <div>• Δy = <span className="text-slate-200">{snapshot.validation.error.y.toExponential(2)} m</span></div>
-                                <div className="text-slate-500">The exact closed-form solution is the authoritative state.</div>
-                            </div>
-                        </div>
-
-                        {/* Educational explanation (tertiary detail) */}
-                        <div className="mt-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <BookOpen size={12} className="text-purple-400" />
-                                <span className="text-[10px] font-bold tracking-widest text-slate-300 uppercase">Why the motion is parabolic</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 font-mono text-[9px] text-slate-400">
-                                <div className="text-emerald-400 font-bold">HORIZONTAL (uniform)</div>
-                                <div className="text-rose-400 font-bold">VERTICAL (accelerated)</div>
-                                <div>ax = 0</div>
-                                <div>ay = -g</div>
-                                <div>vx = v₀cosθ (const)</div>
-                                <div>vy = v₀sinθ - gt</div>
-                                <div>x = x₀ + v₀cosθ·t</div>
-                                <div>y = y₀ + v₀sinθ·t - ½gt²</div>
-                            </div>
-                            <div className="mt-2 text-[9px] text-slate-500 font-mono">
-                                The parabola emerges naturally by combining uniform horizontal motion with uniformly accelerated vertical motion.
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
             </div>
 
             {/* ── Bottom Laboratory Timeline & Playback Control Bar ── */}

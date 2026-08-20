@@ -84,6 +84,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `t ${labData.snapshot.time.toFixed(2)}s · y ${labData.snapshot.height.toFixed(1)}m · v ${labData.snapshot.velocity.toFixed(1)}m/s`
                         : labData.type === 'single_pendulum'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · θ ${labData.snapshot.angle.toFixed(1)}° · ω ${labData.snapshot.omega.toFixed(1)} rad/s`
+                        : labData.type === 'double_pendulum'
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · θ₁ ${labData.snapshot.angle1.toFixed(1)}° · θ₂ ${labData.snapshot.angle2.toFixed(1)}°`
                         : `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(1)}m · y ${labData.snapshot.y.toFixed(1)}m · v ${labData.snapshot.speed.toFixed(1)}m/s`
                     }
                 >
@@ -112,6 +114,14 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 <Stat label="Speed" value={labData.snapshot.speed.toFixed(2)} unit="m/s" />
                             </div>
                         )}
+                        {labData.type === 'double_pendulum' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="θ₁ / ω₁" value={`${labData.snapshot.angle1.toFixed(1)}° / ${labData.snapshot.omega1.toFixed(2)}`} unit="rad/s" color="text-indigo-400" />
+                                <Stat label="θ₂ / ω₂" value={`${labData.snapshot.angle2.toFixed(1)}° / ${labData.snapshot.omega2.toFixed(2)}`} unit="rad/s" color="text-fuchsia-400" />
+                                <Stat label="α₁" value={labData.snapshot.alpha1.toFixed(2)} unit="rad/s²" color="text-cyan-400" />
+                                <Stat label="α₂" value={labData.snapshot.alpha2.toFixed(2)} unit="rad/s²" color="text-cyan-400" />
+                            </div>
+                        )}
                         
                         {labData.snapshot.energy && (
                             <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
@@ -136,6 +146,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `h₀ ${labData.config.initialHeight}m · e ${labData.config.restitution.toFixed(2)} · m ${labData.config.mass}kg · g ${PLANETARY_GRAVITY[labData.config.selectedPlanet]?.g ?? 9.81}m/s²`
                         : labData.type === 'single_pendulum'
                         ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
+                        : labData.type === 'double_pendulum'
+                        ? `m₁ ${labData.config.mass1}kg · m₂ ${labData.config.mass2}kg · θ₁ ${labData.config.theta1}° · θ₂ ${labData.config.theta2}°`
                         : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
@@ -249,6 +261,109 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                             </>
                         )}
+                        {labData.type === 'double_pendulum' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">MASS 1 (m₁)</span>
+                                        <span className="text-indigo-400 font-bold">{labData.config.mass1} kg</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="10" step="0.1" value={labData.config.mass1}
+                                        onChange={(e) => handleLabConfigChange('mass1', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">MASS 2 (m₂)</span>
+                                        <span className="text-fuchsia-400 font-bold">{labData.config.mass2} kg</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="10" step="0.1" value={labData.config.mass2}
+                                        onChange={(e) => handleLabConfigChange('mass2', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">LENGTH 1 (L₁)</span>
+                                        <span className="text-indigo-400 font-bold">{labData.config.length1} m</span>
+                                    </div>
+                                    <input type="range" min="0.3" max="3" step="0.05" value={labData.config.length1}
+                                        onChange={(e) => handleLabConfigChange('length1', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">LENGTH 2 (L₂)</span>
+                                        <span className="text-fuchsia-400 font-bold">{labData.config.length2} m</span>
+                                    </div>
+                                    <input type="range" min="0.3" max="3" step="0.05" value={labData.config.length2}
+                                        onChange={(e) => handleLabConfigChange('length2', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">ANGLE 1 (θ₁)</span>
+                                        <span className="text-indigo-400 font-bold">{labData.config.theta1}°</span>
+                                    </div>
+                                    <input type="range" min="-180" max="180" step="1" value={labData.config.theta1}
+                                        onChange={(e) => handleLabConfigChange('theta1', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">ANGLE 2 (θ₂)</span>
+                                        <span className="text-fuchsia-400 font-bold">{labData.config.theta2}°</span>
+                                    </div>
+                                    <input type="range" min="-180" max="180" step="1" value={labData.config.theta2}
+                                        onChange={(e) => handleLabConfigChange('theta2', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">ANGULAR VEL. 1 (ω₁)</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.omega1} rad/s</span>
+                                    </div>
+                                    <input type="range" min="-10" max="10" step="0.1" value={labData.config.omega1}
+                                        onChange={(e) => handleLabConfigChange('omega1', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">ANGULAR VEL. 2 (ω₂)</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.omega2} rad/s</span>
+                                    </div>
+                                    <input type="range" min="-10" max="10" step="0.1" value={labData.config.omega2}
+                                        onChange={(e) => handleLabConfigChange('omega2', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITY (g)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.gravity} m/s²</span>
+                                    </div>
+                                    <input type="range" min="0" max="30" step="0.1" value={labData.config.gravity}
+                                        onChange={(e) => handleLabConfigChange('gravity', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">DAMPING (c)</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.damping}</span>
+                                    </div>
+                                    <input type="range" min="0" max="0.5" step="0.01" value={labData.config.damping}
+                                        onChange={(e) => handleLabConfigChange('damping', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">TIME SCALE</span>
+                                        <span className="text-purple-400 font-bold">{labData.config.timeScale}x</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="5" step="0.1" value={labData.config.timeScale}
+                                        onChange={(e) => handleLabConfigChange('timeScale', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                </div>
+                            </>
+                        )}
                         {labData.type === 'projectile_motion' && (
                             <>
                                 <div className="space-y-1">
@@ -306,6 +421,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `Falling sphere · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
                         : labData.type === 'single_pendulum'
                         ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
+                        : labData.type === 'double_pendulum'
+                        ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config.dt}s`
                         : `Projectile · Analytical · Δt ${labData.snapshot.config.dt}s`
                     }
                 >
@@ -337,6 +454,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
                                 </>
                             )}
+                            {labData.type === 'double_pendulum' && (
+                                <>
+                                    <div>• Objects: <span className="text-slate-200">m₁ {labData.snapshot.config.mass1} kg / m₂ {labData.snapshot.config.mass2} kg</span></div>
+                                    <div>• Rods: <span className="text-slate-200">L₁ {labData.snapshot.config.length1} m / L₂ {labData.snapshot.config.length2} m</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (8 substeps)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
+                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping}</span></div>
+                                </>
+                            )}
                             <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
                         </div>
                         
@@ -363,6 +489,14 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Time of flight: <span className="text-white font-bold">{labData.snapshot.analytics?.timeOfFlight?.toFixed(3) ?? 'N/A'} s</span></div>
                                     <div>• Range: <span className="text-white font-bold">{labData.snapshot.analytics?.range?.toFixed(3) ?? 'N/A'} m</span></div>
                                     <div>• Max height: <span className="text-white font-bold">{labData.snapshot.analytics?.maxHeight?.toFixed(3) ?? 'N/A'} m</span></div>
+                                </>
+                            )}
+                            {labData.type === 'double_pendulum' && (
+                                <>
+                                    <div>• θ–ω portrait: <span className="text-slate-200">phase-space plot in lab overlay</span></div>
+                                    <div>• Small-angle estimate: <span className="text-slate-200">ω ≈ √(g/L₁) = {(9.81 / (labData.snapshot.config.length1 || 1)).toFixed(2)} rad/s (m₂→L₁)</span></div>
+                                    <div>• Chaotic signature: <span className="text-slate-200">2 ICs, δθ₀ = 0.01 rad → exponential divergence</span></div>
+                                    <div>• Exact closed form: <span className="text-slate-200">none (coupled nonlinear ODEs)</span></div>
                                 </>
                             )}
                         </div>
