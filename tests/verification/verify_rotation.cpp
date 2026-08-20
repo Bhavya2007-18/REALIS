@@ -17,16 +17,16 @@ void verify_tumbling(Integrator *integrator, float dt, float total_time,
   World world(dt);
 
   RigidBody b1;
-  // Asymmetric inertia for Dzhanibekov effect tumbling
+  
   Mat3 I_asym = Mat3::identity();
-  I_asym.data[0] = 2.0f; // Row 0 Col 0
-  I_asym.data[4] = 1.0f; // Row 1 Col 1
-  I_asym.data[8] = 0.5f; // Row 2 Col 2
+  I_asym.data[0] = 2.0f; 
+  I_asym.data[4] = 1.0f; 
+  I_asym.data[8] = 0.5f; 
 
   b1.inertia_tensor = I_asym;
   b1.inv_inertia_tensor = I_asym.inverse();
 
-  b1.angular_velocity = Vec3(0.1f, 10.0f, 0.1f); // Off-axis spin
+  b1.angular_velocity = Vec3(0.1f, 10.0f, 0.1f); 
 
   world.add_body(&b1);
   world.set_integrator(integrator);
@@ -66,8 +66,8 @@ int main() {
   RK4Integrator rk4;
 
   std::cout << "--- 1. Torque-Free Rotational Tracking ---\n";
-  // Short term tests to capture raw convergence drift mappings over tumbling
-  // vectors.
+  
+  
   verify_tumbling(&semi_euler, 0.01f, 5.0f, "Semi-Implicit Euler");
   verify_tumbling(&semi_euler, 0.005f, 5.0f, "Semi-Implicit Euler");
 

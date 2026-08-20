@@ -1,4 +1,4 @@
-// Quaternion implementation
+
 #include "quat.hpp"
 #include <cmath>
 
@@ -31,7 +31,7 @@ Quat Quat::from_axis_angle(const Vec3 &axis, float angle) {
 }
 
 Quat Quat::from_euler(float x, float y, float z) {
-  // ZYX Euler angles
+  
   float cx = std::cos(x * 0.5f), sx = std::sin(x * 0.5f);
   float cy = std::cos(y * 0.5f), sy = std::sin(y * 0.5f);
   float cz = std::cos(z * 0.5f), sz = std::sin(z * 0.5f);
@@ -68,4 +68,4 @@ Mat3 Quat::to_mat3() const {
   return m;
 }
 
-} // namespace realis
+} 

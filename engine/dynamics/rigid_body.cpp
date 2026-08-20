@@ -1,4 +1,4 @@
-// RigidBody implementation
+
 #include "rigid_body.hpp"
 
 namespace realis {
@@ -20,4 +20,4 @@ void RigidBody::clear_forces() {
 
 void RigidBody::apply_torque(const Vec3 &t) { torque = torque + t; }
 
-} // namespace realis
+} 

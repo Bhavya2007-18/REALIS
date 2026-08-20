@@ -1,23 +1,25 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling } from 'lucide-react'
-import { SimulationDemoManager } from '../utils/SimulationDemoManager';
+import { useState, useRef, useEffect } from 'react'
+import { MousePointer2, Move, RefreshCw, Square, Circle, Ruler, PencilRuler, Video, Grid, Plus, Minus, SkipBack, Play, SkipForward, Cpu, Infinity as InfinityIcon, Box, Layers, FlipHorizontal, Ruler as DimIcon, Hexagon, CircleDashed, Globe, Cylinder, Cone, Maximize, Activity, Copy, Trash2, Scaling, PenTool, Download } from 'lucide-react'
+import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoManager';
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
+import { normalizeDraftToSimObject } from '../utils/draftEntityAdapter'
 
 export default function DesignWorkspace() {
     const activeTool = useStore((s) => s.activeTool)
     const setActiveTool = useStore((s) => s.setActiveTool)
     const active3DTool = useStore((s) => s.active3DTool)
     const setActive3DTool = useStore((s) => s.setActive3DTool)
-    const addShape3D = useStore((s) => s.addShape3D)
     const shapes3D = useStore((s) => s.shapes3D)
 
-    // --- Settings ---
+    
     const [snappingEnabled, setSnappingEnabled] = useState(true)
     const SNAP_THRESHOLD = 15;
+    const [exportMenuOpen, setExportMenuOpen] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
-    // --- Drawing State ---
+    
     const objects = useStore((s) => s.objects)
     const setObjects = useStore((s) => s.setObjects)
     const selectedIds = useStore((s) => s.selectedIds)
@@ -31,11 +33,13 @@ export default function DesignWorkspace() {
     const undo = useStore(s => s.undo)
     const redo = useStore(s => s.redo)
     const saveHistorySnapshot = useStore(s => s.saveHistorySnapshot)
+    const beginHistoryGesture = useStore(s => s.beginHistoryGesture)
+    const endHistoryGesture = useStore(s => s.endHistoryGesture)
     const [isDrawing, setIsDrawing] = useState(false)
     const [currentAction, setCurrentAction] = useState(null)
     const [isSimulating, setIsSimulating] = useState(false)
 
-    // --- Playback State from Store ---
+    
     const simulationFrames = useStore(s => s.simulationFrames)
     const setSimulationFrames = useStore(s => s.setSimulationFrames)
     const isPlaying = useStore(s => s.isPlaying)
@@ -46,62 +50,67 @@ export default function DesignWorkspace() {
     const setSimTime = useStore(s => s.setSimTime)
     const simulationSettings = useStore(s => s.simulationSettings)
 
-    // Reference to the SVG container to calculate relative coordinates
+    
     const svgRef = useRef(null)
 
     const [zoomLevel, setZoomLevel] = useState(1.0)
-    const [showGrid, setShowGrid] = useState(true)
-    const [viewMode, setViewMode] = useState('perspective') // perspective, top, front, side
-    const [is3DMode, setIs3DMode] = useState(false)
+    const showGrid = useStore(s => s.showGrid)
+    const toggleGrid = useStore(s => s.toggleGrid)
+    const [viewMode, setViewMode] = useState('top') 
+    const is3DMode = useStore(s => s.is3DView)
+    const setIs3DView = useStore(s => s.setIs3DView)
+    const [isSplitView, setIsSplitView] = useState(false)
+    const [pan, setPan] = useState({ x: 0, y: 0 })
+    const panRef = useRef({ x: 0, y: 0, startX: 0, startY: 0, panning: false })
     const [snapPoint, setSnapPoint] = useState(null)
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 })
 
-    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3.0))
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 4.0))
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.25))
 
-    const toggleGrid = () => setShowGrid(!showGrid)
+    
 
     const rotateView = () => {
-        const modes = ['perspective', 'top', 'front', 'side']
+        const modes = ['top', 'front', 'side']
         const nextIndex = (modes.indexOf(viewMode) + 1) % modes.length
         setViewMode(modes[nextIndex])
     }
 
     const getRotation = () => {
         switch (viewMode) {
-            case 'top': return { rotateX: 90, rotateY: 0, rotateZ: 0 }
+            case 'top': return { rotateX: 0, rotateY: 0, rotateZ: 0 }
             case 'front': return { rotateX: 0, rotateY: 0, rotateZ: 0 }
-            case 'side': return { rotateX: 0, rotateY: 90, rotateZ: 0 }
-            default: return { rotateX: 45, rotateY: 0, rotateZ: 45 } // Perspective
+            case 'side': return { rotateX: 0, rotateY: 0, rotateZ: 0 }
+            default: return { rotateX: 0, rotateY: 0, rotateZ: 0 }
         }
     }
 
     const typedCoordinates = useStore((s) => s.typedCoordinates)
     const setTypedCoordinates = useStore((s) => s.setTypedCoordinates)
 
-    // Intercept Typed Coordinates from CommandLine
+    
     useEffect(() => {
         if (typedCoordinates && !is3DMode) {
             if (!isDrawing) {
-                // Synthesize a PointerDown start event
+                
                 handlePointerDown({
                     preventDefault: () => { }, target: { tagName: 'svg' },
-                    clientX: 0, clientY: 0, // Ignored because we override
+                    clientX: 0, clientY: 0, 
                     _typedOverride: typedCoordinates
                 });
             } else {
-                // Synthesize a PointerMove to complete the shape, and then stop drawing
+                
                 handlePointerMove({
                     preventDefault: () => { },
                     clientX: 0, clientY: 0,
                     _typedOverride: typedCoordinates
                 });
 
-                // For polylines, clicking again adds a point, so we don't end drawing automatically
+                
                 if (currentAction?.type !== 'create_polyline') {
                     handlePointerUp();
                 } else {
-                    // Force a click to lay down the vertex
+                    
                     handlePointerDown({
                         preventDefault: () => { }, target: { tagName: 'svg' },
                         clientX: 0, clientY: 0,
@@ -113,7 +122,7 @@ export default function DesignWorkspace() {
         }
     }, [typedCoordinates, isDrawing, is3DMode]);
 
-    // --- Animation Loop ---
+    
     useEffect(() => {
         let animationFrame;
         if (isPlaying && simulationFrames.length > 0) {
@@ -123,14 +132,14 @@ export default function DesignWorkspace() {
                 setCurrentFrameIndex((prevIndex) => {
                     const nextIndex = prevIndex + 1;
                     if (nextIndex >= numFrames) {
-                        togglePlayback(); // Stop when finished
+                        togglePlayback(); 
                         return prevIndex;
                     }
                     setSimTime(simulationFrames[nextIndex].time);
                     return nextIndex;
                 });
-                // To do: timing control. Currently runs as fast as requestAnimationFrame
-                // A better approach syncs to real time.
+                
+                
                 animationFrame = requestAnimationFrame(animate);
             };
             animationFrame = requestAnimationFrame(animate);
@@ -138,7 +147,7 @@ export default function DesignWorkspace() {
         return () => cancelAnimationFrame(animationFrame);
     }, [isPlaying, simulationFrames, togglePlayback, setCurrentFrameIndex, setSimTime]);
 
-    // Apply simulation physics to objects on screen
+    
     const getRenderObjects = () => {
         if (!simulationFrames || simulationFrames.length === 0 || currentFrameIndex === 0) {
             return objects;
@@ -148,24 +157,24 @@ export default function DesignWorkspace() {
         return objects.map(obj => {
             const simState = frame.states.find(s => s.id === obj.id);
             if (simState) {
-                // Physics x -> SVG x
-                // Physics z -> SVG y
-                // Physics y -> 3D y (y_override)
+                
+                
+                
                 return {
                     ...obj,
                     x: simState.position.x,
                     y: simState.position.z,
-                    cx: simState.position.x, // For circles
-                    cy: simState.position.z, // For circles
+                    cx: simState.position.x, 
+                    cy: simState.position.z, 
                     y_override: simState.position.y,
-                    rotation: simState.rotation.z // Assuming 2D rotation for now, or total?
+                    rotation: simState.rotation.z 
                 };
             }
             return obj;
         });
     };
 
-    // Filter by layer visibility
+    
     const visibleLayerIds = new Set(layers.filter(l => l.visible).map(l => l.id))
     const allObjects = isPlaying || (simulationFrames.length > 0 && currentFrameIndex > 0)
         ? getRenderObjects()
@@ -173,14 +182,14 @@ export default function DesignWorkspace() {
     const renderedObjects = allObjects.filter(o => !o.layerId || visibleLayerIds.has(o.layerId))
 
 
-    // --- Pointer Interaction Logic ---
+    
     const getRelativeCoordinates = (e) => {
         if (e._typedOverride) return e._typedOverride;
 
         if (!svgRef.current) return { x: 0, y: 0 }
         const svg = svgRef.current
 
-        // Use native SVG coordinate translation to automatically handle CSS scaling & 3D transforms
+        
         const pt = svg.createSVGPoint()
         pt.x = e.clientX
         pt.y = e.clientY
@@ -211,7 +220,7 @@ export default function DesignWorkspace() {
             const s1_x = p1.x - p0.x, s1_y = p1.y - p0.y;
             const s2_x = p3.x - p2.x, s2_y = p3.y - p2.y;
             const denom = -s2_x * s1_y + s1_x * s2_y;
-            if (denom === 0) return null; // Collinear or parallel
+            if (denom === 0) return null; 
             const s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) / denom;
             const t = (s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) / denom;
             if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
@@ -220,9 +229,9 @@ export default function DesignWorkspace() {
             return null;
         };
 
-        // Grid snapping
+        
         if (showGrid) {
-            const gridSize = 50; // Assuming 50px grid lines
+            const gridSize = 50; 
             const gridX = Math.round(px / gridSize) * gridSize;
             const gridY = Math.round(py / gridSize) * gridSize;
             if (Math.abs(px - gridX) < closestDist && Math.abs(py - gridY) < closestDist) {
@@ -231,11 +240,11 @@ export default function DesignWorkspace() {
             }
         }
 
-        // Object snapping (vertices and centers)
+        
         objects.forEach(obj => {
             if (obj.id === excludeId) return;
 
-            // SKIP snapping to invisible layers
+            
             if (obj.layerId) {
                 const layer = layers.find(l => l.id === obj.layerId);
                 if (layer && !layer.visible) return;
@@ -243,24 +252,24 @@ export default function DesignWorkspace() {
 
             const pts = [];
             if (obj.type === 'rect') {
-                pts.push({ x: obj.x, y: obj.y, type: 'endpoint' }); // TL
-                pts.push({ x: obj.x + obj.width, y: obj.y, type: 'endpoint' }); // TR
-                pts.push({ x: obj.x, y: obj.y + obj.height, type: 'endpoint' }); // BL
-                pts.push({ x: obj.x + obj.width, y: obj.y + obj.height, type: 'endpoint' }); // BR
-                pts.push({ x: obj.x + obj.width / 2, y: obj.y + obj.height / 2, type: 'center' }); // Center
-                // Midpoints
-                pts.push({ x: obj.x + obj.width / 2, y: obj.y, type: 'midpoint' }); // Top
-                pts.push({ x: obj.x + obj.width / 2, y: obj.y + obj.height, type: 'midpoint' }); // Bottom
-                pts.push({ x: obj.x, y: obj.y + obj.height / 2, type: 'midpoint' }); // Left
-                pts.push({ x: obj.x + obj.width, y: obj.y + obj.height / 2, type: 'midpoint' }); // Right
+                pts.push({ x: obj.x, y: obj.y, type: 'endpoint' }); 
+                pts.push({ x: obj.x + obj.width, y: obj.y, type: 'endpoint' }); 
+                pts.push({ x: obj.x, y: obj.y + obj.height, type: 'endpoint' }); 
+                pts.push({ x: obj.x + obj.width, y: obj.y + obj.height, type: 'endpoint' }); 
+                pts.push({ x: obj.x + obj.width / 2, y: obj.y + obj.height / 2, type: 'center' }); 
+                
+                pts.push({ x: obj.x + obj.width / 2, y: obj.y, type: 'midpoint' }); 
+                pts.push({ x: obj.x + obj.width / 2, y: obj.y + obj.height, type: 'midpoint' }); 
+                pts.push({ x: obj.x, y: obj.y + obj.height / 2, type: 'midpoint' }); 
+                pts.push({ x: obj.x + obj.width, y: obj.y + obj.height / 2, type: 'midpoint' }); 
             } else if (obj.type === 'circle') {
-                pts.push({ x: obj.cx, y: obj.cy, type: 'center' }); // Center
+                pts.push({ x: obj.cx, y: obj.cy, type: 'center' }); 
             } else if (obj.type === 'path' && obj.points) {
-                // Vertex snapping
-                obj.points.forEach((p, idx) => {
+                
+                obj.points.forEach((p) => {
                     pts.push({ x: p.x, y: p.y, type: 'endpoint' });
                 });
-                // Midpoint snapping
+                
                 for (let i = 0; i < obj.points.length - 1; i++) {
                     pts.push({
                         x: (obj.points[i].x + obj.points[i + 1].x) / 2,
@@ -304,7 +313,7 @@ export default function DesignWorkspace() {
                 }
             });
 
-            // Generate nearest points for rect and path dynamically to avoid huge arrays
+            
             if (obj.type === 'rect') {
                 const corners = [
                     { x: obj.x, y: obj.y }, { x: obj.x + obj.width, y: obj.y },
@@ -328,35 +337,61 @@ export default function DesignWorkspace() {
             }
         });
 
-        // Intersection Snapping
-        const allSegments = [];
+        // 3. Line-Line Intersections with AABB Spatial Pre-Filtering around cursor (px, py)
+        const SNAP_BOUNDS = 40;
+        const nearMinX = px - SNAP_BOUNDS;
+        const nearMaxX = px + SNAP_BOUNDS;
+        const nearMinY = py - SNAP_BOUNDS;
+        const nearMaxY = py + SNAP_BOUNDS;
+
+        const candidateSegments = [];
         objects.forEach(obj => {
             if (obj.id === excludeId) return;
-            if (obj.type === 'ruler' || obj.type === 'dimension') allSegments.push([{ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 }]);
-            else if (obj.type === 'rect') {
+
+            const addSegIfNear = (p1, p2) => {
+                const segMinX = Math.min(p1.x, p2.x);
+                const segMaxX = Math.max(p1.x, p2.x);
+                const segMinY = Math.min(p1.y, p2.y);
+                const segMaxY = Math.max(p1.y, p2.y);
+
+                if (segMaxX >= nearMinX && segMinX <= nearMaxX && segMaxY >= nearMinY && segMinY <= nearMaxY) {
+                    candidateSegments.push([p1, p2]);
+                }
+            };
+
+            if (obj.type === 'ruler' || obj.type === 'dimension') {
+                addSegIfNear({ x: obj.x1, y: obj.y1 }, { x: obj.x2, y: obj.y2 });
+            } else if (obj.type === 'rect') {
                 const w = obj.width, h = obj.height;
-                // Approximate unrotated intersection for MVP, rotated requires more complex matrix math
                 if (!obj.rotation) {
-                    allSegments.push([{ x: obj.x, y: obj.y }, { x: obj.x + w, y: obj.y }]);
-                    allSegments.push([{ x: obj.x + w, y: obj.y }, { x: obj.x + w, y: obj.y + h }]);
-                    allSegments.push([{ x: obj.x + w, y: obj.y + h }, { x: obj.x, y: obj.y + h }]);
-                    allSegments.push([{ x: obj.x, y: obj.y + h }, { x: obj.x, y: obj.y }]);
+                    const c1 = { x: obj.x, y: obj.y };
+                    const c2 = { x: obj.x + w, y: obj.y };
+                    const c3 = { x: obj.x + w, y: obj.y + h };
+                    const c4 = { x: obj.x, y: obj.y + h };
+                    addSegIfNear(c1, c2);
+                    addSegIfNear(c2, c3);
+                    addSegIfNear(c3, c4);
+                    addSegIfNear(c4, c1);
                 }
             } else if (obj.type === 'path' && obj.points) {
-                for (let i = 0; i < obj.points.length - 1; i++) allSegments.push([obj.points[i], obj.points[i + 1]]);
+                for (let i = 0; i < obj.points.length - 1; i++) {
+                    addSegIfNear(obj.points[i], obj.points[i + 1]);
+                }
             } else if (obj.type === 'polygon') {
                 const polyPts = [];
                 for (let i = 0; i < obj.sides; i++) {
                     const angle = (Math.PI * 2 * i) / obj.sides - Math.PI / 2 + (obj.rotation || 0) * Math.PI / 180;
                     polyPts.push({ x: obj.cx + obj.r * Math.cos(angle), y: obj.cy + obj.r * Math.sin(angle) });
                 }
-                for (let i = 0; i < polyPts.length; i++) allSegments.push([polyPts[i], polyPts[(i + 1) % polyPts.length]]);
+                for (let i = 0; i < polyPts.length; i++) {
+                    addSegIfNear(polyPts[i], polyPts[(i + 1) % polyPts.length]);
+                }
             }
         });
 
-        for (let i = 0; i < allSegments.length; i++) {
-            for (let j = i + 1; j < allSegments.length; j++) {
-                const isect = getLineIntersection(allSegments[i][0], allSegments[i][1], allSegments[j][0], allSegments[j][1]);
+        for (let i = 0; i < candidateSegments.length; i++) {
+            for (let j = i + 1; j < candidateSegments.length; j++) {
+                const isect = getLineIntersection(candidateSegments[i][0], candidateSegments[i][1], candidateSegments[j][0], candidateSegments[j][1]);
                 if (isect) {
                     const d = Math.sqrt((px - isect.x) ** 2 + (py - isect.y) ** 2);
                     if (d < closestDist) {
@@ -371,10 +406,17 @@ export default function DesignWorkspace() {
     }
 
     const handlePointerDown = (e) => {
-        e.preventDefault() // Prevent text selection while dragging
+        e.preventDefault() 
+
+        
+        if (!is3DMode && ((e.button === 1) || (e.shiftKey && activeTool === 'select'))) {
+            panRef.current = { ...panRef.current, startX: e.clientX, startY: e.clientY, panning: true }
+            return
+        }
+
         let { x, y } = getRelativeCoordinates(e)
 
-        // Apply snapping to initial point
+        
         const snap = findSnapPoint(x, y);
         x = snap.x;
         y = snap.y;
@@ -382,15 +424,15 @@ export default function DesignWorkspace() {
         setIsDrawing(true)
 
         if (activeTool === 'select') {
-            // Check if clicking on an actual object via event target
+            
             const isSvgElement = e.target.tagName === 'svg';
             if (!isSvgElement) {
-                // We rely on the onClick handler on the shape SVG nodes for actual object selection.
-                // However, we want to start a selection window if clicking on empty space.
+                
+                
                 return;
             }
 
-            // Deselect and start selection window if clicking on empty canvas.
+            
             if (!e.shiftKey) setSelectedIds([])
             setCurrentAction({ type: 'select_window', startX: x, startY: y, currentX: x, currentY: y })
 
@@ -398,14 +440,14 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'move' && selectedIds.length > 0) {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             setCurrentAction({ type: 'move', startX: x, startY: y, originalObjects: [...objects] })
             return
         }
 
         if (activeTool === 'scale' && selectedIds.length > 0) {
-            saveHistorySnapshot()
-            // Get the first selected object center for MVP scaling origin
+            beginHistoryGesture()
+            
             const objToScale = objects.find(o => o.id === selectedIds[0])
             if (objToScale) {
                 let cx = 0, cy = 0;
@@ -421,14 +463,14 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'rotate' && selectedIds.length > 0) {
-            saveHistorySnapshot()
-            // Get the first selected object to rotate around its center for MVP
+            beginHistoryGesture()
+            
             const objToRotate = objects.find(o => o.id === selectedIds[0])
             if (objToRotate) {
                 let cx = 0, cy = 0;
                 if (objToRotate.type === 'rect') { cx = objToRotate.x + objToRotate.width / 2; cy = objToRotate.y + objToRotate.height / 2; }
                 else if (objToRotate.type === 'ruler') { cx = (objToRotate.x1 + objToRotate.x2) / 2; cy = (objToRotate.y1 + objToRotate.y2) / 2; }
-                else { cx = x; cy = y; } // Fallback
+                else { cx = x; cy = y; } 
 
                 const startAngle = Math.atan2(y - cy, x - cx) * 180 / Math.PI
                 setCurrentAction({ type: 'rotate', cx, cy, startAngle, startRotation: objToRotate.rotation || 0, id: objToRotate.id })
@@ -436,40 +478,62 @@ export default function DesignWorkspace() {
             return
         }
 
+        const defaultPhysics = { mass: 1.0, restitution: 0.5, friction: 0.3, isStatic: false };
+
         if (activeTool === 'rect') {
-            saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            beginHistoryGesture()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'circle') {
-            saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            beginHistoryGesture()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'polygon') {
-            saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            beginHistoryGesture()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'arc') {
-            saveHistorySnapshot()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            beginHistoryGesture()
+            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
             return
         }
+        
+        if (activeTool === 'bezier') {
+            beginHistoryGesture()
+            const newObj = {
+                id: Math.random().toString(36).substring(2, 9),
+                type: 'bezier',
+                p0: { x, y },
+                p1: { x: x + 40, y },
+                p2: { x: x + 80, y },
+                p3: { x: x + 120, y },
+                stroke: '#22c55e',
+                fill: 'none',
+                strokeWidth: 2,
+                layerId: activeLayerId,
+                ...defaultPhysics
+            }
+            setObjects(prev => [...prev, newObj])
+            setCurrentAction({ type: 'create_bezier', id: newObj.id, startX: x, startY: y })
+            return
+        }
 
         if (activeTool === 'ruler') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_ruler', id: newObj.id, startX: x, startY: y })
@@ -477,11 +541,11 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'pencil') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = {
                 id: Math.random().toString(36).substring(2, 9),
                 type: 'path',
-                points: [{ x, y }], // Store as array of points for polyline
+                points: [{ x, y }], 
                 stroke: '#10b981',
                 fill: 'none',
                 strokeWidth: 3,
@@ -493,7 +557,7 @@ export default function DesignWorkspace() {
         }
 
         if (activeTool === 'dimension') {
-            saveHistorySnapshot()
+            beginHistoryGesture()
             const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y, layerId: activeLayerId }
             setObjects(prev => [...prev, newObj])
             setCurrentAction({ type: 'create_dimension', id: newObj.id, startX: x, startY: y })
@@ -503,10 +567,18 @@ export default function DesignWorkspace() {
 
     const handlePointerMove = (e) => {
         const rawCoords = getRelativeCoordinates(e)
-        // Basic cursor pos for HUD
+        
         setCursorPos(rawCoords)
 
-        // Handle polyline preview even if not strictly "drawing" via drag
+        
+        if (!is3DMode && panRef.current.panning) {
+            const dx = e.clientX - panRef.current.startX
+            const dy = e.clientY - panRef.current.startY
+            setPan({ x: panRef.current.x + dx, y: panRef.current.y + dy })
+            return
+        }
+
+        
         if (activeTool === 'pencil' && currentAction?.type === 'create_polyline') {
             const snap = findSnapPoint(rawCoords.x, rawCoords.y, currentAction.id)
             setCurrentAction(prev => ({ ...prev, currentX: snap.x, currentY: snap.y }))
@@ -515,7 +587,7 @@ export default function DesignWorkspace() {
 
         if (!isDrawing || !currentAction) return
 
-        // Only run findSnapPoint if we are actually drawing
+        
         const excludeId = currentAction.id || (currentAction.type === 'move' && selectedIds.length === 1 ? selectedIds[0] : null);
         const snap = findSnapPoint(rawCoords.x, rawCoords.y, excludeId)
         setSnapPoint(snap.snapped ? snap : null)
@@ -523,7 +595,7 @@ export default function DesignWorkspace() {
         let x = snap.x
         let y = snap.y
 
-        // Ortho Mode (Lock to 45/90 degree increments or square for rect)
+        
         if (e.shiftKey) {
             if (currentAction.type === 'create_rect') {
                 const side = Math.max(Math.abs(x - currentAction.startX), Math.abs(y - currentAction.startY))
@@ -544,7 +616,7 @@ export default function DesignWorkspace() {
             }
 
             if (currentAction.type === 'create_rect' && obj.id === currentAction.id) {
-                // Allow drawing in any direction
+                
                 const width = Math.abs(x - currentAction.startX)
                 const height = Math.abs(y - currentAction.startY)
                 const newX = Math.min(x, currentAction.startX)
@@ -569,9 +641,15 @@ export default function DesignWorkspace() {
             if (currentAction.type === 'create_dimension' && obj.id === currentAction.id) {
                 return { ...obj, x2: x, y2: y }
             }
+            
+            if (currentAction.type === 'create_bezier' && obj.id === currentAction.id) {
+                const dx = x - currentAction.startX
+                const dy = y - currentAction.startY
+                return { ...obj, p3: { x, y }, p2: { x: currentAction.startX + dx * 0.66, y: currentAction.startY + dy * 0.66 } }
+            }
 
             if (currentAction.type === 'create_path' && obj.id === currentAction.id) {
-                // Legacy path drawing if still used anywhere (can be removed soon)
+                
                 return { ...obj, pathData: `${obj.pathData} L ${x} ${y} ` }
             }
 
@@ -605,7 +683,7 @@ export default function DesignWorkspace() {
                 if (originalObj.type === 'rect') {
                     const newW = originalObj.width * scaleFactor;
                     const newH = originalObj.height * scaleFactor;
-                    // Scale from center
+                    
                     const newX = currentAction.cx - (currentAction.cx - originalObj.x) * scaleFactor;
                     const newY = currentAction.cy - (currentAction.cy - originalObj.y) * scaleFactor;
                     return { ...obj, x: newX, y: newY, width: newW, height: newH }
@@ -643,7 +721,7 @@ export default function DesignWorkspace() {
 
                 if (obj.type === 'rect') {
                     let newX = orig.x, newY = orig.y, newW = orig.width, newH = orig.height;
-                    // For rotated rects, handle dragging is highly complex (needs un-rotating coords). For MVP we ignore rotation when dragging handles or assume axis-aligned.
+                    
                     if (ht === 'tl') { newX = x; newY = y; newW = orig.width + (orig.x - x); newH = orig.height + (orig.y - y); }
                     if (ht === 'tr') { newY = y; newW = x - orig.x; newH = orig.height + (orig.y - y); }
                     if (ht === 'bl') { newX = x; newW = orig.width + (orig.x - x); newH = y - orig.y; }
@@ -676,10 +754,18 @@ export default function DesignWorkspace() {
     }
 
     const handlePointerUp = (e) => {
+        if (panRef.current.panning) {
+            panRef.current = { x: pan.x, y: pan.y, startX: 0, startY: 0, panning: false }
+            endHistoryGesture()
+            return
+        }
         if (activeTool === 'pencil' && currentAction?.type === 'create_polyline') {
-            // Polyline expects clicks, not drag.
-            // PointerUp registers the click to add a point.
-            if (!isDrawing) return; // If we didn't start a tap, ignore
+            
+            
+            if (!isDrawing) {
+                endHistoryGesture()
+                return;
+            }
 
             let { x, y } = getRelativeCoordinates(e)
             const snap = findSnapPoint(x, y, currentAction.id);
@@ -687,7 +773,7 @@ export default function DesignWorkspace() {
 
             setObjects(prev => prev.map(obj => {
                 if (obj.id === currentAction.id) {
-                    // Prevent adding same point twice if they didn't move
+                    
                     const lastPt = obj.points[obj.points.length - 1];
                     if (lastPt.x !== x || lastPt.y !== y) {
                         return { ...obj, points: [...obj.points, { x, y }] }
@@ -695,8 +781,9 @@ export default function DesignWorkspace() {
                 }
                 return obj
             }))
-            // Do NOT clear action/isDrawing. Polyline stays active until double-click or Escape.
-            setIsDrawing(false) // Wait for next Down
+            
+            setIsDrawing(false) 
+            endHistoryGesture()
             return;
         }
 
@@ -710,7 +797,7 @@ export default function DesignWorkspace() {
             const isWindow = currentAction.currentX > currentAction.startX
 
             const newlySelected = objects.filter(obj => {
-                // Ignore locked layers
+                
                 if (obj.layerId) {
                     const layer = layers.find(l => l.id === obj.layerId);
                     if (layer && layer.locked) return false;
@@ -719,7 +806,7 @@ export default function DesignWorkspace() {
                 let box = { x: 0, y: 0, w: 0, h: 0 }
                 if (obj.type === 'rect') box = { x: obj.x, y: obj.y, w: obj.width, h: obj.height }
                 else if (obj.type === 'circle' || obj.type === 'arc') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 }
-                else if (obj.type === 'polygon') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 } // Approximation
+                else if (obj.type === 'polygon') box = { x: obj.cx - obj.r, y: obj.cy - obj.r, w: obj.r * 2, h: obj.r * 2 } 
                 else if (obj.type === 'ruler') box = { x: Math.min(obj.x1, obj.x2), y: Math.min(obj.y1, obj.y2), w: Math.abs(obj.x2 - obj.x1), h: Math.abs(obj.y2 - obj.y1) }
                 else if (obj.type === 'path' && obj.points) {
                     const xs = obj.points.map(p => p.x); const ys = obj.points.map(p => p.y);
@@ -727,16 +814,16 @@ export default function DesignWorkspace() {
                 }
 
                 if (isWindow) {
-                    // Entirely inside
+                    
                     return box.x >= x1 && box.y >= y1 && (box.x + box.w) <= x2 && (box.y + box.h) <= y2
                 } else {
-                    // Intersection
+                    
                     return !(box.x > x2 || (box.x + box.w) < x1 || box.y > y2 || (box.y + box.h) < y1)
                 }
             }).map(o => o.id)
 
             if (e.shiftKey) {
-                // Add to existing selection, toggle if already selected
+                
                 setSelectedIds(prev => {
                     const next = [...prev]
                     newlySelected.forEach(id => {
@@ -758,12 +845,13 @@ export default function DesignWorkspace() {
         if (currentAction && currentAction.type !== 'create_polyline' && currentAction.type !== 'select_window') {
             setCurrentAction(null)
         }
+        endHistoryGesture()
     }
 
-    // Handle confirming the polyline completion (Right click or Escape) and globals
+    
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // Undo / Redo
+            
             if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault()
                 if (e.shiftKey) redo()
@@ -781,9 +869,9 @@ export default function DesignWorkspace() {
                 }
             }
 
-            // Keyboard delete shortcut
+            
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
-                // Ensure we aren't focused inside an input (likeCommandLine)
+                
                 if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
                 saveHistorySnapshot();
                 setObjects(prev => prev.filter(o => !selectedIds.includes(o.id)));
@@ -801,43 +889,28 @@ export default function DesignWorkspace() {
         resetPlayback();
 
         try {
-            // Marshall CAD entities (both 2D and Native 3D) into Physics domain
             const combinedObjects = [
-                // 1. Marshall 2D Drafting Objects (Extrusions)
                 ...objects.map(o => {
-                    const depth = o.depth || 20;
-                    const geometry = {
-                        id: o.id,
-                        type: 'extrusion',
-                        position: { x: o.x || o.cx || 0, y: (o.y_override || depth / 2), z: o.y || o.cy || 0 },
-                        rotation: { x: 0, y: o.rotation ? -o.rotation * Math.PI / 180 : 0, z: 0 },
-                        dimensions: { x: o.width || o.r || 0, y: depth, z: o.height || o.r || 0 },
-                        depth: depth
-                    };
-
-                    // For circles, we can simplify or use circular path
-                    if (o.type === 'circle') {
-                        geometry.type = 'sphere'; // Approximate cylinder as sphere for now or refine bridge
-                        geometry.dimensions = { x: o.r, y: o.r, z: o.r };
-                    } else if (o.type === 'rect') {
-                        geometry.type = 'box';
-                        geometry.dimensions = { x: o.width, y: depth, z: o.height };
-                    } else if ((o.type === 'path' || o.type === 'polygon' || o.type === 'arc') && o.points) {
-                        geometry.path = o.points.map(p => ({ x: p.x, y: p.y }));
-                    }
-
+                    const simObj = normalizeDraftToSimObject(o);
+                    if (!simObj) return null;
                     return {
-                        id: o.id,
-                        geometry: geometry,
+                        id: simObj.id,
+                        geometry: {
+                            id: simObj.id,
+                            type: simObj.type === 'circle' ? 'sphere' : 'box',
+                            position: simObj.position,
+                            rotation: simObj.rotation,
+                            dimensions: simObj.dimensions,
+                            depth: simObj.depth
+                        },
                         physics: {
-                            mass: o.mass !== undefined ? parseFloat(o.mass) : 1.0,
-                            restitution: o.restitution !== undefined ? parseFloat(o.restitution) : 0.5,
-                            friction: o.friction !== undefined ? parseFloat(o.friction) : 0.3,
-                            is_static: o.isStatic || false
+                            mass: simObj.physics.mass,
+                            restitution: simObj.physics.restitution,
+                            friction: simObj.physics.friction,
+                            is_static: simObj.physics.isStatic
                         }
                     };
-                }),
-                // 2. Marshall Native 3D Objects
+                }).filter(Boolean),
                 ...shapes3D.map(s => {
                     let geoType = s.type === 'cube' ? 'box' : s.type;
                     let dimX = s.params?.width || s.params?.radius || 1;
@@ -848,18 +921,16 @@ export default function DesignWorkspace() {
                     let posZ = (s.position?.z !== undefined) ? s.position.z : (s.position?.[2] || 0);
 
                     if (s.type === 'extruded_solid') {
-                        geoType = 'box'; // Approximate for now
+                        geoType = 'box';
                         const profile = objects.find(o => o.id === (s.params?.profileId || s.profileId));
                         if (profile) {
                             dimX = profile.width || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
                             dimY = s.params?.distance || s.distance || 10;
                             dimZ = profile.height || (profile.r ? profile.r * 2 : null) || (profile.radius ? profile.radius * 2 : null) || 20;
-                            
                             const dir = s.params?.direction || s.direction || 'positive';
                             let zOffset = 0;
                             if (dir === 'negative') zOffset = -dimY / 2;
                             else if (dir === 'positive') zOffset = dimY / 2;
-
                             posX += profile.x + (profile.width || 0) / 2 || profile.cx || 0;
                             posY += zOffset;
                             posZ += profile.y + (profile.height || 0) / 2 || profile.cy || 0;
@@ -874,10 +945,10 @@ export default function DesignWorkspace() {
                             id: s.id,
                             type: geoType,
                             position: { x: posX, y: posY, z: posZ },
-                            rotation: { 
-                                x: (s.rotation?.x !== undefined) ? s.rotation.x : (s.rotation?.[0] || 0), 
-                                y: (s.rotation?.y !== undefined) ? s.rotation.y : (s.rotation?.[1] || 0), 
-                                z: (s.rotation?.z !== undefined) ? s.rotation.z : (s.rotation?.[2] || 0) 
+                            rotation: {
+                                x: (s.rotation?.x !== undefined) ? s.rotation.x : (s.rotation?.[0] || 0),
+                                y: (s.rotation?.y !== undefined) ? s.rotation.y : (s.rotation?.[1] || 0),
+                                z: (s.rotation?.z !== undefined) ? s.rotation.z : (s.rotation?.[2] || 0)
                             },
                             dimensions: { x: dimX, y: dimY, z: dimZ }
                         },
@@ -893,61 +964,114 @@ export default function DesignWorkspace() {
                 })
             ];
 
-            const payload = {
-                objects: combinedObjects,
-                constraints: constraints.map(c => ({
-                    id: c.id,
-                    type: c.type,
-                    target_a: c.targetA,
-                    target_b: c.targetB,
-                    pivot_a: c.pivotA || { x: 0, y: 0, z: 0 },
-                    pivot_b: c.pivotB || { x: 0, y: 0, z: 0 },
-                    axis: c.axis || { x: 0, y: 1, z: 0 },
-                    distance: c.distance,
-                    angle_limit: c.angleLimit
-                })),
-                gravity: simulationSettings.gravity,
-                point_gravity: simulationSettings.pointGravity,
-                time_step: simulationSettings.timeStep,
-                sub_steps: simulationSettings.subSteps,
-                duration: 2.0
-            };
+            const duration = 2.0;
 
-            // Switch to simulation workspace automatically
-            useStore.getState().setActiveWorkspace('simulate');
-
-            // Robust URL resolution: Use env var, or fallback based on current location
+            // ── Step 1: Try the backend API ──────────────────────────────
+            let backendFrames = null;
             const apiBase = import.meta.env.VITE_API_URL;
-            let targetUrl;
-            
-            if (apiBase) {
-                targetUrl = `${apiBase}/simulate`;
-            } else {
-                const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-                targetUrl = `http://${host}:8000/simulate`;
+            const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+            const targetUrl = apiBase ? `${apiBase}/simulate` : `http://${host}:8000/simulate`;
+
+            try {
+                const payload = {
+                    objects: combinedObjects,
+                    constraints: constraints.map(c => ({
+                        id: c.id,
+                        type: c.type,
+                        target_a: c.targetA,
+                        target_b: c.targetB,
+                        pivot_a: c.pivotA || { x: 0, y: 0, z: 0 },
+                        pivot_b: c.pivotB || { x: 0, y: 0, z: 0 },
+                        axis: c.axis || { x: 0, y: 1, z: 0 },
+                        distance: c.distance,
+                        angle_limit: c.angleLimit
+                    })),
+                    gravity: simulationSettings.gravity,
+                    point_gravity: simulationSettings.pointGravity,
+                    time_step: simulationSettings.timeStep,
+                    sub_steps: simulationSettings.subSteps,
+                    duration
+                };
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const req = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (req.ok) {
+                    const res = await req.json();
+                    backendFrames = res.frames;
+                }
+            } catch (apiErr) {
+                console.warn('[handleSimulate] Backend unreachable, using client-side solver:', apiErr.message);
             }
 
-            const req = await fetch(targetUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // ── Step 2: If backend failed, run client-side MechanicsSolver ──
+            if (!backendFrames || backendFrames.length === 0) {
+                try {
+                    const { default: MechanicsSolver } = await import('../utils/solvers/mechanicsSolver.js');
+                    const solver = new MechanicsSolver({
+                        gravity: simulationSettings.gravity,
+                        timeStep: simulationSettings.timeStep ?? 0.016,
+                        subSteps: Math.max(4, simulationSettings.subSteps ?? 4),
+                        mode: 'accurate',
+                        groundY: 600
+                    });
+                    const allBodies = [...objects, ...shapes3D.map(s => ({
+                        ...s,
+                        position: s.position,
+                        velocity: s.initialVelocity ?? { x: 0, y: 0, z: 0 },
+                        mass: s.mass ?? 1,
+                        restitution: s.restitution ?? 0.5,
+                        friction: s.friction ?? 0.3,
+                        isStatic: s.isStatic ?? false
+                    }))];
+                    solver.setBodies(allBodies);
+                    solver.setConstraints(constraints);
 
-            if (!req.ok) throw new Error("Simulation failed on backend");
+                    backendFrames = [];
+                    const totalSteps = Math.ceil(duration / (simulationSettings.timeStep ?? 0.016));
+                    for (let i = 0; i < totalSteps; i++) {
+                        const snap = solver.step();
+                        if (i % 3 === 0) {
+                            backendFrames.push({
+                                time: snap.time,
+                                states: snap.bodies.map(b => ({
+                                    id: b.id,
+                                    position: b.position,
+                                    rotation: b.rotation ?? { x: 0, y: 0, z: 0 },
+                                    linear_velocity: b.velocity,
+                                    angular_velocity: b.angularVelocity ?? { x: 0, y: 0, z: 0 }
+                                }))
+                            });
+                        }
+                    }
+                    console.log(`[handleSimulate] Client-side solver produced ${backendFrames.length} frames`);
+                } catch (solverErr) {
+                    console.error('[handleSimulate] Client-side solver failed:', solverErr);
+                    throw new Error(`Both backend and client solver failed: ${solverErr.message}`);
+                }
+            }
 
-            const res = await req.json();
-            setSimulationFrames(res.frames);
-            togglePlayback(); // Auto-start playback
+            // ── Step 3: Store frames THEN switch workspace ───────────────
+            setSimulationFrames(backendFrames);
+            useStore.getState().setActiveWorkspace('simulate');
+            togglePlayback();
 
         } catch (err) {
-            console.error("Simulation Error:", err);
-            alert(`Simulation failed: ${err.message}`);
+            console.error("[handleSimulate] Error:", err);
+            useStore.getState().setSimulationState({ time: 0 });
         } finally {
             setIsSimulating(false);
         }
     };
 
-    // --- Hatch pattern IDs ---
+    
     const hatchPatterns = (
         <defs>
             <pattern id="hatch-crosshatch" width="8" height="8" patternUnits="userSpaceOnUse">
@@ -962,29 +1086,29 @@ export default function DesignWorkspace() {
         </defs>
     )
 
-    // --- Rendering Helpers ---
+    
     const renderObject = (obj) => {
         const isSelected = selectedIds.includes(obj.id)
         const filter = isSelected ? 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.8))' : 'none'
         const hatchFill = obj.hatch ? `url(#hatch-${obj.hatch})` : obj.fill
+        const movingOpacity = currentAction?.type === 'move' && isSelected ? 0.5 : 1.0
 
-        // Dimension annotation object
+        
         if (obj.type === 'dimension') {
             const dx = obj.x2 - obj.x1, dy = obj.y2 - obj.y1
             const dist = Math.sqrt(dx * dx + dy * dy).toFixed(1)
             const midX = (obj.x1 + obj.x2) / 2, midY = (obj.y1 + obj.y2) / 2
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI
             const nx = -dy / Math.sqrt(dx * dx + dy * dy) * 20
             const ny = dx / Math.sqrt(dx * dx + dy * dy) * 20
             return (
                 <g key={obj.id} style={{ pointerEvents: 'none' }}>
-                    {/* Extension lines */}
+                    {}
                     <line x1={obj.x1} y1={obj.y1} x2={obj.x1 + nx} y2={obj.y1 + ny} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
                     <line x1={obj.x2} y1={obj.y2} x2={obj.x2 + nx} y2={obj.y2 + ny} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
-                    {/* Dimension line */}
+                    {}
                     <line x1={obj.x1 + nx} y1={obj.y1 + ny} x2={obj.x2 + nx} y2={obj.y2 + ny} stroke="#f59e0b" strokeWidth="1.5"
                         markerEnd="url(#dim-arrow)" markerStart="url(#dim-arrow)" />
-                    {/* Label */}
+                    {}
                     <rect x={midX + nx - 22} y={midY + ny - 9} width="44" height="16" rx="3" fill="#1e293b" stroke="#f59e0b" strokeWidth="0.5" />
                     <text x={midX + nx} y={midY + ny + 3} fill="#f59e0b" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">{dist}px</text>
                 </g>
@@ -1005,7 +1129,7 @@ export default function DesignWorkspace() {
                 }
             }
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={handleClick}>
                     <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={obj.fill}
                         stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
                     {obj.hatch && <rect x={obj.x} y={obj.y} width={obj.width} height={obj.height} fill={hatchFill} style={{ color: obj.stroke }} />}
@@ -1018,7 +1142,7 @@ export default function DesignWorkspace() {
             const transform = obj.rotation ? `rotate(${obj.rotation} ${obj.cx} ${obj.cy})` : ''
             const handleClick = (e) => {
                 e.stopPropagation()
-                // Layer lock check
+                
                 if (obj.layerId) {
                     const layer = layers.find(l => l.id === obj.layerId);
                     if (layer && layer.locked) return;
@@ -1032,7 +1156,7 @@ export default function DesignWorkspace() {
                 }
             }
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={handleClick}>
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={handleClick}>
                     <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={obj.fill}
                         stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} />
                     {obj.hatch && <circle cx={obj.cx} cy={obj.cy} r={obj.r} fill={hatchFill} style={{ color: obj.stroke }} />}
@@ -1041,7 +1165,7 @@ export default function DesignWorkspace() {
         }
 
         if (obj.type === 'path') {
-            // Reconstruct pathData from points array if it exists (new polyline way)
+            
             let d = obj.pathData;
             if (obj.points && obj.points.length > 0) {
                 d = `M ${obj.points[0].x} ${obj.points[0].y} `;
@@ -1051,7 +1175,7 @@ export default function DesignWorkspace() {
             }
 
             return (
-                <g key={obj.id}>
+                <g key={obj.id} style={{ opacity: movingOpacity }}>
                     <path
                         d={d}
                         fill={obj.fill}
@@ -1064,7 +1188,7 @@ export default function DesignWorkspace() {
                         style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
                         onClick={(e) => {
                             e.stopPropagation()
-                            // Layer lock check
+                            
                             if (obj.layerId) {
                                 const layer = layers.find(l => l.id === obj.layerId);
                                 if (layer && layer.locked) return;
@@ -1078,7 +1202,7 @@ export default function DesignWorkspace() {
                             }
                         }}
                     />
-                    {/* Render the preview line segment if currently drawing this polyline */}
+                    {}
                     {currentAction?.type === 'create_polyline' && currentAction.id === obj.id && currentAction.currentX !== undefined && obj.points.length > 0 && (
                         <line
                             x1={obj.points[obj.points.length - 1].x}
@@ -1091,6 +1215,22 @@ export default function DesignWorkspace() {
                             opacity={0.5}
                         />
                     )}
+                </g>
+            )
+        }
+
+        if (obj.type === 'bezier') {
+            const d = `M ${obj.p0.x} ${obj.p0.y} C ${obj.p1.x} ${obj.p1.y} ${obj.p2.x} ${obj.p2.y} ${obj.p3.x} ${obj.p3.y}`
+            return (
+                <g key={obj.id} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}>
+                    <path
+                        d={d}
+                        fill="none"
+                        stroke={isSelected ? '#ffffff' : (obj.stroke || '#22c55e')}
+                        strokeWidth={isSelected ? (obj.strokeWidth || 2) + 1 : (obj.strokeWidth || 2)}
+                    />
+                    <line x1={obj.p0.x} y1={obj.p0.y} x2={obj.p1.x} y2={obj.p1.y} stroke="#475569" strokeDasharray="4 2" />
+                    <line x1={obj.p3.x} y1={obj.p3.y} x2={obj.p2.x} y2={obj.p2.y} stroke="#475569" strokeDasharray="4 2" />
                 </g>
             )
         }
@@ -1108,7 +1248,7 @@ export default function DesignWorkspace() {
                     key={obj.id}
                     onClick={(e) => {
                         e.stopPropagation()
-                        // Layer lock check
+                        
                         if (obj.layerId) {
                             const layer = layers.find(l => l.id === obj.layerId);
                             if (layer && layer.locked) return;
@@ -1148,9 +1288,9 @@ export default function DesignWorkspace() {
             const d = points.length > 0 ? `M ${points[0]} ` + points.slice(1).map(p => `L ${p}`).join(' ') + ' Z' : '';
 
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={(e) => {
                     e.stopPropagation()
-                    // Layer lock check
+                    
                     if (obj.layerId) {
                         const layer = layers.find(l => l.id === obj.layerId);
                         if (layer && layer.locked) return;
@@ -1185,9 +1325,9 @@ export default function DesignWorkspace() {
             const d = obj.r > 0 ? `M ${x1} ${y1} A ${obj.r} ${obj.r} 0 ${largeArcFlag} 1 ${x2} ${y2}` : '';
 
             return (
-                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }} onClick={(e) => {
+                <g key={obj.id} transform={transform} filter={filter} style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', opacity: movingOpacity }} onClick={(e) => {
                     e.stopPropagation()
-                    // Layer lock check
+                    
                     if (obj.layerId) {
                         const layer = layers.find(l => l.id === obj.layerId);
                         if (layer && layer.locked) return;
@@ -1218,14 +1358,14 @@ export default function DesignWorkspace() {
             onPointerDown: (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                saveHistorySnapshot();
+                beginHistoryGesture();
                 setIsDrawing(true);
                 setCurrentAction({ type: 'drag_handle', id: obj.id, handleType, originalObj: { ...obj } });
             }
         });
 
-        // For transformed objects (rotated), handles should ideally be transformed too.
-        // For MVP, we wrap handles in the same transform.
+        
+        
         const cx = obj.cx || (obj.x + obj.width / 2) || ((obj.x1 + obj.x2) / 2);
         const cy = obj.cy || (obj.y + obj.height / 2) || ((obj.y1 + obj.y2) / 2);
         const transform = obj.rotation ? `rotate(${obj.rotation} ${cx} ${cy})` : '';
@@ -1262,19 +1402,95 @@ export default function DesignWorkspace() {
                 </g>
             )
         }
+        if (obj.type === 'bezier') {
+            return (
+                <g key={`handles-${obj.id}`}>
+                    <circle {...handleProps('p0', obj.p0.x, obj.p0.y)} />
+                    <circle {...handleProps('p1', obj.p1.x, obj.p1.y)} />
+                    <circle {...handleProps('p2', obj.p2.x, obj.p2.y)} />
+                    <circle {...handleProps('p3', obj.p3.x, obj.p3.y)} />
+                </g>
+            )
+        }
         return null;
     }
 
     const renderedObjectNodes = renderedObjects.map(renderObject)
     const renderedHandleNodes = renderedObjects.filter(o => selectedIds.includes(o.id)).map(renderHandles)
 
+    const hasContent = objects.length > 0 || shapes3D.length > 0 || isDrawing
+
+    const onWheel = (e) => {
+        if (is3DMode) return
+        e.preventDefault()
+        const scaleFactor = e.deltaY < 0 ? 1.1 : 0.9
+        const rect = svgRef.current?.getBoundingClientRect()
+        const cx = rect ? e.clientX - rect.left : 0
+        const cy = rect ? e.clientY - rect.top : 0
+        const newZoom = Math.min(4.0, Math.max(0.25, zoomLevel * scaleFactor))
+        const zoomChange = newZoom / zoomLevel
+        const newPanX = (pan.x - cx) * zoomChange + cx
+        const newPanY = (pan.y - cy) * zoomChange + cy
+        setZoomLevel(newZoom)
+        setPan({ x: newPanX, y: newPanY })
+    }
+    
+    const fitToScreen = () => {
+        if (!svgRef.current || objects.length === 0) {
+            setZoomLevel(1.0)
+            setPan({ x: 0, y: 0 })
+            return
+        }
+        const rect = svgRef.current.getBoundingClientRect()
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        objects.forEach(o => {
+            if (o.type === 'rect') {
+                minX = Math.min(minX, o.x)
+                minY = Math.min(minY, o.y)
+                maxX = Math.max(maxX, o.x + o.width)
+                maxY = Math.max(maxY, o.y + o.height)
+            } else if (o.type === 'circle' || o.type === 'polygon' || o.type === 'arc') {
+                minX = Math.min(minX, o.cx - (o.r || 0))
+                minY = Math.min(minY, o.cy - (o.r || 0))
+                maxX = Math.max(maxX, o.cx + (o.r || 0))
+                maxY = Math.max(maxY, o.cy + (o.r || 0))
+            } else if (o.type === 'ruler' || o.type === 'dimension') {
+                minX = Math.min(minX, o.x1, o.x2)
+                minY = Math.min(minY, o.y1, o.y2)
+                maxX = Math.max(maxX, o.x1, o.x2)
+                maxY = Math.max(maxY, o.y1, o.y2)
+            } else if (o.type === 'path' && o.points) {
+                o.points.forEach(p => {
+                    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y)
+                    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y)
+                })
+            }
+        })
+        if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+            setZoomLevel(1.0); setPan({ x: 0, y: 0 }); return
+        }
+        const contentW = Math.max(1, maxX - minX)
+        const contentH = Math.max(1, maxY - minY)
+        const scaleX = rect.width / contentW
+        const scaleY = rect.height / contentH
+        const newZoom = Math.min(scaleX, scaleY) * 0.8
+        const contentCenterX = minX + contentW / 2
+        const contentCenterY = minY + contentH / 2
+        const screenCenterX = rect.width / 2
+        const screenCenterY = rect.height / 2
+        const newPanX = screenCenterX - contentCenterX * newZoom
+        const newPanY = screenCenterY - contentCenterY * newZoom
+        setZoomLevel(Math.min(4.0, Math.max(0.25, newZoom)))
+        setPan({ x: newPanX, y: newPanY })
+    }
+
     return (
         <div className={`w-full h-full relative flex flex-col overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
-            {/* Floating Toolbar */}
+            {}
             <div className="absolute top-4 left-4 z-30 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
                 {!is3DMode ? (
                     <>
-                        {/* 2D Tools */}
+                        {}
                         {[
                             { tool: 'select', icon: <MousePointer2 size={16} />, title: 'Select (V)' },
                             { tool: 'move', icon: <Move size={16} />, title: 'Move (M)' },
@@ -1291,6 +1507,7 @@ export default function DesignWorkspace() {
                             { tool: 'circle', icon: <Circle size={16} />, title: 'Circle (C)' },
                             { tool: 'polygon', icon: <Hexagon size={16} />, title: 'Polygon' },
                             { tool: 'arc', icon: <CircleDashed size={16} />, title: 'Arc' },
+                            { tool: 'bezier', icon: <PenTool size={16} />, title: 'Bezier Curve' },
                             { tool: 'ruler', icon: <Ruler size={16} />, title: 'Measure / Line' },
                             { tool: 'pencil', icon: <PencilRuler size={16} />, title: 'Polyline (P)' },
                             { tool: 'dimension', icon: <DimIcon size={16} />, title: 'Dimension (DIM)' },
@@ -1318,7 +1535,7 @@ export default function DesignWorkspace() {
                     </>
                 ) : (
                     <>
-                        {/* 3D Tools */}
+                        {}
                         {[
                             { tool: 'select', icon: <MousePointer2 size={16} />, title: 'Select' },
                             { tool: 'translate', icon: <Move size={16} />, title: 'Translate' },
@@ -1351,19 +1568,56 @@ export default function DesignWorkspace() {
                 )}
                 <div className="w-[1px] bg-slate-700/50 mx-1" />
                 <button
-                    onClick={() => setIs3DMode(!is3DMode)}
+                    onClick={() => setIs3DView(!is3DMode)}
                     className={`p-2 rounded-lg transition-all cursor-pointer ${is3DMode ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
                     title={is3DMode ? 'Switch to 2D' : 'Enter 3D Modeling'}>
                     {is3DMode ? <Layers size={16} /> : <Box size={16} />}
                 </button>
+                <button
+                    onClick={() => setIsSplitView(!isSplitView)}
+                    className={`p-2 rounded-lg transition-all cursor-pointer ${isSplitView ? 'tool-active' : 'text-slate-400 hover:text-white hover:bg-slate-700/60'}`}
+                    title={isSplitView ? 'Single View' : 'Split View'}>
+                    <Layers size={16} />
+                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => setExportMenuOpen(o => !o)}
+                        disabled={exporting}
+                        className={`p-2 rounded-lg transition-all cursor-pointer text-slate-400 hover:text-white hover:bg-slate-700/60 ${exportMenuOpen ? 'tool-active' : ''} ${exporting ? 'opacity-60 cursor-wait' : ''}`}
+                        title="Export model (GLB / STL / OBJ)">
+                        <Download size={16} />
+                    </button>
+                    {exportMenuOpen && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                            <div className="absolute left-0 top-full mt-1 z-50 glass p-1 rounded-lg shadow-2xl flex flex-col min-w-[120px]"
+                                onClick={(e) => e.stopPropagation()}>
+                                {['glb', 'stl', 'obj'].map(fmt => (
+                                    <button key={fmt}
+                                        disabled={exporting}
+                                        onClick={() => {
+                                            setExportMenuOpen(false);
+                                            setExporting(true);
+                                            exportScene(fmt, objects, shapes3D)
+                                                .catch(err => console.error('export failed:', err))
+                                                .finally(() => setExporting(false));
+                                        }}
+                                        className="px-3 py-1.5 text-left text-[11px] text-slate-300 hover:text-white hover:bg-slate-700/60 rounded-md transition-colors cursor-pointer uppercase disabled:opacity-50">
+                                        {exporting ? '...' : `.${fmt}`}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Viewport Controls */}
+            {}
             <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
                 <div className="glass p-1.5 rounded-xl flex flex-col gap-1">
                     <button
                         onClick={rotateView}
-                        className={`p-2 transition-colors cursor-pointer rounded-lg ${viewMode !== 'perspective' ? 'text-primary bg-primary/10' : 'text-slate-300 hover:text-white'} `}
+                        className={`p-2 transition-colors cursor-pointer rounded-lg ${'text-slate-300 hover:text-white'} `}
                         title={`View: ${viewMode} `}
                     >
                         <Video size={18} />
@@ -1382,6 +1636,20 @@ export default function DesignWorkspace() {
                     >
                         <InfinityIcon size={18} />
                     </button>
+                    <button
+                        onClick={() => { setZoomLevel(1.0); setPan({ x: 0, y: 0 }); }}
+                        className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Reset View"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
+                    <button
+                        onClick={fitToScreen}
+                        className="p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Fit to Screen"
+                    >
+                        <Maximize size={18} />
+                    </button>
                 </div>
                 <div className="glass p-1.5 rounded-xl flex flex-col gap-1">
                     <button
@@ -1399,13 +1667,106 @@ export default function DesignWorkspace() {
                 </div>
             </div>
 
-            {/* Center Viewport */}
+            {}
             <div className="flex-1 relative">
-                {is3DMode ? (
+                {isSplitView ? (
+                    <div className="absolute inset-0 grid grid-cols-2 gap-0">
+                        <div className="relative border-r border-slate-800">
+                            <div
+                                onWheel={onWheel}
+                                style={{
+                                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel}) rotateX(${getRotation().rotateX}deg) rotateY(${getRotation().rotateY}deg) rotateZ(${getRotation().rotateZ}deg)`,
+                                    transformOrigin: '0 0'
+                                }}
+                                className="relative w-full h-full flex items-center justify-center transform-gpu touch-none min-w-[400px] min-h-[300px] transition-transform duration-150"
+                            >
+                                {!hasContent && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
+                                            <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
+                                                <Cpu size={64} className="text-primary" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <svg
+                                    ref={svgRef}
+                                    className="absolute inset-0 w-full h-full z-20"
+                                    style={{
+                                        cursor: activeTool === 'select' ? 'default' : activeTool === 'move' ? 'move' : 'crosshair'
+                                    }}
+                                    onPointerDown={handlePointerDown}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                    onPointerLeave={handlePointerUp}
+                                >
+                                    {hatchPatterns}
+                                    {renderedObjectNodes}
+                                    {renderedHandleNodes}
+                                    <defs>
+                                        <marker id="dim-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                                            <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
+                                        </marker>
+                                    </defs>
+                                    {snapPoint && snapPoint.snapped && (
+                                        <g transform={`translate(${snapPoint.x}, ${snapPoint.y})`}>
+                                            {snapPoint.type === 'endpoint' && (
+                                                <rect x="-4" y="-4" width="8" height="8" fill="none" stroke="#22c55e" strokeWidth="1.5" />
+                                            )}
+                                            {snapPoint.type === 'midpoint' && (
+                                                <path d="M -5 4 L 5 4 L 0 -5 Z" fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+                                            )}
+                                            {snapPoint.type === 'center' && (
+                                                <circle r="5" fill="none" stroke="#8b5cf6" strokeWidth="1.5" />
+                                            )}
+                                            {snapPoint.type === 'grid' && (
+                                                <rect x="-2" y="-2" width="4" height="4" fill="none" stroke="#fbbf24" strokeWidth="1" />
+                                            )}
+                                        </g>
+                                    )}
+                                    {currentAction?.type === 'select_window' && (
+                                        <rect
+                                            x={Math.min(currentAction.startX, currentAction.currentX)}
+                                            y={Math.min(currentAction.startY, currentAction.currentY)}
+                                            width={Math.abs(currentAction.currentX - currentAction.startX)}
+                                            height={Math.abs(currentAction.currentY - currentAction.startY)}
+                                            fill={currentAction.currentX > currentAction.startX ? 'rgba(59, 130, 246, 0.2)' : 'rgba(34, 197, 94, 0.2)'}
+                                            stroke={currentAction.currentX > currentAction.startX ? '#3b82f6' : '#22c55e'}
+                                            strokeWidth="1"
+                                            strokeDasharray={currentAction.currentX > currentAction.startX ? '' : '4 4'}
+                                        />
+                                    )}
+                                    {!is3DMode && (
+                                        <g transform={`translate(${cursorPos.x + 15}, ${cursorPos.y - 15})`} style={{ pointerEvents: 'none' }}>
+                                            <rect
+                                                x="0" y="-12" width="70" height="28"
+                                                fill="rgba(15, 23, 42, 0.8)"
+                                                rx="4"
+                                                className="stroke-slate-700/50"
+                                            />
+                                            <text x="6" y="2" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                                X: {cursorPos.x.toFixed(1)}
+                                            </text>
+                                            <text x="6" y="12" fill="#94a3b8" fontSize="9" fontFamily="monospace">
+                                                Y: {cursorPos.y.toFixed(1)}
+                                            </text>
+                                            {currentAction && (currentAction.startX !== undefined) && (
+                                                <text x="6" y="-6" fill="#fbbf24" fontSize="10" fontWeight="bold" fontFamily="monospace">
+                                                    L: {Math.sqrt((cursorPos.x - currentAction.startX) ** 2 + (cursorPos.y - currentAction.startY) ** 2).toFixed(1)}
+                                                </text>
+                                            )}
+                                        </g>
+                                    )}
+                                </svg>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <Viewport3D objects={renderedObjects} isSimulating={isSimulating} />
+                        </div>
+                    </div>
+                ) : is3DMode ? (
                     <div className="absolute inset-0 w-full h-full z-20">
                         <Viewport3D objects={renderedObjects} isSimulating={isSimulating} />
-                        
-                        {/* Demo Data Overlay */}
                         {useStore.getState().demoOverlay && (
                             <div className="absolute top-4 right-4 glass p-4 rounded-xl border border-primary/20 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500 max-w-xs transition-all">
                                 <h3 className="text-primary font-bold text-lg flex items-center gap-2 mb-1">
@@ -1424,20 +1785,23 @@ export default function DesignWorkspace() {
                     </div>
                 ) : (
                     <div
+                        onWheel={onWheel}
                         style={{
-                            transform: `scale(${zoomLevel}) rotateX(${getRotation().rotateX}deg) rotateY(${getRotation().rotateY}deg) rotateZ(${getRotation().rotateZ}deg)`
+                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel}) rotateX(${getRotation().rotateX}deg) rotateY(${getRotation().rotateY}deg) rotateZ(${getRotation().rotateZ}deg)`,
+                            transformOrigin: '0 0'
                         }}
-                        className="relative w-full h-full flex items-center justify-center transform-gpu touch-none min-w-[800px] min-h-[600px] transition-transform duration-300"
+                        className="relative w-full h-full flex items-center justify-center transform-gpu touch-none min-w-[800px] min-h-[600px] transition-transform duration-150"
                     >
-                        {/* Visual anchor for the center point (the 'CPU') */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
-                                <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
-                                    <Cpu size={64} className="text-primary" />
+                        {!hasContent && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-64 h-64 border border-primary/40 flex items-center justify-center">
+                                    <div className="w-48 h-48 bg-primary/10 border-2 border-primary flex items-center justify-center rounded-xl glass shadow-[0_0_50px_rgba(37,106,244,0.3)]">
+                                        <Cpu size={64} className="text-primary" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {/* The SVG Canvas for tools */}
+                        )}
+                        {}
                         <svg
                             ref={svgRef}
                             className="absolute inset-0 w-full h-full z-20"
@@ -1446,23 +1810,51 @@ export default function DesignWorkspace() {
                             }}
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
-                            onPointerUpdate={handlePointerMove} // Ensure touch devices capture moves
                             onPointerUp={handlePointerUp}
-                            // Handle case where pointer leaves the SVG area while drawing
+                            
                             onPointerLeave={handlePointerUp}
                         >
                             {hatchPatterns}
                             {renderedObjectNodes}
                             {renderedHandleNodes}
 
-                            {/* Arrow marker for dimension lines */}
+                            {}
                             <defs>
                                 <marker id="dim-arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
                                     <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
                                 </marker>
+                                <marker id="move-arrow-x" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto">
+                                    <path d="M0,0 L10,5 L0,10 Z" fill="#ef4444" />
+                                </marker>
+                                <marker id="move-arrow-y" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto">
+                                    <path d="M0,0 L10,5 L0,10 Z" fill="#22c55e" />
+                                </marker>
                             </defs>
 
-                            {/* Snapping Indicator */}
+                            {}
+                            {currentAction?.type === 'move' && selectedIds.length > 0 && (() => {
+                                const obj = renderedObjects.find(o => o.id === selectedIds[0]);
+                                if (!obj) return null;
+                                let cx = 0, cy = 0;
+                                if (obj.type === 'rect') { cx = obj.x + obj.width / 2; cy = obj.y + obj.height / 2; }
+                                else if (obj.type === 'circle' || obj.type === 'polygon' || obj.type === 'arc') { cx = obj.cx; cy = obj.cy; }
+                                else if (obj.type === 'ruler' || obj.type === 'dimension') { cx = (obj.x1 + obj.x2) / 2; cy = (obj.y1 + obj.y2) / 2; }
+                                else if (obj.type === 'path' && obj.points && obj.points.length) {
+                                    const xs = obj.points.map(p => p.x); const ys = obj.points.map(p => p.y);
+                                    cx = (Math.min(...xs) + Math.max(...xs)) / 2; cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+                                }
+                                return (
+                                    <g key="move-gizmo" opacity="0.7">
+                                        <circle cx={cx} cy={cy} r="6" fill="#0ea5e9" stroke="white" strokeWidth="1" />
+                                        <line x1={cx} y1={cy} x2={cx + 40} y2={cy} stroke="#ef4444" strokeWidth="2" markerEnd="url(#move-arrow-x)" />
+                                        <line x1={cx} y1={cy} x2={cx} y2={cy - 40} stroke="#22c55e" strokeWidth="2" markerEnd="url(#move-arrow-y)" />
+                                        <text x={cx + 46} y={cy + 4} fill="#ef4444" fontSize="9" fontFamily="monospace">X</text>
+                                        <text x={cx + 4} y={cy - 46} fill="#22c55e" fontSize="9" fontFamily="monospace">Y</text>
+                                    </g>
+                                );
+                            })()}
+
+                            {}
                             {snapPoint && snapPoint.snapped && (
                                 <g transform={`translate(${snapPoint.x}, ${snapPoint.y})`}>
                                     {snapPoint.type === 'endpoint' && (
@@ -1480,7 +1872,7 @@ export default function DesignWorkspace() {
                                 </g>
                             )}
 
-                            {/* Selection Window */}
+                            {}
                             {currentAction?.type === 'select_window' && (
                                 <rect
                                     x={Math.min(currentAction.startX, currentAction.currentX)}
@@ -1493,7 +1885,7 @@ export default function DesignWorkspace() {
                                     strokeDasharray={currentAction.currentX > currentAction.startX ? '' : '4 4'}
                                 />
                             )}
-                            {/* Dynamic Input HUD */}
+                            {}
                             {!is3DMode && (
                                 <g transform={`translate(${cursorPos.x + 15}, ${cursorPos.y - 15})`} style={{ pointerEvents: 'none' }}>
                                     <rect
@@ -1517,7 +1909,7 @@ export default function DesignWorkspace() {
                             )}
                         </svg>
 
-                        {/* Axis Indicator */}
+                        {}
                         <div className="absolute bottom-10 left-10 flex flex-col text-[10px] font-mono text-slate-500 gap-1 pointer-events-none">
                             <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-red-500"></span> X-AXIS</div>
                             <div className="flex items-center gap-2"><span className="w-4 h-[2px] bg-green-500"></span> Y-AXIS</div>
@@ -1527,10 +1919,10 @@ export default function DesignWorkspace() {
                 )}
             </div>
 
-            {/* Command Line */}
+            {}
             <CommandLine />
 
-            {/* Bottom Simulation Controls */}
+            {}
             <div className="glass px-6 py-3 flex items-center gap-6 shadow-2xl z-30 border-t border-slate-800">
                 <div className="flex items-center gap-4">
                     <button
@@ -1556,19 +1948,41 @@ export default function DesignWorkspace() {
 
                 <div className="h-8 w-[1px] bg-slate-700/50"></div>
 
-                {/* Demo Presets */}
+                {}
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Presets</span>
+                    <select
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                SimulationDemoManager.loadDemo(e.target.value, useStore.getState());
+                                useStore.getState().setActiveWorkspace('simulate');
+                            }
+                        }}
+                        defaultValue=""
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:border-primary/50 transition-colors shadow-inner"
+                    >
+                        <option value="" disabled>Select Physics Preset...</option>
+                        {PRESET_CATALOG.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="h-8 w-[1px] bg-slate-700/50"></div>
                 <div className="flex items-center gap-1">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-2">Demos</span>
                     {[
-                        { id: 'gravity', label: 'Drop', title: 'Gravity Drop Test' },
-                        { id: 'pendulum', label: 'Pivot', title: 'Pendulum Constraint' },
-                        { id: 'collision', label: 'Impact', title: 'Elastic Collision' },
-                        { id: 'dominos', label: 'Domino', title: 'Domino Chain' },
-                        { id: 'orbit', label: 'Orbit', title: 'Orbital Motion' },
+                        { id: 'free_fall', label: 'Drop', title: 'Free Fall (100m Drop)' },
+                        { id: 'single_pendulum', label: 'Pivot', title: 'Pendulum Constraint' },
+                        { id: 'elastic_inelastic_collision', label: 'Impact', title: 'Elastic Collision' },
+                        { id: 'domino_chain', label: 'Domino', title: 'Domino Chain' },
+                        { id: 'orbital_mechanics', label: 'Orbit', title: 'Orbital Motion' },
                     ].map(demo => (
                         <button
                             key={demo.id}
-                            onClick={() => SimulationDemoManager.loadDemo(demo.id, useStore.getState())}
+                            onClick={() => {
+                                SimulationDemoManager.loadDemo(demo.id, useStore.getState());
+                                useStore.getState().setActiveWorkspace('simulate');
+                            }}
                             className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-slate-800/50 text-slate-400 hover:bg-primary/20 hover:text-primary transition-all cursor-pointer border border-transparent hover:border-primary/30"
                             title={demo.title}
                         >
@@ -1598,7 +2012,7 @@ export default function DesignWorkspace() {
                             }}
                             className="w-full h-full appearance-none bg-slate-800 rounded-full outline-none cursor-pointer accent-primary slider-thumb"
                         />
-                        {/* Progress visualize bar underneath */}
+                        {}
                         <div
                             className="absolute left-0 top-0 h-full bg-primary/40 rounded-full pointer-events-none"
                             style={{ width: simulationFrames.length > 0 ? `${(currentFrameIndex / (simulationFrames.length - 1)) * 100}%` : '0%' }}

@@ -16,12 +16,12 @@ public:
       : k(stiffness), rest(rest_pos) {}
 
   Vec3 compute_force(const RigidBody &body) const override {
-    // F = -k * (x - rest)
+    
     return Vec3(-k * (body.position.x - rest), 0, 0);
   }
 
   float compute_potential_energy(const RigidBody &body) const override {
-    // U = 0.5 * k * (x - rest)^2
+    
     float x = body.position.x - rest;
     return 0.5f * k * x * x;
   }
@@ -44,7 +44,7 @@ SimulationResult run_simulation(Integrator *integrator, float dt,
   RigidBody mass;
   mass.mass = 1.0f;
   mass.inv_mass = 1.0f;
-  mass.position = Vec3(1.0f, 0, 0); // initial displacement = 1.0
+  mass.position = Vec3(1.0f, 0, 0); 
   mass.velocity = Vec3(0, 0, 0);
 
   SpringForceField spring(10.0f, 0.0f);
@@ -77,26 +77,26 @@ SimulationResult run_simulation(Integrator *integrator, float dt,
 int main() {
   std::cout << "=== Phase 0 Architecture Validation: 1D Mass-Spring ===\n\n";
 
-  float total_time = 10.0f; // 10 seconds to observe oscillation
+  float total_time = 10.0f; 
 
   ForwardEuler fwd_euler;
   SemiImplicitEuler semi_euler;
 
-  // --- Test 1: Forward Euler dt=0.01 ---
+  
   std::cout << "[Test 1: Forward Euler, dt = 0.01]\n";
   auto res_fwd_01 = run_simulation(&fwd_euler, 0.01f, total_time);
   std::cout << "Initial Energy: " << res_fwd_01.initial_energy << " J\n";
   std::cout << "Max Drift: " << res_fwd_01.max_drift << " J\n";
   std::cout << "Final Drift: " << res_fwd_01.final_drift << " J\n\n";
 
-  // --- Test 2: Semi-Implicit Euler dt=0.01 ---
+  
   std::cout << "[Test 2: Semi-Implicit Euler, dt = 0.01]\n";
   auto res_semi_01 = run_simulation(&semi_euler, 0.01f, total_time);
   std::cout << "Initial Energy: " << res_semi_01.initial_energy << " J\n";
   std::cout << "Max Drift: " << res_semi_01.max_drift << " J\n";
   std::cout << "Final Drift: " << res_semi_01.final_drift << " J\n\n";
 
-  // --- Test 3: Convergence Test dt=0.005 ---
+  
   std::cout << "[Test 3: Convergence Test (Semi-Implicit Euler), dt = 0.005]\n";
   auto res_semi_005 = run_simulation(&semi_euler, 0.005f, total_time);
   std::cout << "Initial Energy: " << res_semi_005.initial_energy << " J\n";

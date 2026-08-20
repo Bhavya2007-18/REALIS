@@ -1,7 +1,4 @@
-/**
- * @file VertexArray.hpp
- * @brief OpenGL Vertex Array Object (VAO) abstraction
- */
+
 #pragma once
 
 #include "VertexBuffer.hpp"
@@ -10,9 +7,7 @@
 
 namespace realis::renderer {
 
-/**
- * @brief Represents a single vertex attribute (e.g., position, color).
- */
+
 struct VertexBufferElement {
   unsigned int type;
   unsigned int count;
@@ -31,9 +26,7 @@ struct VertexBufferElement {
   }
 };
 
-/**
- * @brief Manages the layout of a VertexBuffer.
- */
+
 class VertexBufferLayout {
 public:
   VertexBufferLayout() : m_stride(0) {}
@@ -63,25 +56,21 @@ private:
   unsigned int m_stride;
 };
 
-/**
- * @brief RAII wrapper for an OpenGL Vertex Array.
- */
+
 class VertexArray {
 public:
   VertexArray();
   ~VertexArray();
 
-  // Delete copy/assignment
+  
   VertexArray(const VertexArray &) = delete;
   VertexArray &operator=(const VertexArray &) = delete;
 
-  // Support move
+  
   VertexArray(VertexArray &&other) noexcept;
   VertexArray &operator=(VertexArray &&other) noexcept;
 
-  /**
-   * @brief Adds a vertex buffer with a specific layout to the VAO.
-   */
+  
   void addBuffer(const VertexBuffer &vb, const VertexBufferLayout &layout);
 
   void bind() const;
@@ -91,4 +80,4 @@ private:
   unsigned int m_rendererID = 0;
 };
 
-} // namespace realis::renderer
+} 

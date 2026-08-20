@@ -1,6 +1,6 @@
-// Conservation Residual Tracker
-// Per-step reporting of mass, energy, momentum residuals with threshold
-// enforcement
+
+
+
 
 #pragma once
 #include <cmath>
@@ -68,5 +68,5 @@ struct ConservationResiduals {
   }
 };
 
-} // namespace verification
-} // namespace realis
+} 
+} 

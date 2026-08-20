@@ -7,13 +7,7 @@
 
 namespace realis::scene {
 
-/**
- * @brief Robust Ray-AABB intersection using the Slab method.
- * @param ray The ray to test
- * @param aabb The AABB to test against
- * @param[out] t Output intersection distance
- * @return True if hit
- */
+
 inline bool intersectRayAABB(const Ray &ray, const AABB &aabb, float &t) {
   float tmin = -1e30f;
   float tmax = 1e30f;
@@ -26,7 +20,7 @@ inline bool intersectRayAABB(const Ray &ray, const AABB &aabb, float &t) {
       tmin = std::max(tmin, std::min(t1, t2));
       tmax = std::min(tmax, std::max(t1, t2));
     } else {
-      // Ray is parallel to slab. If ray origin is not inside slab, no hit.
+      
       if (ray.origin[i] < aabb.min[i] || ray.origin[i] > aabb.max[i]) {
         return false;
       }
@@ -41,4 +35,4 @@ inline bool intersectRayAABB(const Ray &ray, const AABB &aabb, float &t) {
   return false;
 }
 
-} // namespace realis::scene
+} 

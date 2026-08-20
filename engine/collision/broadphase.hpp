@@ -1,4 +1,4 @@
-// Broad phase collision detection
+
 #pragma once
 #include <vector>
 
@@ -19,4 +19,4 @@ public:
   detect(const std::vector<RigidBody *> &bodies);
 };
 
-} // namespace realis
+} 

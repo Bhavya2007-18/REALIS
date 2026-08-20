@@ -1,0 +1,524 @@
+newmtl Leaf1Mtl
+Material Color
+Ka 0.378676 0.517401 0.0600316
+Kd 0.378676 0.517401 0.0600316
+Ks 0.010395 0.0142032 0.00164793 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Branch1Mtl
+Material Color
+Ka 0.20471 0.106156 0.0581872
+Kd 0.20471 0.106156 0.0581872
+Ks 0.011239 0.00582818 0.00319459 
+
+d 1
+
+Ns 0
+
+map_Ka Branch1_diff.png
+map_Kd Branch1_diff.png
+map_d Branch1_diff.png
+
+map_Bump Branch1_nmap.png
+
+map_Ns Branch1_spec.png
+
+newmtl Part6156Mtl
+Material Color
+Ka 0.618686 0.618686 0.618686
+Kd 0.618686 0.618686 0.618686
+Ks 0.0460982 0.0460982 0.0460982 
+
+d 1
+
+Ns 0
+
+map_Ka Wood1_diff.png
+map_Kd Wood1_diff.png
+map_d Wood1_diff.png
+
+map_Bump Wood1_nmap.png
+
+map_Ns Wood1_spec.png
+
+newmtl Part283Mtl
+Material Color
+Ka 0.14198 0.0477758 0.0169881
+Kd 0.14198 0.0477758 0.0169881
+Ks 0.007795 0.00262298 0.000932677 
+
+d 1
+
+Ns 0
+
+map_Ka Branch1_diff.png
+map_Kd Branch1_diff.png
+map_d Branch1_diff.png
+
+map_Bump Branch1_nmap.png
+
+map_Ns Branch1_spec.png
+
+newmtl Leaf2Mtl
+Material Color
+Ka 0.215764 0.275833 0.12753
+Kd 0.215764 0.275833 0.12753
+Ks 0.00592294 0.00757188 0.00350082 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Leaf3Mtl
+Material Color
+Ka 0.0677246 0.315763 0.0677246
+Kd 0.0677246 0.315763 0.0677246
+Ks 0.00185911 0.008668 0.00185911 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Part1Mtl
+Material Color
+Ka 0.0160677 0.0581872 0.022013
+Kd 0.0160677 0.0581872 0.022013
+Ks 0.000441074 0.0015973 0.000604278 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Leaf4Mtl
+Material Color
+Ka 0.190463 0.284452 0.227137
+Kd 0.190463 0.284452 0.227137
+Ks 0.00522839 0.00780849 0.00623512 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Part282Mtl
+Material Color
+Ka 0.373615 0.0677246 0.0677246
+Kd 0.373615 0.0677246 0.0677246
+Ks 0.0102561 0.00185911 0.00185911 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Part892Mtl
+Material Color
+Ka 0.0169881 0.215764 0.0600316
+Kd 0.0169881 0.215764 0.0600316
+Ks 0.000466339 0.00592294 0.00164793 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Part1396Mtl
+Material Color
+Ka 0.0384727 0.20836 0.00411618
+Kd 0.0384727 0.20836 0.00411618
+Ks 0.00105611 0.00571968 0.000112993 
+
+d 1
+
+Ns 0
+
+map_Ka Leaf1_diff.png
+map_Kd Leaf1_diff.png
+map_d Leaf1_diff.png
+
+map_Bump Leaf1_nmap.png
+
+map_Ns Leaf1_spec.png
+
+newmtl Qboatseat1Mtl
+Material Color
+Ka 0.215764 0.275833 0.12753
+Kd 0.215764 0.275833 0.12753
+Ks 0.0118459 0.0151438 0.00700164 
+
+d 1
+
+Ns 0
+
+map_Ka Branch1_diff.png
+map_Kd Branch1_diff.png
+map_d Branch1_diff.png
+
+map_Bump Branch1_nmap.png
+
+map_Ns Branch1_spec.png
+
+newmtl Barrel1Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0627451 0.0627451 0.0627451 
+
+d 1
+
+Ns 0
+
+map_Ka Barrel1_diff.png
+map_Kd Barrel1_diff.png
+map_d Barrel1_diff.png
+
+newmtl Fortpart1Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0234425 0.0231273 0.02408 
+
+d 1
+
+Ns 0
+
+map_Ka Fortpart1_diff.png
+map_Kd Fortpart1_diff.png
+map_d Fortpart1_diff.png
+
+map_Bump Fortpart1_nmap.png
+
+map_Ns Fortpart1_spec.png
+
+newmtl Wood1Mtl
+Material Color
+Ka 0.687031 0.56681 0.329729
+Kd 0.687031 0.56681 0.329729
+Ks 0.0511905 0.0422329 0.024568 
+
+d 1
+
+Ns 0
+
+map_Ka Wood1_diff.png
+map_Kd Wood1_diff.png
+map_d Wood1_diff.png
+
+map_Bump Wood1_nmap.png
+
+map_Ns Wood1_spec.png
+
+newmtl Union4Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0146516 0.0144545 0.01505 
+
+d 1
+
+Ns 0
+
+map_Ka Union4_diff.png
+map_Kd Union4_diff.png
+map_d Union4_diff.png
+
+map_Bump Union4_nmap.png
+
+map_Ns Union4_spec.png
+
+newmtl Union1Mtl
+Material Color
+Ka 0.124741 0.113921 0.121986
+Kd 0.124741 0.113921 0.121986
+Ks 0.0831606 0.0759473 0.0813238 
+
+d 1
+
+Ns 255
+
+map_Ka Union1_diff.png
+map_Kd Union1_diff.png
+map_d Union1_diff.png
+
+map_Bump Union1_nmap.png
+
+map_Ns Union1_spec.png
+
+newmtl Blobbyblobbuildalertcoderf1Mtl
+Material Color
+Ka 0.14198 0.0477758 0.0169881
+Kd 0.14198 0.0477758 0.0169881
+Ks 0.0105789 0.00355976 0.00126578 
+
+d 1
+
+Ns 0
+
+map_Ka Wood1_diff.png
+map_Kd Wood1_diff.png
+map_d Wood1_diff.png
+
+map_Bump Wood1_nmap.png
+
+map_Ns Wood1_spec.png
+
+newmtl Blobbyblobbuildalllllfredo1Mtl
+Material Color
+Ka 0.940601 0.940601 0.940601
+Kd 0.940601 0.940601 0.940601
+Ks 0.0516408 0.0516408 0.0516408 
+
+d 1
+
+Ns 0
+
+map_Ka Branch1_diff.png
+map_Kd Branch1_diff.png
+map_d Branch1_diff.png
+
+map_Bump Branch1_nmap.png
+
+map_Ns Branch1_spec.png
+
+newmtl Fortpart55Mtl
+Material Color
+Ka 0.306635 0.193972 0.186989
+Kd 0.306635 0.193972 0.186989
+Ks 0.00961991 0.0060854 0.00586631 
+
+d 1
+
+Ns 0
+
+map_Ka Fortpart55_diff.png
+map_Kd Fortpart55_diff.png
+map_d Fortpart55_diff.png
+
+map_Bump Fortpart55_nmap.png
+
+map_Ns Fortpart55_spec.png
+
+newmtl Blobbyblobbuildalllllfredo2Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo2_diff.png
+map_Kd Blobbyblobbuildalllllfredo2_diff.png
+map_d Blobbyblobbuildalllllfredo2_diff.png
+
+newmtl Blobbyblobbuildalllllfredo51Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo51_diff.png
+map_Kd Blobbyblobbuildalllllfredo51_diff.png
+map_d Blobbyblobbuildalllllfredo51_diff.png
+
+newmtl Blobbyblobbuildalllllfredo58Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo58_diff.png
+map_Kd Blobbyblobbuildalllllfredo58_diff.png
+map_d Blobbyblobbuildalllllfredo58_diff.png
+
+newmtl Linesegment1Mtl
+Material Color
+Ka 0.687031 0.56681 0.329729
+Kd 0.687031 0.56681 0.329729
+Ks 0.0188597 0.0155595 0.00905139 
+
+d 1
+
+Ns 0
+
+map_Ka Linesegment1_diff.png
+map_Kd Linesegment1_diff.png
+map_d Linesegment1_diff.png
+
+map_Bump Linesegment1_nmap.png
+
+map_Ns Linesegment1_spec.png
+
+newmtl Part6182Mtl
+Material Color
+Ka 0.267358 0.103634 0.353741
+Kd 0.267358 0.103634 0.353741
+Ks 0.00733924 0.00284486 0.00971054 
+
+d 1
+
+Ns 0
+
+map_Ka Linesegment1_diff.png
+map_Kd Linesegment1_diff.png
+map_d Linesegment1_diff.png
+
+map_Bump Linesegment1_nmap.png
+
+map_Ns Linesegment1_spec.png
+
+newmtl Fortpart65Mtl
+Material Color
+Ka 0.20471 0.106156 0.0581872
+Kd 0.20471 0.106156 0.0581872
+Ks 0.0152529 0.00790967 0.00433552 
+
+d 1
+
+Ns 0
+
+map_Ka Wood1_diff.png
+map_Kd Wood1_diff.png
+map_d Wood1_diff.png
+
+map_Bump Wood1_nmap.png
+
+map_Ns Wood1_spec.png
+
+newmtl Blingbling1Mtl
+Material Color
+Ka 0.982826 0.827726 0.271577
+Kd 0.982826 0.827726 0.271577
+Ks 0.655218 0.551817 0.181052 
+
+d 1
+
+Ns 255
+
+map_Ka Union1_diff.png
+map_Kd Union1_diff.png
+map_d Union1_diff.png
+
+map_Bump Union1_nmap.png
+
+map_Ns Union1_spec.png
+
+newmtl Part6174Mtl
+Material Color
+Ka 0.00293232 0.859174 0.666117
+Kd 0.00293232 0.859174 0.666117
+Ks 8.0495e-05 0.0235852 0.0182856 
+
+d 1
+
+Ns 0
+
+map_Ka Linesegment1_diff.png
+map_Kd Linesegment1_diff.png
+map_d Linesegment1_diff.png
+
+map_Bump Linesegment1_nmap.png
+
+map_Ns Linesegment1_spec.png
+
+newmtl Wedge127Mtl
+Material Color
+Ka 0.325037 0.267358 0.157281
+Kd 0.325037 0.267358 0.157281
+Ks 0.0242184 0.0199208 0.011719 
+
+d 1
+
+Ns 0
+
+map_Ka Wood1_diff.png
+map_Kd Wood1_diff.png
+map_d Wood1_diff.png
+
+map_Bump Wood1_nmap.png
+
+map_Ns Wood1_spec.png
+
+newmtl Part6186Mtl
+Material Color
+Ka 1 0 0
+Kd 1 0 0
+Ks 0.027451 0 0 
+
+d 1
+
+Ns 0
+
+map_Ka Linesegment1_diff.png
+map_Kd Linesegment1_diff.png
+map_d Linesegment1_diff.png
+
+map_Bump Linesegment1_nmap.png
+
+map_Ns Linesegment1_spec.png
+

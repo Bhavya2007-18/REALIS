@@ -1,16 +1,12 @@
-/**
- * REALIS Frontend Physics Engine
- * Simplified engineering-grade simulation with Euler integration
- * Supports particles/bodies, rods, and springs.
- */
+
 
 export default class SimulationEngine {
     constructor(settings = {}) {
-        this.gravity = settings.gravity || { x: 0, y: 9.81 }; // Screen-space y is down
+        this.gravity = settings.gravity || { x: 0, y: 9.81 }; 
         this.timeStep = settings.timeStep || 0.016;
         this.bodies = [];
         this.constraints = [];
-        this.history = []; // For analysis
+        this.history = []; 
     }
 
     addBody(body) {
@@ -35,15 +31,15 @@ export default class SimulationEngine {
     update(dt) {
         const h = dt || this.timeStep;
 
-        // 1. Force Application (Gravity)
+        
         this.bodies.forEach(b => {
             if (b.isStatic) return;
             b.acceleration.x = this.gravity.x;
             b.acceleration.y = this.gravity.y;
         });
 
-        // 2. Resolve Constraints (Stick/Rod) - Simple relaxation
-        for (let i = 0; i < 5; i++) { // Iterations
+        
+        for (let i = 0; i < 5; i++) { 
             this.constraints.forEach(c => {
                 if (c.type === 'distance') {
                     const b1 = this.bodies.find(b => b.id === c.targetA);
@@ -51,7 +47,7 @@ export default class SimulationEngine {
                     if (!b1 || (!b2 && c.targetB !== null)) return;
 
                     const p1 = b1.position;
-                    // If targetB is null, it's pinned to the world at a specific point
+                    
                     const p2 = b2 ? b2.position : (c.anchorB || { x: p1.x, y: p1.y + c.distance });
 
                     const dx = p1.x - p2.x;
@@ -79,19 +75,19 @@ export default class SimulationEngine {
             });
         }
 
-        // 3. Integration (Euler)
+        
         this.bodies.forEach(b => {
             if (b.isStatic) return;
 
-            // Update velocity from acceleration
+            
             b.velocity.x += b.acceleration.x * h;
             b.velocity.y += b.acceleration.y * h;
 
-            // Update position from velocity
+            
             b.position.x += b.velocity.x * h;
             b.position.y += b.velocity.y * h;
 
-            // Damping (simple friction/drag)
+            
             b.velocity.x *= 0.999;
             b.velocity.y *= 0.999;
         });
@@ -100,7 +96,7 @@ export default class SimulationEngine {
     calculateEnergy() {
         let kinetic = 0;
         let potential = 0;
-        const groundY = 600; // Baseline for potential energy
+        const groundY = 600; 
 
         this.bodies.forEach(b => {
             if (b.isStatic) return;

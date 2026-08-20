@@ -1,7 +1,4 @@
-/**
- * @file Shader.cpp
- * @brief Shader implementation
- */
+
 #include "Shader.hpp"
 
 #include <cstdio>
@@ -24,7 +21,7 @@ Shader::Shader(const std::string &vertexSource,
   glLinkProgram(m_rendererID);
   glValidateProgram(m_rendererID);
 
-  // Check for linking errors
+  
   int success;
   glGetProgramiv(m_rendererID, GL_LINK_STATUS, &success);
   if (!success) {
@@ -41,7 +38,7 @@ Shader::Shader(const std::string &vertexSource,
     throw std::runtime_error("Shader program linking failed.");
   }
 
-  // Shaders can be deleted after linking
+  
   glDeleteShader(vs);
   glDeleteShader(fs);
 }
@@ -128,4 +125,4 @@ unsigned int Shader::compileShader(unsigned int type,
   return id;
 }
 
-} // namespace realis::renderer
+} 

@@ -1,14 +1,10 @@
-"""
-Smoothed Particle Hydrodynamics (SPH)
 
-Particle-based fluid simulation.
-"""
 
 import numpy as np
 
 
 def sph_simulation():
-    """Basic SPH simulation concepts"""
+    
     print("=== Smoothed Particle Hydrodynamics ===\n")
     print("SPH represents fluids as interacting particles.")
     print("Each particle carries properties: position, velocity, density, pressure.\n")

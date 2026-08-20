@@ -29,21 +29,21 @@ def test_simulation():
                 "type": "fixed",
                 "target_a": "body1",
                 "anchor": {"x": 0, "y": 10, "z": 0},
-                "axis": {"x": 0, "y": 1, "z": 0} # Fix Y axis
+                "axis": {"x": 0, "y": 1, "z": 0} 
             },
             {
                 "id": "fixed2",
                 "type": "fixed",
                 "target_a": "body1",
                 "anchor": {"x": 0, "y": 10, "z": 0},
-                "axis": {"x": 1, "y": 0, "z": 0} # Fix X axis
+                "axis": {"x": 1, "y": 0, "z": 0} 
             },
              {
                 "id": "fixed3",
                 "type": "fixed",
                 "target_a": "body1",
                 "anchor": {"x": 0, "y": 10, "z": 0},
-                "axis": {"x": 0, "y": 0, "z": 1} # Fix Z axis
+                "axis": {"x": 0, "y": 0, "z": 1} 
             }
         ],
         "time_step": 0.1,

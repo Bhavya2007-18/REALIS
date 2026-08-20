@@ -1,6 +1,6 @@
-// 3x3 matrix implementation
+
 #include "mat3.hpp"
-#include <cmath> // for std::abs if needed, though simple math here
+#include <cmath> 
 
 namespace realis {
 
@@ -60,7 +60,7 @@ Mat3 Mat3::transpose() const {
 }
 
 float Mat3::determinant() const {
-    // Rule of Sarrus
+    
     return data[0] * (data[4] * data[8] - data[5] * data[7]) -
            data[1] * (data[3] * data[8] - data[5] * data[6]) +
            data[2] * (data[3] * data[7] - data[4] * data[6]);
@@ -68,12 +68,12 @@ float Mat3::determinant() const {
 
 Mat3 Mat3::inverse() const {
     float invDet = 1.0f / determinant();
-    // Assuming non-singular for now (FEM elements shouldn't be degenerate)
+    
     
     Mat3 res;
-    // Cofactor matrix transposed
+    
     res.data[0] = (data[4] * data[8] - data[5] * data[7]) * invDet;
-    res.data[1] = (data[2] * data[7] - data[1] * data[8]) * invDet; // Transposed 1,0 -> 0,1
+    res.data[1] = (data[2] * data[7] - data[1] * data[8]) * invDet; 
     res.data[2] = (data[1] * data[5] - data[2] * data[4]) * invDet;
     
     res.data[3] = (data[5] * data[6] - data[3] * data[8]) * invDet;
@@ -97,4 +97,4 @@ Vec3 Mat3::row(int r) const {
     return Vec3(data[r * 3 + 0], data[r * 3 + 1], data[r * 3 + 2]);
 }
 
-} // namespace realis
+} 

@@ -1,35 +1,35 @@
-// =============================================================================
-// REALIS Physics Engine — Phase 4A: 1D Linear Elastic FEM
-// tests/fem/verify_bar1d.cpp
-//
-// Verification Suite for 1D Bar FEM Solver
-// =============================================================================
-//
-// Tests:
-//   Test 1 — Fixed-free bar under end load
-//             Analytical: u(x) = F*x / (E*A)
-//             FEM should match exactly (linear trial functions span exact soln)
-//
-//   Test 2 — Distributed (uniform) body load, fixed left end
-//             Analytical: u(x) = (f/(2EA)) * x * (2L - x)
-//             FEM converges but does NOT match exactly (quadratic soln, linear
-//             approx) Verify L2-norm error < tolerance
-//
-//   Test 3 — Mesh refinement convergence study
-//             n = 2, 4, 8, 16 elements (distributed load case)
-//             Assert error strictly decreasing with refinement
-//             Compute empirical convergence rate (expect ≈ 2 for linear
-//             elements)
-//
-//   Test 4 — Energy validation
-//             U = 0.5 * uᵀ K u > 0 after solve
-//             U doubles when F doubles → U scales as F² (correct quadratic
-//             behavior)
-//
-// =============================================================================
 
-// The solver headers use relative includes from engine/. Adjust include path:
-// Compiled with: -I../../engine (relative to tests/fem/) or from build system.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include "../../engine/fem/bar1d_solver.hpp"
 
 #include <algorithm>
@@ -40,9 +40,9 @@
 #include <string>
 #include <vector>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Minimal test harness (self-contained, no external dependency)
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 struct TestResult {
   std::string name;
   bool passed;
@@ -60,10 +60,10 @@ static void run_test(const std::string &name, bool pass,
   std::cout << "\n";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// L2 Error Norm: ||u_fem - u_exact|| / ||u_exact||   (relative)
-//   evaluated at all node positions
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 template <typename Fn>
 static double l2_relative_error(const std::vector<double> &node_x,
                                 const std::vector<double> &u_fem, Fn u_exact) {
@@ -74,20 +74,20 @@ static double l2_relative_error(const std::vector<double> &node_x,
     num += diff * diff;
     den += ue * ue;
   }
-  // Avoid division by zero if exact solution is trivially zero everywhere
+  
   if (den < 1e-30)
     return std::sqrt(num);
   return std::sqrt(num / den);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// l2_error_at_midpoints — L2 error at element MIDPOINTS (weighted by Le)
-//
-// For 1D linear FEM with constant body force, nodal displacements are
-// SUPERCONVERGENTLY EXACT (Galerkin property). To correctly reveal the O(h^2)
-// convergence of the interpolation, evaluate at midpoints where the error
-// is (h^2/8)*|u''| + O(h^4) — never zero.
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
 template <typename Fn>
 static double l2_error_at_midpoints(const realis::fem::Bar1DMesh &mesh,
                                     const std::vector<double> &u_fem,
@@ -108,41 +108,41 @@ static double l2_error_at_midpoints(const realis::fem::Bar1DMesh &mesh,
   return std::sqrt(num / den);
 }
 
-// =============================================================================
-// TEST 1 — Fixed-Free Bar Under End Point Load
-// =============================================================================
-// Material: E = 1e6 Pa, A = 1.0 m², L = 1.0 m
-// Load:     F = 1000 N applied at right end (node n_last)
-// BC:       u(0) = 0 (left end fixed)
-//
-// Analytical solution: u(x) = F*x / (EA)
-//   u_tip = F*L / (EA) = 1000 * 1 / (1e6 * 1) = 1e-3 m
-//
-// For linear 1D elements, the FEM solution IS EXACT because the
-// analytical solution u = Fx/EA is a linear function — perfectly
-// representable by the linear trial space. Error should be < 1e-9.
-// =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static void test1_fixed_free_end_load() {
   std::cout
       << "\n── Test 1: Fixed-Free Bar Under End Load ──────────────────────\n";
 
-  const double E = 1.0e6;  // Pa
-  const double A = 1.0;    // m²
-  const double L = 1.0;    // m
-  const double F = 1000.0; // N
-  const int n = 4;         // 4 elements (5 nodes)
+  const double E = 1.0e6;  
+  const double A = 1.0;    
+  const double L = 1.0;    
+  const double F = 1000.0; 
+  const int n = 4;         
 
   using namespace realis::fem;
 
   Bar1DMesh mesh = Bar1DMesh::uniform(L, n, E, A);
   Bar1DSolver solver(mesh);
 
-  solver.add_dirichlet(0, 0.0);              // u(x=0) = 0
-  solver.add_neumann(mesh.n_nodes() - 1, F); // F at right tip
+  solver.add_dirichlet(0, 0.0);              
+  solver.add_neumann(mesh.n_nodes() - 1, F); 
 
   Bar1DResult result = solver.solve();
 
-  // Analytical: u(x) = F*x/(EA)
+  
   auto u_exact = [&](double x) { return F * x / (E * A); };
 
   double u_tip_fem = result.u[mesh.n_nodes() - 1];
@@ -161,11 +161,11 @@ static void test1_fixed_free_end_load() {
   std::cout << "  Solver OK      = " << (result.converged ? "YES" : "NO")
             << "\n";
 
-  // Check full displacement field
+  
   double l2_err = l2_relative_error(mesh.node_positions, result.u, u_exact);
   std::cout << "  L2 field error = " << l2_err << "\n";
 
-  // For exact polynomial case, FEM should match to near float precision
+  
   run_test("End displacement matches analytical (rel err < 1e-5)",
            rel_error < 1e-5, "rel_err = " + std::to_string(rel_error));
 
@@ -179,39 +179,39 @@ static void test1_fixed_free_end_load() {
   run_test("Solver converged", result.converged, "");
 }
 
-// =============================================================================
-// TEST 2 — Fixed Bar Under Distributed Body Load
-// =============================================================================
-// Material: E = 1e6 Pa, A = 1.0 m², L = 1.0 m
-// Load:     f = 1000 N/m (uniform body force)
-// BC:       u(0) = 0 (left fixed), u(L) free
-//
-// Analytical solution: u(x) = (f / (2EA)) * x * (2L - x)
-//   u_tip = f * L² / (2EA) = 1000 * 1 / (2e6) = 5e-4 m
-//
-// The exact solution is quadratic in x. Linear 2-node elements approximate
-// this, but the error decreases with mesh refinement.
-// =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
 static void test2_distributed_load() {
   std::cout
       << "\n── Test 2: Distributed Body Load ──────────────────────────────\n";
 
-  const double E = 1.0e6;  // Pa
-  const double A = 1.0;    // m²
-  const double L = 1.0;    // m
-  const double f = 1000.0; // N/m
-  const int n = 8;         // 8 elements
+  const double E = 1.0e6;  
+  const double A = 1.0;    
+  const double L = 1.0;    
+  const double f = 1000.0; 
+  const int n = 8;         
 
   using namespace realis::fem;
 
   Bar1DMesh mesh = Bar1DMesh::uniform(L, n, E, A);
   Bar1DSolver solver(mesh);
   solver.body_force = f;
-  solver.add_dirichlet(0, 0.0); // u(0) = 0
+  solver.add_dirichlet(0, 0.0); 
 
   Bar1DResult result = solver.solve();
 
-  // Analytical: u(x) = f*x*(2L - x) / (2EA)
+  
   auto u_exact = [&](double x) {
     return f * x * (2.0 * L - x) / (2.0 * E * A);
   };
@@ -232,7 +232,7 @@ static void test2_distributed_load() {
   std::cout << "  Solver OK      = " << (result.converged ? "YES" : "NO")
             << "\n";
 
-  // With 8 linear elements, expect < 1% relative error
+  
   run_test(
       "Distributed load: tip displacement within 1% of analytical (8 elem)",
       rel_tip_err < 0.01, "rel_err = " + std::to_string(rel_tip_err));
@@ -244,34 +244,34 @@ static void test2_distributed_load() {
            "");
 }
 
-// =============================================================================
-// TEST 3 — Mesh Refinement Convergence Study
-// =============================================================================
-// Problem: uniform body force f, fixed left u(0)=0, free right.
-// Exact solution: u(x) = f*x*(2L-x)/(2EA)  — quadratic.
-//
-// IMPORTANT — SUPERCONVERGENCE NOTE:
-// For 1D linear FEM with constant f, the Galerkin method produces EXACT
-// nodal displacements for all mesh sizes. This is a mathematical property,
-// not a sign of incorrect implementation. The nodal error is at float
-// precision regardless of h.
-//
-// To correctly measure convergence rate, we evaluate the L2 error at
-// element MIDPOINTS, where the linear interpolation error is O(h²):
-//   |u_fem(x_mid) - u_exact(x_mid)| = (h²/8) * u''(x_mid) + O(h⁴)
-//
-// Expected convergence rate ≈ 2 in this norm.
-// =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static void test3_mesh_refinement() {
   std::cout
       << "\n── Test 3: Mesh Refinement Convergence Study ──────────────────\n";
   std::cout << "  (L2 error measured at element midpoints — avoids nodal "
                "superconvergence)\n";
 
-  const double E = 1.0e6;  // Pa
-  const double A = 1.0;    // m²
-  const double L = 1.0;    // m
-  const double f = 1000.0; // N/m
+  const double E = 1.0e6;  
+  const double A = 1.0;    
+  const double L = 1.0;    
+  const double f = 1000.0; 
 
   auto u_exact = [&](double x) {
     return f * x * (2.0 * L - x) / (2.0 * E * A);
@@ -316,7 +316,7 @@ static void test3_mesh_refinement() {
     }
   }
 
-  // Assert: error strictly decreasing
+  
   bool monotone = true;
   for (int i = 0; i + 1 < static_cast<int>(errors.size()); ++i) {
     if (errors[i + 1] >= errors[i]) {
@@ -326,7 +326,7 @@ static void test3_mesh_refinement() {
     }
   }
 
-  // Convergence rate: expect ≈ 2 for linear elements (accept [1.5, 3.0])
+  
   bool rates_ok = !rates.empty();
   for (double r : rates) {
     if (r < 1.5 || r > 3.0)
@@ -341,13 +341,13 @@ static void test3_mesh_refinement() {
            rates_ok ? "rates in expected range" : "rate outside [1.5, 3.0]");
 }
 
-// =============================================================================
-// TEST 4 — Energy Validation
-// =============================================================================
-// Check that elastic potential energy behaves physically:
-//   (a) U > 0 after any nonzero deformation
-//   (b) U scales as F² (since U = 0.5 uᵀKu and u ∝ F) — doubling F → 4x energy
-// =============================================================================
+
+
+
+
+
+
+
 static void test4_energy_validation() {
   std::cout
       << "\n── Test 4: Energy Validation ───────────────────────────────────\n";
@@ -380,7 +380,7 @@ static void test4_energy_validation() {
   std::cout << "  U2/U1 = " << std::fixed << std::setprecision(4) << ratio
             << "  (expected ≈ 4.0)\n";
 
-  // Analytical check: U = F²L/(2EA)
+  
   auto U_exact = [&](double F) { return F * F * L / (2.0 * E * A); };
   double U1_exact = U_exact(1000.0);
   double U2_exact = U_exact(2000.0);
@@ -409,9 +409,9 @@ static void test4_energy_validation() {
                " err2=" + std::to_string(energy_err2));
 }
 
-// =============================================================================
-// MAIN
-// =============================================================================
+
+
+
 int main() {
   std::cout
       << "=============================================================\n";

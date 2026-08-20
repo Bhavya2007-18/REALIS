@@ -6,7 +6,7 @@
 namespace realis::renderer {
 
 Grid::Grid(float size) : m_size(size) {
-  // 1. Create a large quad on the XZ plane
+  
   float vertices[] = {-size, 0.0f, -size, size,  0.0f, -size,
                       size,  0.0f, size,  -size, 0.0f, size};
 
@@ -17,12 +17,12 @@ Grid::Grid(float size) : m_size(size) {
                                         GL_STATIC_DRAW);
 
   VertexBufferLayout layout;
-  layout.pushFloat(3); // position
+  layout.pushFloat(3); 
   m_va->addBuffer(*m_vb, layout);
 
   m_ib = std::make_unique<IndexBuffer>(indices, 6, GL_STATIC_DRAW);
 
-  // 2. Procedural Grid Shader
+  
   const std::string vertexSrc = R"(
         #version 450 core
         layout(location = 0) in vec3 a_Pos;
@@ -30,7 +30,7 @@ Grid::Grid(float size) : m_size(size) {
         uniform mat4 u_VP;
         void main() {
             v_WorldPos = a_Pos;
-            // Apply slight Y offset to prevent Z-fighting with origin/axis
+            
             gl_Position = u_VP * vec4(a_Pos + vec3(0.0, -0.001, 0.0), 1.0);
         }
     )";
@@ -48,16 +48,16 @@ Grid::Grid(float size) : m_size(size) {
         }
 
         void main() {
-            // Major lines every 5.0 units, Minor every 1.0
+            
             float major = grid(v_WorldPos.xz, 5.0);
             float minor = grid(v_WorldPos.xz, 1.0);
             
-            vec3 color = vec3(0.5); // Light grey minor lines
-            color = mix(color, vec3(0.9), major); // White major lines
+            vec3 color = vec3(0.5); 
+            color = mix(color, vec3(0.9), major); 
             
             float alpha = max(major * 0.3, minor * 0.15);
             
-            // Fade based on distance to center
+            
             float dist = length(v_WorldPos.xz);
             alpha *= (1.0 - smoothstep(0.0, 100.0, dist));
 
@@ -74,7 +74,7 @@ void Grid::draw(const Renderer &renderer, const Camera &camera) const {
   m_shader->setUniformMat4("u_VP", camera.getProjectionMatrix() *
                                        camera.getViewMatrix());
 
-  // We need to enable blending for the alpha-based procedural grid
+  
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -83,4 +83,4 @@ void Grid::draw(const Renderer &renderer, const Camera &camera) const {
   glDisable(GL_BLEND);
 }
 
-} // namespace realis::renderer
+} 

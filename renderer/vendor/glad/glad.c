@@ -1,10 +1,4 @@
-/*
- * GLAD - OpenGL Loader - C Implementation
- * For OpenGL 4.5 Core Profile + GL_KHR_debug
- *
- * This file loads all required OpenGL function pointers using the
- * loader provided by GLFW (glfwGetProcAddress).
- */
+
 
 #include "glad.h"
 #include <stdlib.h>
@@ -12,9 +6,7 @@
 
 struct gladGLversionStruct GLVersion = {0, 0};
 
-/* =========================================================================
- * Function pointer storage
- * ========================================================================= */
+
 PFNGLDEBUGMESSAGECALLBACKPROC glad_glDebugMessageCallback = NULL;
 PFNGLDEBUGMESSAGECONTROLPROC glad_glDebugMessageControl = NULL;
 PFNGLCLEARPROC glad_glClear = NULL;
@@ -61,11 +53,9 @@ PFNGLUNIFORM3FPROC glad_glUniform3f = NULL;
 PFNGLUNIFORMMATRIX4FVPROC glad_glUniformMatrix4fv = NULL;
 PFNGLDRAWELEMENTSPROC glad_glDrawElements = NULL;
 
-/* =========================================================================
- * Version query helper
- * ========================================================================= */
+
 static void gladLoadGLVersion(GLADloadproc load) {
-  /* We temporarily use the raw function pointer here */
+  
   PFNGLGETSTRINGPROC get_str = (PFNGLGETSTRINGPROC)load("glGetString");
   if (!get_str) {
     GLVersion.major = 0;
@@ -81,7 +71,7 @@ static void gladLoadGLVersion(GLADloadproc load) {
   }
 
   int major = 0, minor = 0;
-  /* Parse "M.m ..." format */
+  
   while (*version_str && (*version_str < '0' || *version_str > '9'))
     version_str++;
   while (*version_str >= '0' && *version_str <= '9')
@@ -95,14 +85,12 @@ static void gladLoadGLVersion(GLADloadproc load) {
   GLVersion.minor = minor;
 }
 
-/* =========================================================================
- * Loader
- * ========================================================================= */
+
 int gladLoadGLLoader(GLADloadproc load) {
   gladLoadGLVersion(load);
 
   if (GLVersion.major < 4 || (GLVersion.major == 4 && GLVersion.minor < 5)) {
-    /* OpenGL 4.5 not available */
+    
     return 0;
   }
 
@@ -120,7 +108,7 @@ int gladLoadGLLoader(GLADloadproc load) {
   glad_glGetIntegerv = (PFNGLGETINTEGERVPROC)load("glGetIntegerv");
   glad_glPolygonMode = (PFNGLPOLYGONMODEPROC)load("glPolygonMode");
 
-  /* New functions */
+  
   glad_glGenBuffers = (PFNGLGENBUFFERSPROC)load("glGenBuffers");
   glad_glBindBuffer = (PFNGLBINDBUFFERPROC)load("glBindBuffer");
   glad_glBufferData = (PFNGLBUFFERDATAPROC)load("glBufferData");
@@ -158,13 +146,13 @@ int gladLoadGLLoader(GLADloadproc load) {
       (PFNGLUNIFORMMATRIX4FVPROC)load("glUniformMatrix4fv");
   glad_glDrawElements = (PFNGLDRAWELEMENTSPROC)load("glDrawElements");
 
-  /* Debug extension */
+  
   glad_glDebugMessageCallback =
       (PFNGLDEBUGMESSAGECALLBACKPROC)load("glDebugMessageCallback");
   glad_glDebugMessageControl =
       (PFNGLDEBUGMESSAGECONTROLPROC)load("glDebugMessageControl");
 
-  /* Verify critical functions loaded */
+  
   if (!glad_glClear || !glad_glEnable || !glad_glGetError ||
       !glad_glGenBuffers) {
     return 0;
@@ -174,6 +162,6 @@ int gladLoadGLLoader(GLADloadproc load) {
 }
 
 int gladLoadGL(void) {
-  /* Cannot load without a loader function */
+  
   return 0;
 }

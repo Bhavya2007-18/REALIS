@@ -24,7 +24,7 @@ void verify_pendulum(Integrator *integrator, float dt) {
   RigidBody b1;
   b1.mass = 1.0f;
   b1.inv_mass = 1.0f;
-  b1.position = Vec3(2.0f, 0, 0); // Start horizontally to left
+  b1.position = Vec3(2.0f, 0, 0); 
   b1.velocity = Vec3(0, 0, 0);
   b1.shape = &s1;
 
@@ -32,15 +32,15 @@ void verify_pendulum(Integrator *integrator, float dt) {
 
   Vec3 anchor(0, 0, 0);
 
-  // Instead of FixedConstraint1D, since we just want a pendulum we can use
-  // DistanceConstraint with a fake static anchor body
+  
+  
   RigidBody anchor_body;
   anchor_body.mass = 0.0f;
-  anchor_body.inv_mass = 0.0f; // Infinite mass, won't move
+  anchor_body.inv_mass = 0.0f; 
   anchor_body.position = anchor;
   anchor_body.velocity = Vec3(0, 0, 0);
-  anchor_body.shape = &s1; // Add generic shape to avoid segfaults in engine
-                           // internals if accessed
+  anchor_body.shape = &s1; 
+                           
   world.add_body(&anchor_body);
 
   DistanceConstraint link(&anchor_body, &b1, 2.0f);
@@ -56,7 +56,7 @@ void verify_pendulum(Integrator *integrator, float dt) {
 
   float max_drift = 0.0f;
 
-  // Simulate ~5 seconds
+  
   int steps = static_cast<int>(5.0f / dt);
   for (int i = 0; i < steps; ++i) {
     world.step();
@@ -86,7 +86,7 @@ int main() {
 
   SemiImplicitEuler semi_euler;
   verify_pendulum(&semi_euler, 0.01f);
-  verify_pendulum(&semi_euler, 0.005f); // Half timestep to verify convergence
+  verify_pendulum(&semi_euler, 0.005f); 
 
   return 0;
 }

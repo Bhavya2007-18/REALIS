@@ -5,17 +5,17 @@
 namespace realis::renderer {
 
 AxisRenderer::AxisRenderer(float length) {
-  // 1. Create Axis Vertices (Red:X, Green:Y, Blue:Z)
-  // [Pos3, Color3]
+  
+  
   float vertices[] = {
-      0.0f,   0.0f,   0.0f,   1.0f, 0.0f, 0.0f, // Origin (Red X start)
-      length, 0.0f,   0.0f,   1.0f, 0.0f, 0.0f, // X end
+      0.0f,   0.0f,   0.0f,   1.0f, 0.0f, 0.0f, 
+      length, 0.0f,   0.0f,   1.0f, 0.0f, 0.0f, 
 
-      0.0f,   0.0f,   0.0f,   0.0f, 1.0f, 0.0f, // Origin (Green Y start)
-      0.0f,   length, 0.0f,   0.0f, 1.0f, 0.0f, // Y end
+      0.0f,   0.0f,   0.0f,   0.0f, 1.0f, 0.0f, 
+      0.0f,   length, 0.0f,   0.0f, 1.0f, 0.0f, 
 
-      0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 1.0f, // Origin (Blue Z start)
-      0.0f,   0.0f,   length, 0.0f, 0.0f, 1.0f  // Z end
+      0.0f,   0.0f,   0.0f,   0.0f, 0.0f, 1.0f, 
+      0.0f,   0.0f,   length, 0.0f, 0.0f, 1.0f  
   };
 
   unsigned int indices[] = {0, 1, 2, 3, 4, 5};
@@ -25,13 +25,13 @@ AxisRenderer::AxisRenderer(float length) {
                                         GL_STATIC_DRAW);
 
   VertexBufferLayout layout;
-  layout.pushFloat(3); // position
-  layout.pushFloat(3); // color
+  layout.pushFloat(3); 
+  layout.pushFloat(3); 
   m_va->addBuffer(*m_vb, layout);
 
   m_ib = std::make_unique<IndexBuffer>(indices, 6, GL_STATIC_DRAW);
 
-  // 2. Simple Line Shader
+  
   const std::string vertexSrc = R"(
         #version 450 core
         layout(location = 0) in vec3 a_Pos;
@@ -61,8 +61,8 @@ void AxisRenderer::draw(const Renderer &renderer, const Camera &camera) const {
   m_shader->setUniformMat4("u_VP", camera.getProjectionMatrix() *
                                        camera.getViewMatrix());
 
-  // We explicitly draw as lines
+  
   renderer.drawLines(*m_va, *m_ib, *m_shader);
 }
 
-} // namespace realis::renderer
+} 

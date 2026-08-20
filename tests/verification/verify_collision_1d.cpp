@@ -45,19 +45,19 @@ void verify_1d_collision(Integrator *integrator, float dt) {
   std::cout << "  v1: " << b1.velocity.x << " m/s\n";
   std::cout << "  v2: " << b2.velocity.x << " m/s\n\n";
 
-  // Expected analytical result (e=1):
-  // v1' = ((m1 - m2)v1 + 2m2 v2) / (m1 + m2)
-  // v2' = (2m1 v1 + (m2 - m1)v2) / (m1 + m2)
+  
+  
+  
   float expected_v1 = ((2.0f - 3.0f) * 2.0f + 2.0f * 3.0f * (-1.0f)) /
-                      5.0f; // (-2 - 6) / 5 = -1.6
+                      5.0f; 
   float expected_v2 = (2.0f * 2.0f * 2.0f + (3.0f - 2.0f) * (-1.0f)) /
-                      5.0f; // (8 - 1) / 5 = 1.4
+                      5.0f; 
 
   bool collided = false;
   for (int i = 0; i < 1000; ++i) {
     world.step();
 
-    // Check if velocities have changed indicating a collision resolved
+    
     if (!collided && (std::abs(b1.velocity.x - 2.0f) > 0.001f)) {
       collided = true;
       std::cout << "Collision occurred around t = " << world.get_time()

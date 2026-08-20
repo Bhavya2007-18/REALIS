@@ -6,9 +6,7 @@
 
 namespace realis::scene {
 
-/**
- * @brief Axis-Aligned Bounding Box (AABB) in 3D space.
- */
+
 struct AABB {
   glm::vec3 min;
   glm::vec3 max;
@@ -17,18 +15,13 @@ struct AABB {
 
   AABB(const glm::vec3 &min_, const glm::vec3 &max_) : min(min_), max(max_) {}
 
-  /**
-   * @brief Expand AABB to include a point.
-   */
+  
   void expand(const glm::vec3 &point) {
     min = glm::min(min, point);
     max = glm::max(max, point);
   }
 
-  /**
-   * @brief Transform this AABB by a matrix and compute the new AABB.
-   * Note: This recomputes the bounding box of the transformed 8 corners.
-   */
+  
   AABB transformed(const glm::mat4 &matrix) const {
     glm::vec3 corners[8] = {{min.x, min.y, min.z}, {min.x, min.y, max.z},
                             {min.x, max.y, min.z}, {min.x, max.y, max.z},
@@ -48,4 +41,4 @@ struct AABB {
   }
 };
 
-} // namespace realis::scene
+} 

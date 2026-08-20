@@ -20,18 +20,18 @@ void test_ray_aabb_intersection() {
 
   AABB box(glm::vec3(-1.0f), glm::vec3(1.0f));
 
-  // 1. Straight hit
+  
   Ray ray1(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f));
   float t1;
   assert(intersectRayAABB(ray1, box, t1) && "Should hit box from front");
   assert(std::abs(t1 - 4.0f) < 0.001f && "Distance should be 4.0");
 
-  // 2. Miss
+  
   Ray ray2(glm::vec3(2.0f, 2.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f));
   float t2;
   assert(!intersectRayAABB(ray2, box, t2) && "Should miss box");
 
-  // 3. Oblique hit
+  
   Ray ray3(glm::vec3(-2.0f, -2.0f, -2.0f),
            glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)));
   float t3;
@@ -45,13 +45,13 @@ void test_aabb_transformation() {
 
   AABB localBox(glm::vec3(-0.5f), glm::vec3(0.5f));
 
-  // Translate and Scale
+  
   glm::mat4 mat = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
   mat = glm::scale(mat, glm::vec3(2.0f));
 
   AABB worldBox = localBox.transformed(mat);
 
-  // Expected: centered at 10, size 2 -> [9, 11] on X, [-1, 1] on Y/Z
+  
   assert(std::abs(worldBox.min.x - 9.0f) < 0.001f);
   assert(std::abs(worldBox.max.x - 11.0f) < 0.001f);
   assert(std::abs(worldBox.min.y - (-1.0f)) < 0.001f);
@@ -64,12 +64,12 @@ void test_closest_hit_selection() {
 
   auto root = std::make_unique<SceneNode>("Root");
 
-  // Front box (closer)
+  
   auto front = std::make_unique<SceneNode>("Front");
   front->localAABB = AABB(glm::vec3(-0.5f), glm::vec3(0.5f));
   front->localTransform.setPosition({0.0f, 0.0f, 2.0f});
 
-  // Back box (further)
+  
   auto back = std::make_unique<SceneNode>("Back");
   back->localAABB = AABB(glm::vec3(-0.5f), glm::vec3(0.5f));
   back->localTransform.setPosition({0.0f, 0.0f, -2.0f});
@@ -78,7 +78,7 @@ void test_closest_hit_selection() {
   root->addChild(std::move(back));
   root->updateWorldMatrix();
 
-  // Ray pointing from +Z to -Z
+  
   Ray ray(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, -1.0f));
   float t;
   SceneNode *hit = root->pickChild(ray, t);

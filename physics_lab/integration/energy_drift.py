@@ -1,24 +1,20 @@
-"""
-Energy Drift Analysis
 
-Compare energy drift across different integration methods.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def analyze_integrator_energy_drift():
-    """Compare energy drift for multiple integrators"""
+    
     print("=== Integrator Energy Drift Comparison ===\n")
     
-    # Test on harmonic oscillator
+    
     omega = 1.0
     x0, v0 = 1.0, 0.0
     t_end = 100.0
     dt = 0.1
     
-    # Forward Euler
+    
     def forward_euler():
         num_steps = int(t_end / dt)
         x, v = x0, v0
@@ -31,7 +27,7 @@ def analyze_integrator_energy_drift():
             x, v = x_new, v_new
         return np.array(energies)
     
-    # Semi-implicit Euler
+    
     def semi_implicit_euler():
         num_steps = int(t_end / dt)
         x, v = x0, v0
@@ -44,7 +40,7 @@ def analyze_integrator_energy_drift():
             x, v = x_new, v_new
         return np.array(energies)
     
-    # Velocity Verlet
+    
     def verlet():
         num_steps = int(t_end / dt)
         x, v = x0, v0
@@ -58,14 +54,14 @@ def analyze_integrator_energy_drift():
             x, v, a = x_new, v_new, a_new
         return np.array(energies)
     
-    # Run simulations
+    
     E_forward = forward_euler()
     E_semi = semi_implicit_euler()
     E_verlet = verlet()
     
     times = np.arange(len(E_forward)) * dt
     
-    # Calculate drift
+    
     def calc_drift(E):
         return (E - E[0]) / E[0] * 100
     
@@ -73,10 +69,10 @@ def analyze_integrator_energy_drift():
     drift_semi = calc_drift(E_semi)
     drift_verlet = calc_drift(E_verlet)
     
-    # Plot
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     
-    # Normalized energy
+    
     ax1.plot(times, E_forward / E_forward[0], 'r--', label='Forward Euler', linewidth=2, alpha=0.7)
     ax1.plot(times, E_semi / E_semi[0], 'g-', label='Semi-Implicit', linewidth=2)
     ax1.plot(times, E_verlet / E_verlet[0], 'b-', label='Verlet', linewidth=2)
@@ -87,7 +83,7 @@ def analyze_integrator_energy_drift():
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    # Drift percentage (log scale)
+    
     ax2.semilogy(times, np.abs(drift_forward) + 1e-10, 'r--', label='Forward Euler', linewidth=2, alpha=0.7)
     ax2.semilogy(times, np.abs(drift_semi) + 1e-10, 'g-', label='Semi-Implicit', linewidth=2)
     ax2.semilogy(times, np.abs(drift_verlet) + 1e-10, 'b-', label='Verlet', linewidth=2)
@@ -101,7 +97,7 @@ def analyze_integrator_energy_drift():
     plt.savefig('energy_drift_comparison.png', dpi=150)
     print("📊 Plot saved to energy_drift_comparison.png\n")
     
-    # Print statistics
+    
     print("Energy Drift after 100s:")
     print(f"Forward Euler:     {drift_forward[-1]:+.3f}%")
     print(f"Semi-Implicit:     {drift_semi[-1]:+.6f}%")

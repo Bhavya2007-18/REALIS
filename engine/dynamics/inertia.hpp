@@ -1,4 +1,4 @@
-// Inertia Tensor Helpers
+
 #pragma once
 #include "../math/mat3.hpp"
 
@@ -11,4 +11,4 @@ public:
     static Mat3 cylinder(float mass, float radius, float height);
 };
 
-} // namespace realis
+} 

@@ -1,5 +1,5 @@
-// Timestep Stability Mapper
-// Sweeps solver over dt range, records energy drift and error growth
+
+
 
 #pragma once
 #include <functional>
@@ -21,9 +21,9 @@ struct StabilityPoint {
 
 class StabilityMapper {
 public:
-  // runner(dt) -> {energy_drift, L2_error}
-  // The runner function runs the solver at timestep dt and returns the key
-  // metrics
+  
+  
+  
   using SolverRunner = std::function<std::pair<double, double>(double)>;
 
   static std::vector<StabilityPoint> sweep(SolverRunner runner, double dt_min,
@@ -51,7 +51,7 @@ public:
         return (i > 0) ? map[i - 1].dt : map[i].dt;
       }
     }
-    return map.back().dt; // All stable
+    return map.back().dt; 
   }
 
   static void print_table(const std::vector<StabilityPoint> &map,
@@ -71,5 +71,5 @@ public:
   }
 };
 
-} // namespace verification
-} // namespace realis
+} 
+} 

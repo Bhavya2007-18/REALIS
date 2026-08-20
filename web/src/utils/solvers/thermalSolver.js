@@ -1,8 +1,4 @@
-/**
- * REALIS Thermal Solver
- * Simulates heat diffusion between bodies.
- * Produces per-body temperature maps for heatmap rendering.
- */
+
 
 import { diffuseHeat, tempToColor, analyzeThermal } from '../physicsEngine.js';
 
@@ -14,9 +10,9 @@ export default class ThermalSolver {
             conductivityScale: settings.conductivityScale ?? 1.0,
         };
         this.bodies = [];
-        this.temperatureMap = new Map(); // id → temperature (°C)
+        this.temperatureMap = new Map(); 
         this.time = 0;
-        this.history = []; // [{ time, temps }]
+        this.history = []; 
     }
 
     setBodies(rawBodies) {
@@ -28,7 +24,7 @@ export default class ThermalSolver {
             mass: b.mass ?? 1,
         }));
 
-        // Initialize temperature map
+        
         this.bodies.forEach(b => {
             this.temperatureMap.set(b.id, b.temperature);
         });
@@ -51,11 +47,9 @@ export default class ThermalSolver {
         this.settings = { ...this.settings, ...settings };
     }
 
-    /**
-     * Run one thermal simulation step. Returns temperature map + analytics.
-     */
+    
     step() {
-        // Apply boundary conditions (heat sources/sinks)
+        
         this.bodies.forEach(b => {
             if (b.isHeatSource) {
                 this.temperatureMap.set(b.id, b.sourceTemp ?? 500);
@@ -64,15 +58,15 @@ export default class ThermalSolver {
             }
         });
 
-        // Attach current temps to bodies for diffusion
+        
         this.bodies.forEach(b => {
             b.temperature = this.temperatureMap.get(b.id) ?? this.settings.ambientTemp;
         });
 
-        // Diffuse heat
-        const newTemps = diffuseHeat(this.bodies, this.settings.timeStep * 50); // scale for visible effect
+        
+        const newTemps = diffuseHeat(this.bodies, this.settings.timeStep * 50); 
 
-        // Merge back (heat sources/sinks stay fixed)
+        
         newTemps.forEach((temp, id) => {
             const body = this.bodies.find(b => b.id === id);
             if (body && !body.isHeatSource && !body.isHeatSink) {
@@ -82,7 +76,7 @@ export default class ThermalSolver {
 
         this.time += this.settings.timeStep;
 
-        // Record history (throttled)
+        
         if (this.history.length === 0 || this.time - this.history[this.history.length - 1].time > 0.1) {
             const snapshot = {};
             this.temperatureMap.forEach((t, id) => { snapshot[id] = t; });

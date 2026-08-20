@@ -1,4 +1,4 @@
-// Impulse-based contact resolution
+
 #pragma once
 #include "../collision/contact.hpp"
 #include "../dynamics/rigid_body.hpp"
@@ -11,4 +11,4 @@ public:
                               const Contact &contact);
 };
 
-} // namespace realis
+} 

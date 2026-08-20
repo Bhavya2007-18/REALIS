@@ -1,0 +1,96 @@
+newmtl Blobbyblobbuildalertcoderf1Mtl
+Material Color
+Ka 0.14198 0.0477758 0.0169881
+Kd 0.14198 0.0477758 0.0169881
+Ks 0.0105789 0.00355976 0.00126578 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalertcoderf1_diff.png
+map_Kd Blobbyblobbuildalertcoderf1_diff.png
+map_d Blobbyblobbuildalertcoderf1_diff.png
+
+map_Bump Blobbyblobbuildalertcoderf1_nmap.png
+
+map_Ns Blobbyblobbuildalertcoderf1_spec.png
+
+newmtl Blobbyblobbuildalllllfredo58Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo58_diff.png
+map_Kd Blobbyblobbuildalllllfredo58_diff.png
+map_d Blobbyblobbuildalllllfredo58_diff.png
+
+newmtl Blobbyblobbuildalllllfredo1Mtl
+Material Color
+Ka 0.940601 0.940601 0.940601
+Kd 0.940601 0.940601 0.940601
+Ks 0.0516408 0.0516408 0.0516408 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo1_diff.png
+map_Kd Blobbyblobbuildalllllfredo1_diff.png
+map_d Blobbyblobbuildalllllfredo1_diff.png
+
+map_Bump Blobbyblobbuildalllllfredo1_nmap.png
+
+map_Ns Blobbyblobbuildalllllfredo1_spec.png
+
+newmtl Blobbyblobbuildalllllfredo51Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo51_diff.png
+map_Kd Blobbyblobbuildalllllfredo51_diff.png
+map_d Blobbyblobbuildalllllfredo51_diff.png
+
+newmtl Blobbyblobbuildalllllfredo2Mtl
+Material Color
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.054902 0.054902 0.054902 
+
+d 1
+
+Ns 0
+
+map_Ka Blobbyblobbuildalllllfredo2_diff.png
+map_Kd Blobbyblobbuildalllllfredo2_diff.png
+map_d Blobbyblobbuildalllllfredo2_diff.png
+
+newmtl Linesegment1Mtl
+Material Color
+Ka 0.687031 0.56681 0.329729
+Kd 0.687031 0.56681 0.329729
+Ks 0.0188597 0.0155595 0.00905139 
+
+d 1
+
+Ns 0
+
+map_Ka Linesegment1_diff.png
+map_Kd Linesegment1_diff.png
+map_d Linesegment1_diff.png
+
+map_Bump Linesegment1_nmap.png
+
+map_Ns Linesegment1_spec.png
+

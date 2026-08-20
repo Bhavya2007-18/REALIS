@@ -1,4 +1,4 @@
-// Scene loading
+
 #pragma once
 #include <string>
 
@@ -9,4 +9,4 @@ public:
     void load(const std::string& path);
 };
 
-} // namespace realis
+} 

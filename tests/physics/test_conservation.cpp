@@ -1,4 +1,4 @@
-// Physics conservation tests
+
 #include "../test_harness.hpp"
 #include "../../engine/dynamics/rigid_body.hpp"
 #include "../../engine/collision/collision_detector.hpp"

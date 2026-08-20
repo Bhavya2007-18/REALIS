@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight } from 'lucide-react'
+import { Sparkles, Send, FileBarChart, Loader2, Zap, Anchor, Weight, Layers, ChevronRight, X } from 'lucide-react'
 import useStore from '../store/useStore'
-import commandHandler from '../services/commandHandler'
-import modelLoader from '../services/modelLoader'
+import { runAgent } from '../services/aiAgentLoop'
+import { serializeSceneForPrompt } from '../services/sceneSerializer'
 
-export default function AIChatBot() {
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+
+export default function AIChatBot({ toggleAIPanel }) {
     const isAIPanelOpen = useStore((s) => s.isAIPanelOpen)
     const addCADObject = useStore((s) => s.addCADObject)
     const objects = useStore((s) => s.objects)
@@ -42,94 +44,42 @@ export default function AIChatBot() {
         setInputValue('')
         setIsTyping(true)
 
-        // ── 1. Check for local Command Handler (Demo Models & Sim Commands) ───────────────
-        const localAction = commandHandler.handleCommand(msg)
-        if (localAction) {
-            // Update memory
-            useStore.setState(s => ({ aiMemory: [msg, ...(s.aiMemory || [])].slice(0, 3) }));
-
-            setTimeout(() => {
-                let actionColor = 'CREATE_CAD';
-                if (localAction.type === 'LOAD_MODEL') {
-                    modelLoader.loadModel(localAction.model)
-                } else if (localAction.type === 'TRIGGER_SIMULATION') {
-                    useStore.setState({ isPlaying: true });
-                    actionColor = 'SET_PHYSICS';
-                } else if (localAction.type === 'AI_INSIGHT') {
-                    actionColor = 'SET_PHYSICS';
-                } else if (localAction.type === 'SET_MATERIAL') {
-                    actionColor = 'SET_PHYSICS';
-                    if (activeFileId) {
-                        setObjects(prev => prev.map(o => 
-                            o.id === activeFileId ? { ...o, material: localAction.material } : o
-                        ));
-                    }
-                }
-
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: localAction.reply,
-                    actionType: actionColor
-                }])
-                setIsTyping(false)
-            }, 800) // Small delay for "AI thinking" feel
-            return
+        const backendFetch = async (userInput) => {
+            const req = await fetch(`${API_BASE}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [...messages, userMsg],
+                    scene: serializeSceneForPrompt()
+                })
+            })
+            if (!req.ok) throw new Error("API Error")
+            return req.json()
         }
 
         try {
-            const req = await fetch('http://localhost:8000/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: [...messages, userMsg] })
-            })
+            const result = await runAgent(msg, { backendFetch })
 
-            if (!req.ok) throw new Error("API Error")
-            const res = await req.json()
-
-            // ── Execute AI actions ─────────────────────────────────────────
-            if (res.actions && res.actions.length > 0) {
-                res.actions.forEach(action => {
-
-                    // Create CAD geometry
-                    if (action.type === 'CREATE_CAD') {
-                        addCADObject({
-                            id: Math.random().toString(36).substring(2, 9),
-                            ...action.payload,
-                            stroke: '#3b82f6',
-                            fill: 'rgba(59, 130, 246, 0.2)',
-                            strokeWidth: 2,
-                            rotation: 0
-                        })
-                    }
-
-                    // Set physics property on selected object
-                    if (action.type === 'SET_PHYSICS' && activeFileId) {
-                        const { field, value } = action.payload
-                        setObjects(prev => prev.map(o =>
-                            o.id === activeFileId ? { ...o, [field]: value } : o
-                        ))
-                    }
-
-                    // Add a joint constraint
-                    if (action.type === 'ADD_JOINT' && activeFileId) {
-                        const { type } = action.payload
-                        setConstraints(prev => [...prev, {
-                            id: `joint_${Math.random().toString(36).substring(2, 7)}`,
-                            type,
-                            targetA: activeFileId,
-                            targetB: null,
-                            distance: 100,
-                        }])
-                    }
-                })
+            let content = result.reply
+            let actionColor = null
+            const tool = result.toolCalls?.find(tc => tc.tool !== 'ask_user')
+            if (tool) {
+                const map = {
+                    set_physics: 'SET_PHYSICS',
+                    add_joint: 'ADD_JOINT',
+                    create_object: 'CREATE_CAD',
+                    create_shape3d: 'CREATE_CAD',
+                    load_model: 'LOAD_MODEL',
+                    run_simulation: 'SET_PHYSICS'
+                }
+                actionColor = map[tool.tool]
             }
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: res.reply,
-                actionType: res.actions?.[0]?.type // for color coding
+                content,
+                actionType: actionColor
             }])
-
         } catch (err) {
             console.error(err)
             setMessages(prev => [...prev, { role: 'assistant', content: "⚠️ Could not connect to the REALIS AI server. Please ensure `python server.py` is running." }])
@@ -165,7 +115,7 @@ export default function AIChatBot() {
 
     return (
         <aside className="w-80 border-l border-slate-800 bg-slate-950/80 backdrop-blur-xl flex flex-col shrink-0">
-            {/* Header */}
+            {}
             <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-gradient-to-r from-primary/10 to-violet-500/5">
                 <div className="size-7 bg-gradient-to-br from-primary to-violet-500 rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
                     <Sparkles size={14} className="text-white" />
@@ -182,10 +132,13 @@ export default function AIChatBot() {
                 <div className="ml-auto flex items-center gap-1.5">
                     <span className="size-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-[9px] text-green-400">Online</span>
+                    <button onClick={toggleAIPanel} className="text-slate-500 hover:text-slate-300 transition-colors">
+                        <X size={16} />
+                    </button>
                 </div>
             </div>
 
-            {/* Insights & Memory */}
+            {}
             <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/40 text-[10px] space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px]">AI Insights</span>
@@ -205,7 +158,7 @@ export default function AIChatBot() {
                 )}
             </div>
 
-            {/* Messages */}
+            {}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -235,7 +188,7 @@ export default function AIChatBot() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Prompts */}
+            {}
             <div className="px-4 pt-3 pb-2 border-t border-slate-800/60">
                 <p className="text-[9px] text-slate-600 uppercase tracking-wider font-bold mb-2">Quick Commands</p>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -253,7 +206,7 @@ export default function AIChatBot() {
                 </div>
             </div>
 
-            {/* Input */}
+            {}
             <div className="p-4 bg-slate-900/50 border-t border-slate-800">
                 {activeFileId && (
                     <div className="text-[9px] text-slate-500 mb-2 flex items-center gap-1.5 px-1">

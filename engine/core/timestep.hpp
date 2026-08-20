@@ -1,4 +1,4 @@
-// Fixed timestep control
+
 #pragma once
 
 namespace realis {
@@ -16,4 +16,4 @@ public:
     void reset();
 };
 
-} // namespace realis
+} 

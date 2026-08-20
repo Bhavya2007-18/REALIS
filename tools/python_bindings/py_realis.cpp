@@ -1,5 +1,5 @@
-// Python bindings for REALIS engine
-// Using pybind11 (placeholder)
+
+
 
 #include "../engine/dynamics/rigid_body.hpp"
 #include "../engine/math/vec3.hpp"
@@ -13,7 +13,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(py_realis, m) {
   m.doc() = "REALIS Physics Engine Python Bindings";
 
-  // Vec3 bindings
+  
   py::class_<realis::Vec3>(m, "Vec3")
       .def(py::init<>())
       .def(py::init<float, float, float>())
@@ -21,7 +21,7 @@ PYBIND11_MODULE(py_realis, m) {
       .def_readwrite("y", &realis::Vec3::y)
       .def_readwrite("z", &realis::Vec3::z);
 
-  // RigidBody bindings
+  
   py::class_<realis::RigidBody>(m, "RigidBody")
       .def(py::init<>())
       .def_readwrite("position", &realis::RigidBody::position)

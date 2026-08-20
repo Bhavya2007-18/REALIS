@@ -1,5 +1,5 @@
-// CAD Topology Types
-// Defines the "Truth" structure for ingested geometry
+
+
 #pragma once
 #include <vector>
 #include <string>
@@ -8,10 +8,10 @@
 namespace realis {
 namespace cad {
 
-// Geometric tolerance configuration
+
 struct CADTolerances {
-    float linear_tolerance = 1e-4f;  // 0.1 mm
-    float angular_tolerance = 1e-3f; // radians
+    float linear_tolerance = 1e-4f;  
+    float angular_tolerance = 1e-3f; 
 };
 
 enum class TopoType {
@@ -22,7 +22,7 @@ enum class TopoType {
     COMPOUND
 };
 
-// Abstract base for topological entities
+
 struct TopoDS_Shape {
     TopoType type;
     std::string id;
@@ -40,15 +40,15 @@ struct Vertex : public TopoDS_Shape {
 struct Edge : public TopoDS_Shape {
     Vertex* v1;
     Vertex* v2;
-    // In a real kernel, this would hold the curve definition (Line, Arc, BSpline)
-    // For now, we enforce linear segments or explicit discretization
+    
+    
     
     Edge(Vertex* start, Vertex* end) : TopoDS_Shape(TopoType::EDGE), v1(start), v2(end) {}
 };
 
 struct Face : public TopoDS_Shape {
-    std::vector<Edge*> edges; // Loop
-    Vec3 normal; // Planar assumption for Phase 6A, or reference normal
+    std::vector<Edge*> edges; 
+    Vec3 normal; 
     
     Face() : TopoDS_Shape(TopoType::FACE) {}
 };
@@ -60,5 +60,5 @@ struct Solid : public TopoDS_Shape {
     Solid() : TopoDS_Shape(TopoType::SOLID), is_closed(false) {}
 };
 
-} // namespace cad
-} // namespace realis
+} 
+} 

@@ -1,26 +1,11 @@
-"""
-Euler Integration
 
-Forward Euler integration method with stability analysis.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def forward_euler(f, y0, t_span, dt):
-    """
-    Forward Euler integration: y(n+1) = y(n) + dt * f(t(n), y(n))
     
-    Args:
-        f: Derivative function dy/dt = f(t, y)
-        y0: Initial condition
-        t_span: (t_start, t_end)
-        dt: Time step
-    
-    Returns:
-        (t_array, y_array)
-    """
     t_start, t_end = t_span
     num_steps = int((t_end - t_start) / dt)
     
@@ -38,24 +23,20 @@ def forward_euler(f, y0, t_span, dt):
 
 
 def harmonic_oscillator_ode(t, y, omega=1.0):
-    """
-    Harmonic oscillator: d²x/dt² = -ω²x
-    State: y = [x, v]
-    Derivative: dy/dt = [v, -ω²x]
-    """
+    
     x, v = y
     return np.array([v, -omega**2 * x])
 
 
 def test_euler_stability():
-    """Test Forward Euler stability on harmonic oscillator"""
+    
     print("=== Forward Euler Stability Test ===\n")
     
-    omega = 1.0  # Natural frequency
-    y0 = np.array([1.0, 0.0])  # Initial: x=1, v=0
+    omega = 1.0  
+    y0 = np.array([1.0, 0.0])  
     t_span = (0, 20)
     
-    # Test different time steps
+    
     dt_values = [0.5, 1.0, 2.0, 2.5]
     
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
@@ -68,10 +49,10 @@ def test_euler_stability():
         x = y[:, 0]
         v = y[:, 1]
         
-        # Energy
+        
         E = 0.5 * v**2 + 0.5 * omega**2 * x**2
         
-        # Plot
+        
         ax = axes[idx]
         ax.plot(t, x, 'b-', label='Position', linewidth=2)
         ax.plot(t, E, 'r--', label='Energy (should be constant)', linewidth=2, alpha=0.7)
@@ -81,7 +62,7 @@ def test_euler_stability():
         ax.legend()
         ax.grid(True, alpha=0.3)
         
-        # Check stability
+        
         stability_limit = 2 / omega
         is_stable = dt < stability_limit
         print(f"dt = {dt:.2f}: {'Stable' if is_stable else 'UNSTABLE'}")

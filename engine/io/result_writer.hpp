@@ -1,4 +1,4 @@
-// Result output
+
 #pragma once
 #include <string>
 
@@ -9,4 +9,4 @@ public:
     void write(const std::string& path);
 };
 
-} // namespace realis
+} 

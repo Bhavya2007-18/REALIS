@@ -1,4 +1,4 @@
-# REALIS Physics Engine
+# REALIS == Physics-Engine
 
 **Real-time, Engineered, Advanced Learning, Interactive Simulation**
 
@@ -210,7 +210,7 @@ Before contributing:
 
 ## Contact
 
-[To be determined]
+[to be determined]
 
 ---
 

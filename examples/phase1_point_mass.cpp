@@ -1,6 +1,6 @@
-// Phase 1 Demonstration: Free Fall & Projectile Motion
-// Validates C++ implementation against analytical solutions
-// Uses RigidBody directly with explicit Euler integration loop
+
+
+
 
 #include "../engine/dynamics/rigid_body.hpp"
 #include "../engine/math/vec3.hpp"
@@ -13,36 +13,36 @@ using namespace realis;
 
 static const Vec3 GRAVITY(0.0f, -9.81f, 0.0f);
 
-// ── Utility: compute total mechanical energy for a point mass under gravity ──
+
 static float mechanical_energy(const RigidBody &body) {
   float kinetic = 0.5f * body.mass * body.velocity.dot(body.velocity);
-  float potential = body.mass * 9.81f * body.position.y; // mgh, h = y
+  float potential = body.mass * 9.81f * body.position.y; 
   return kinetic + potential;
 }
 
-// ── Manual integration step (Semi-implicit Euler) ───────────────────────────
-//   v_{n+1} = v_n + (F/m) * dt
-//   x_{n+1} = x_n + v_{n+1} * dt
+
+
+
 static void euler_step(RigidBody &body, float dt) {
-  // Apply gravity
+  
   body.clear_forces();
   body.apply_force(GRAVITY * body.mass);
 
-  // Integrate velocity first (semi-implicit)
+  
   Vec3 accel = body.force * body.inv_mass;
   body.velocity = body.velocity + accel * dt;
   body.position = body.position + body.velocity * dt;
 }
 
-// =============================================================================
-// TEST 1 — Free Fall
-// =============================================================================
+
+
+
 void test_free_fall() {
   std::cout << "=== Phase 1: Free Fall Test ===" << std::endl;
   std::cout << std::endl;
 
-  // Initial conditions
-  float y0 = 10.0f; // m
+  
+  float y0 = 10.0f; 
   float dt = 0.01f;
   float duration = 1.0f;
 
@@ -88,10 +88,10 @@ void test_free_fall() {
             << ", " << body.velocity.z << ") m/s" << std::endl;
   std::cout << std::endl;
 
-  // Analytical solution: y = y0 + vy0*t - 0.5*g*t^2 = 10 - 4.905 = 5.095 m
+  
   float t = duration;
   float g = 9.81f;
-  float anal_y = y0 - 0.5f * g * t * t; // semi-impl Euler overshoots slightly
+  float anal_y = y0 - 0.5f * g * t * t; 
   float anal_vy = -g * t;
 
   std::cout << "Analytical solution:" << std::endl;
@@ -110,8 +110,8 @@ void test_free_fall() {
   std::cout << "  Energy drift:   " << e_drift << "%" << std::endl;
   std::cout << std::endl;
 
-  // Semi-implicit Euler has O(dt) position error: ~0.5*g*dt = 0.049 m/s per
-  // step tolerance on position: 0.1 m  (O(dt) Euler error for dt=0.01 s)
+  
+  
   bool position_ok = pos_err < 0.1f;
   bool velocity_ok = vel_err < 0.01f;
   bool energy_ok = std::abs(e_drift) < 2.0f;
@@ -126,15 +126,15 @@ void test_free_fall() {
   }
 }
 
-// =============================================================================
-// TEST 2 — Projectile Motion
-// =============================================================================
+
+
+
 void test_projectile_motion() {
   std::cout << std::endl;
   std::cout << "=== Phase 1: Projectile Motion Test ===" << std::endl;
   std::cout << std::endl;
 
-  float v0 = 20.0f; // m/s launch speed
+  float v0 = 20.0f; 
   float angle_deg = 45.0f;
   float angle_rad = angle_deg * 3.14159265f / 180.0f;
   float dt = 0.01f;
@@ -179,10 +179,10 @@ void test_projectile_motion() {
   std::cout << "Flight time:    " << sim_time << " s" << std::endl;
   std::cout << std::endl;
 
-  // Analytical (vacuum, no Euler error):
-  //   t_flight = 2*vy0/g = 2*14.142/9.81 ≈ 2.884 s
-  //   range    = vx0 * t_flight ≈ 14.142 * 2.884 ≈ 40.77 m
-  //   max_h    = vy0^2 / (2g) ≈ 200/19.62 ≈ 10.19 m
+  
+  
+  
+  
   float vx0 = v0 * std::cos(angle_rad);
   float vy0 = v0 * std::sin(angle_rad);
   float t_flight = 2.0f * vy0 / g;
@@ -201,7 +201,7 @@ void test_projectile_motion() {
             << std::endl;
   std::cout << std::endl;
 
-  // Tolerances: semi-implicit Euler adds O(dt) per step, ~O(1%) over flight
+  
   bool height_ok = std::abs(max_height - anal_maxh) < 0.5f;
   bool range_ok = std::abs(body.position.x - anal_range) < 1.0f;
   bool energy_ok = std::abs(e_drift) < 2.0f;
@@ -216,7 +216,7 @@ void test_projectile_motion() {
   }
 }
 
-// =============================================================================
+
 int main() {
   std::cout << "======================================" << std::endl;
   std::cout << "REALIS Physics Engine - Phase 1 Demo" << std::endl;

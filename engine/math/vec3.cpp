@@ -1,5 +1,5 @@
-// Vec3 implementation
-// Ported from: physics_lab/core_math/vectors.py
+
+
 
 #include "vec3.hpp"
 #include <cmath>
@@ -18,4 +18,4 @@ Vec3 Vec3::normalized() const {
     return Vec3(x / mag, y / mag, z / mag);
 }
 
-} // namespace realis
+} 

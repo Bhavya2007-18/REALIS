@@ -1,27 +1,43 @@
 import { create } from 'zustand'
+import { temporal } from 'zundo'
 
-const useStore = create((set) => ({
+// Scene fields tracked by the undo/redo history (Pascal use-scene temporal pattern).
+const HISTORY_PARTIALIZE = (s) => ({
+    objects: s.objects,
+    shapes3D: s.shapes3D,
+    constraints: s.constraints || [],
+    layers: s.layers,
+    activeLayerId: s.activeLayerId
+});
+
+const HISTORY_LIMIT = 50;
+
+const useStore = create(temporal((set) => ({
     activeWorkspace: 'design',
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
 
-    activeTool: 'select', // 'select', 'move', 'rotate', 'rect', 'ruler', 'pencil'
+    activeTool: 'select', 
     setActiveTool: (tool) => set({ activeTool: tool }),
 
-    // Sidebar/Activity Bar state
-    sidebarView: 'explorer', // 'explorer', 'search', 'git', 'debug'
+    
+    is3DView: false,
+    setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
+
+    
+    sidebarView: 'explorer', 
     setSidebarView: (view) => set({ sidebarView: view }),
 
     isSidebarOpen: true,
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-    // Typed coordinates from CommandLine (e.g. user typed "100,200")
+    
     typedCoordinates: null,
     setTypedCoordinates: (coords) => set({ typedCoordinates: coords }),
 
-    // Global CAD Objects state
+    
     objects: [],
 
-    // Global 3D Modeler Objects state
+    
     shapes3D: [],
     setShapes3D: (shapes) => set({ shapes3D: typeof shapes === 'function' ? shapes(useStore.getState().shapes3D) : shapes }),
     addShape3D: (shape) => set((state) => {
@@ -34,123 +50,99 @@ const useStore = create((set) => ({
         };
         return { shapes3D: [...state.shapes3D, { ...physicsDefaults, ...shape }] };
     }),
-    active3DTool: 'select', // 'select', 'translate', 'rotate', 'scale', 'cube', 'sphere', etc.
+    addShapes3D: (newShapes) => set((state) => {
+        state.saveHistorySnapshot();
+        const physicsDefaults = { mass: 1.0, restitution: 0.5, friction: 0.3, isStatic: false };
+        const formatted = newShapes.map(s => ({ ...physicsDefaults, ...s }));
+        return { shapes3D: [...state.shapes3D, ...formatted] };
+    }),
+
+    constraints: [],
+    setConstraints: (constraints) => set({ constraints }),
+    addConstraints: (newConstraints) => set((state) => ({ constraints: [...(state.constraints || []), ...newConstraints] })),
+
+    active3DTool: 'select', 
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
-    // Advanced Extrude State
+    water: {
+        enabled: true,
+        level: 0,
+        depth: 60,
+        density: 1000,
+        linearDrag: 0.4,
+        quadDrag: 0.1,
+        ripple: { grid: 40, size: 600, stiffness: 0.015, damping: 0.04 }
+    },
+    setWater: (cfg) => set(state => ({ water: { ...state.water, ...cfg } })),
+
+    
     extrudeOperation: {
         profileId: null,
         distance: 20,
-        direction: 'positive', // 'positive', 'negative', 'symmetric'
-        type: 'new' // 'new', 'join', 'cut'
+        direction: 'positive', 
+        type: 'new' 
     },
     setExtrudeOperation: (op) => set(state => ({ extrudeOperation: { ...state.extrudeOperation, ...op } })),
     
-    // Demo Overlay State
+    
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
 
-    // History State
+    
+    showGrid: true,
+    toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+
+    
     history: [],
     historyIndex: -1,
 
-    saveHistorySnapshot: () => set((state) => {
-        // Prune any "redo" future if we are performing a new action
-        const nextHistory = state.history.slice(0, state.historyIndex + 1);
+    // Backed by zundo's temporal store (attached as useStore.temporal).
+    saveHistorySnapshot: () => { /* zundo auto-tracks scene sets; kept for caller compat */ },
 
-        const snapshot = {
-            objects: JSON.parse(JSON.stringify(state.objects)),
-            layers: JSON.parse(JSON.stringify(state.layers)),
-            shapes3D: JSON.parse(JSON.stringify(state.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(state.constraints || [])),
-            activeLayerId: state.activeLayerId
-        };
+    undo: () => useStore.temporal.getState().undo(),
 
-        // Don't save identical consecutive snapshots
-        if (nextHistory.length > 0) {
-            const last = nextHistory[nextHistory.length - 1];
-            if (JSON.stringify(last.objects) === JSON.stringify(snapshot.objects) &&
-                JSON.stringify(last.layers) === JSON.stringify(snapshot.layers) &&
-                JSON.stringify(last.shapes3D) === JSON.stringify(snapshot.shapes3D)) {
-                return state;
-            }
+    redo: () => useStore.temporal.getState().redo(),
+
+    // Live-gesture controls: pause tracking during a drag, resume once done,
+    // so a full drag collapses into a single undo step (Pascal history-control).
+    pauseHistory: () => useStore.temporal.getState().pause(),
+
+    resumeHistory: () => useStore.temporal.getState().resume(),
+
+    // Push a snapshot of the current scene into the undo stack, then pause
+    // tracking. Use at the START of a continuous gesture (draw / move / slider);
+    // call endHistoryGesture() when the gesture finishes.
+    beginHistoryGesture: () => {
+        const t = useStore.temporal.getState();
+        const snapshot = HISTORY_PARTIALIZE(useStore.getState());
+        const last = t.pastStates[t.pastStates.length - 1];
+        if (!last || JSON.stringify(last) !== JSON.stringify(snapshot)) {
+            useStore.temporal.setState({
+                pastStates: [...t.pastStates, snapshot].slice(-HISTORY_LIMIT),
+                futureStates: []
+            });
         }
+        t.pause();
+    },
 
-        nextHistory.push(snapshot);
-        if (nextHistory.length > 50) nextHistory.shift();
+    endHistoryGesture: () => {
+        useStore.temporal.getState().resume();
+    },
 
-        return {
-            history: nextHistory,
-            historyIndex: nextHistory.length - 1
-        };
-    }),
+    clearDesign: () => {
+        useStore.temporal.getState().clear();
+        set({
+            objects: [],
+            shapes3D: [],
+            constraints: [],
+            history: [],
+            historyIndex: -1,
+            selectedIds: [],
+            selected3DIds: []
+        });
+    },
 
-    undo: () => set((state) => {
-        let { history, historyIndex, objects, layers, shapes3D, constraints, activeLayerId } = state;
-        if (historyIndex < 0 && history.length === 0) return state;
-
-        const currentState = {
-            objects: JSON.parse(JSON.stringify(objects)),
-            layers: JSON.parse(JSON.stringify(layers)),
-            shapes3D: JSON.parse(JSON.stringify(shapes3D)),
-            constraints: JSON.parse(JSON.stringify(constraints || [])),
-            activeLayerId
-        };
-
-        // If at current head, save current as "future" if not same as last snapshot
-        let currentHistory = [...history];
-        let cIdx = historyIndex;
-
-        if (cIdx === currentHistory.length - 1) {
-            if (JSON.stringify(currentState) !== JSON.stringify(currentHistory[cIdx])) {
-                currentHistory.push(currentState);
-                cIdx = currentHistory.length - 1;
-            }
-        }
-
-        if (cIdx <= 0) return state;
-
-        const targetIdx = cIdx - 1;
-        const target = currentHistory[targetIdx];
-
-        return {
-            history: currentHistory,
-            historyIndex: targetIdx,
-            objects: JSON.parse(JSON.stringify(target.objects)),
-            layers: JSON.parse(JSON.stringify(target.layers)),
-            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
-            activeLayerId: target.activeLayerId
-        };
-    }),
-
-    redo: () => set((state) => {
-        if (state.historyIndex >= state.history.length - 1) return state;
-
-        const targetIdx = state.historyIndex + 1;
-        const target = state.history[targetIdx];
-
-        return {
-            historyIndex: targetIdx,
-            objects: JSON.parse(JSON.stringify(target.objects)),
-            layers: JSON.parse(JSON.stringify(target.layers)),
-            shapes3D: JSON.parse(JSON.stringify(target.shapes3D)),
-            constraints: JSON.parse(JSON.stringify(target.constraints || [])),
-            activeLayerId: target.activeLayerId
-        };
-    }),
-
-    clearDesign: () => set({
-        objects: [],
-        shapes3D: [],
-        constraints: [],
-        history: [],
-        historyIndex: -1,
-        selectedIds: [],
-        selected3DIds: []
-    }),
-
-    // Override setObjects to automatically capture history if requested, or manual
+    
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
     addCADObject: (obj) => set((state) => {
         state.saveHistorySnapshot();
@@ -163,7 +155,7 @@ const useStore = create((set) => ({
         return { objects: [...state.objects, { ...physicsDefaults, ...obj }] };
     }),
 
-    // Layer System
+    
     layers: [
         { id: 'default', name: 'Layer 0', color: '#3b82f6', visible: true, locked: false },
         { id: 'layer1', name: 'Layer 1', color: '#10b981', visible: true, locked: false },
@@ -171,21 +163,23 @@ const useStore = create((set) => ({
     ],
     activeLayerId: 'default',
 
-    // Material presets
+    
+    // Canonical Materials System (Section 3.2)
     materials: {
-        steel: { density: 7850, restitution: 0.2, friction: 0.4 },
-        rubber: { density: 1100, restitution: 0.8, friction: 0.9 },
-        wood: { density: 700, restitution: 0.4, friction: 0.5 },
-        plastic: { density: 1000, restitution: 0.6, friction: 0.3 }
+        steel:    { density: 7850, restitution: 0.20, static_friction: 0.4,  dynamic_friction: 0.3  },
+        rubber:   { density: 1100, restitution: 0.85, static_friction: 0.9,  dynamic_friction: 0.8  },
+        wood:     { density: 700,  restitution: 0.40, static_friction: 0.5,  dynamic_friction: 0.4  },
+        ice:      { density: 917,  restitution: 0.10, static_friction: 0.05, dynamic_friction: 0.02 },
+        concrete: { density: 2400, restitution: 0.15, static_friction: 0.7,  dynamic_friction: 0.6  },
+        plastic:  { density: 1000, restitution: 0.60, static_friction: 0.3,  dynamic_friction: 0.25 },
+        custom:   { density: 1000, restitution: 0.50, static_friction: 0.3,  dynamic_friction: 0.3  }
     },
     applyMaterial: (objectId, materialKey) => set((state) => {
         const mat = state.materials[materialKey];
         if (!mat) return state;
         const updateShapeOrObject = (list) => list.map(o => {
             if (o.id !== objectId) return o;
-            // Mass calculation could happen here if we had volume,
-            // for now just update properties.
-            return { ...o, restitution: mat.restitution, friction: mat.friction };
+            return { ...o, material_id: materialKey, restitution: mat.restitution, friction: mat.dynamic_friction ?? mat.friction ?? 0.3 };
         });
         return {
             objects: updateShapeOrObject(state.objects),
@@ -197,7 +191,7 @@ const useStore = create((set) => ({
     addLayer: (layer) => set((state) => ({ layers: [...state.layers, layer] })),
     setActiveLayerId: (id) => set({ activeLayerId: id }),
 
-    // Delete selected objects
+    
     deleteObjects: () => set((state) => {
         const { selectedIds, objects, selected3DIds, shapes3D } = state;
         if (selectedIds.length === 0 && selected3DIds.length === 0) return state;
@@ -210,14 +204,14 @@ const useStore = create((set) => ({
         };
     }),
 
-    // Duplicate selected objects (offset slightly so they don't exactly overlap)
+    
     duplicateObjects: () => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
         state.saveHistorySnapshot();
         const clones = objects.filter(o => selectedIds.includes(o.id)).map(obj => {
             const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) };
-            const offset = 20; // 20px offset
+            const offset = 20; 
             if (clone.type === 'rect') { clone.x += offset; clone.y += offset; }
             else if (clone.type === 'circle' || clone.type === 'polygon' || clone.type === 'arc') { clone.cx += offset; clone.cy += offset; }
             else if (clone.type === 'path' && clone.points) { clone.points = clone.points.map(p => ({ ...p, x: p.x + offset, y: p.y + offset })); }
@@ -226,11 +220,11 @@ const useStore = create((set) => ({
         });
         return {
             objects: [...objects, ...clones],
-            selectedIds: clones.map(c => c.id) // Automatically select the new clones
+            selectedIds: clones.map(c => c.id) 
         };
     }),
 
-    // Mirror selected objects over X or Y axis
+    
     mirrorObjects: (axis) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -253,7 +247,7 @@ const useStore = create((set) => ({
         return { objects: [...objects, ...clones] };
     }),
 
-    // Offset (expand/shrink) selected rect or circle by amount
+    
     offsetObject: (amount) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -272,7 +266,7 @@ const useStore = create((set) => ({
         };
     }),
 
-    // Rectangular array: duplicate selected objects in a grid
+    
     arrayObjects: (rows, cols, spacingX, spacingY) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -281,7 +275,7 @@ const useStore = create((set) => ({
         const clones = [];
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                if (r === 0 && c === 0) continue; // skip original
+                if (r === 0 && c === 0) continue; 
                 selected.forEach(obj => {
                     const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) };
                     const dx = c * spacingX, dy = r * spacingY;
@@ -295,8 +289,6 @@ const useStore = create((set) => ({
         return { objects: [...objects, ...clones] };
     }),
 
-    constraints: [],
-    setConstraints: (cons) => set({ constraints: typeof cons === 'function' ? cons(useStore.getState().constraints) : cons }),
     addConstraint: (constraint) => set((state) => {
         state.saveHistorySnapshot();
         const motorDefaults = {
@@ -313,8 +305,8 @@ const useStore = create((set) => ({
         state.saveHistorySnapshot();
         return { constraints: state.constraints.filter(c => c.id !== id) };
     }),
-    // Right Panel state
-    rightPanelView: 'properties', // 'ai' or 'properties'
+    
+    rightPanelView: 'properties', 
     setRightPanelView: (view) => set({ rightPanelView: view }),
 
     isRightPanelOpen: true,
@@ -339,7 +331,7 @@ const useStore = create((set) => ({
     selectedJointId: null,
     setSelectedJointId: (id) => set({ selectedJointId: id }),
 
-    activeFileId: null, // Still used for primary inspector focus
+    activeFileId: null, 
     setActiveFileId: (id) => set({ activeFileId: id }),
 
     groupObjects: () => set((state) => {
@@ -396,11 +388,43 @@ const useStore = create((set) => ({
     simTime: 0,
     setSimTime: (time) => set({ simTime: time }),
 
-    // --- Simulation Settings ---
-    simulationMode: 'preview', // 'preview' | 'accurate'
-    simulationType: 'rigid', // 'rigid' | 'thermal' | 'fluid'
-    simulationPreset: null,
     
+    simulationMode: 'preview', 
+    simulationType: 'rigid', 
+    simulationPreset: null,
+    setSimulationPreset: (preset) => set({ simulationPreset: preset }),
+
+    // Lab data for Properties panel
+    labData: null,
+    setLabData: (data) => set({ labData: data }),
+    clearLabData: () => set({ labData: null }),
+
+    // Camera state (Section 3.2)
+    camera: { position: { x: 0, y: 0, z: 500 }, zoom: 1.0, mode: '2d' },
+    setCamera: (cam) => set(state => ({ camera: { ...state.camera, ...cam } })),
+
+    // Build Mode tool state
+    activeBuildTool: 'select', // select | create_circle | create_box | create_ramp | wire_joint
+    setActiveBuildTool: (tool) => set({ activeBuildTool: tool }),
+    jointWireSource: null, // body ID of first selected body for joint wiring
+    setJointWireSource: (id) => set({ jointWireSource: id }),
+
+    // Debug Physics Mode
+    debugPhysics: {
+        enabled: false,
+        showBoundingBoxes: false,
+        showVelocityVectors: false,
+        showCollisionNormals: false,
+        showContactPoints: false,
+        showForceVectors: false,
+        showJointAnchors: false,
+        showConstraintLines: false,
+        showCenterOfMass: false,
+        showSleepingBodies: false
+    },
+    setDebugPhysics: (updates) => set(state => ({ debugPhysics: { ...state.debugPhysics, ...updates } })),
+    toggleDebugPhysics: () => set(state => ({ debugPhysics: { ...state.debugPhysics, enabled: !state.debugPhysics.enabled } })),
+
     simulationSettings: {
         gravity: { x: 0, y: 9.81, z: 0 },
         timeStep: 0.016,
@@ -408,13 +432,38 @@ const useStore = create((set) => ({
         subSteps: 1,
         airResistance: 0.01,
         frictionCoeff: 0.3,
-        ambientTemp: 20
+        groundY: 0,
+        ambientTemp: 20,
+        timeScale: 1.0
     },
     setSimulationSettings: (settings) => set((state) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
 
-    // --- Simulation State ───────────────────────────────────────────────────
+    
+    activeModelControls: [],
+    setActiveModelControls: (controls) => set({ activeModelControls: controls }),
+    updateModelControl: (controlId, value) => set((state) => {
+        
+        const newControls = state.activeModelControls.map(c => 
+            c.id === controlId ? { ...c, current: value } : c
+        );
+        
+        
+        const { objects, constraints } = state;
+        const [targetId, property] = controlId.split('.');
+
+        const newObjects = objects.map(o => o.id === targetId ? { ...o, [property]: value } : o);
+        const newConstraints = constraints.map(c => c.id === targetId ? { ...c, [property]: value } : c);
+
+        return { 
+            activeModelControls: newControls,
+            objects: newObjects,
+            constraints: newConstraints
+        };
+    }),
+
+    
     simulationState: {
         time: 0,
         energy: { kinetic: 0, potential: 0, total: 0 },
@@ -424,22 +473,35 @@ const useStore = create((set) => ({
         simulationState: { ...state.simulationState, ...stateUpdate }
     })),
 
-    // Used for backend-dependent playback, though we are shifting to client-side
+    
     simulationFrames: [], 
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
-    setIsPlaying: (playing) => set({ isPlaying: playing }),
+    setIsPlaying: (playing) => {
+        if (playing) useStore.temporal.getState().pause();
+        else useStore.temporal.getState().resume();
+        set({ isPlaying: playing });
+    },
     currentFrameIndex: 0,
     setCurrentFrameIndex: (index) => set({ currentFrameIndex: index }),
 
-    // Helper to control playback
-    togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
+    
+    togglePlayback: () => set((state) => {
+        const nextPlaying = !state.isPlaying;
+        if (nextPlaying) useStore.temporal.getState().pause();
+        else useStore.temporal.getState().resume();
+        return { isPlaying: nextPlaying };
+    }),
     resetPlayback: () => set({ currentFrameIndex: 0, isPlaying: false, simTime: 0 }),
 
-    // --- Analysis & Visualization (ANSYS Upgrade) ---
+    
     analysisSettings: {
         showVectors: false,
+        showForces: false,
         showHeatmap: false,
+        showJoints: false,
+        showAnchors: false,
+        isExplodedView: false,
         vectorScale: 2.0,
         colorTheme: 'thermal'
     },
@@ -447,7 +509,7 @@ const useStore = create((set) => ({
         analysisSettings: { ...state.analysisSettings, ...settings }
     })),
 
-    energyHistory: [], // [{ time, kinetic, potential, total }, ...]
+    energyHistory: [], 
     addEnergySnapshot: (snapshot) => set((state) => {
         const nextHistory = [...state.energyHistory, snapshot];
         if (nextHistory.length > 200) nextHistory.shift();
@@ -455,13 +517,68 @@ const useStore = create((set) => ({
     }),
     clearEnergyHistory: () => set({ energyHistory: [] }),
 
-    // --- AI Chatbot Context ─────────────────────────────────────────────────
-    aiMemory: [], // Track user actions
+    
+    aiMemory: [], 
     addAIMemory: (action) => set(state => {
         const memory = [...state.aiMemory, action];
         if (memory.length > 10) memory.shift();
         return { aiMemory: memory };
-    })
+    }),
+
+    
+    isSketchImportOpen: false,
+    toggleSketchImport: () => set(state => ({ isSketchImportOpen: !state.isSketchImportOpen })),
+    setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
+    sketchDraft: null, 
+    setSketchDraft: (draft) => set({ sketchDraft: draft }),
+
+    // ── Save/Load Persistence (Section 3.2 JSON round-trip) ──────────────
+    exportSceneJSON: () => {
+        const s = useStore.getState();
+        return JSON.stringify({
+            scene: {
+                metadata: { version: '1.0', exportedAt: new Date().toISOString() },
+                world: { gravity: s.simulationSettings.gravity, timestep: s.simulationSettings.timeStep, substeps: s.simulationSettings.subSteps, units: 'SI' },
+                camera: s.camera,
+                bodies: [...s.objects, ...s.shapes3D],
+                materials: s.materials,
+                constraints: s.constraints || [],
+                forces: [],
+                simulation: { time_scale: s.simulationSettings.timeScale, running: s.isPlaying, elapsed_time: s.simulationState?.time || 0 }
+            }
+        }, null, 2);
+    },
+    importSceneJSON: (jsonStr) => {
+        try {
+            const data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+            const scene = data.scene || data;
+            const state = useStore.getState();
+            state.clearDesign();
+            if (scene.world) {
+                state.setSimulationSettings({
+                    gravity: scene.world.gravity || { x: 0, y: 9.81, z: 0 },
+                    timeStep: scene.world.timestep || 0.016,
+                    subSteps: scene.world.substeps || 1
+                });
+            }
+            if (scene.camera) state.setCamera(scene.camera);
+            if (scene.bodies) {
+                scene.bodies.forEach(b => {
+                    if (b.position || b.type === 'sphere' || b.params) state.addShape3D(b);
+                    else state.addCADObject(b);
+                });
+            }
+            if (scene.constraints) scene.constraints.forEach(c => state.addConstraint(c));
+            return true;
+        } catch (e) {
+            console.error('[importSceneJSON] Error:', e);
+            return false;
+        }
+    }
+}), {
+    partialize: HISTORY_PARTIALIZE,
+    equality: (past, current) => JSON.stringify(past) === JSON.stringify(current),
+    limit: HISTORY_LIMIT
 }))
 
 export default useStore

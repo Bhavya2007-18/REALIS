@@ -17,21 +17,21 @@ struct OutputMetrics {
   float l2_norm_body2;
 };
 
-// ==============================================================================
-// Scenario 1: Two Bodies, pure translation under gravity
-// Compares directly against x(t) = x0 + v0*t - 0.5*g*t^2
-// ==============================================================================
+
+
+
+
 OutputMetrics run_scenario_1(Integrator *integrator, float dt,
                              float total_time) {
   World world(dt);
 
   RigidBody b1, b2;
-  // Body 1: Light, starts high
+  
   b1.mass = 1.0f;
   b1.inv_mass = 1.0f;
   b1.position = Vec3(0, 10.0f, 0);
   b1.velocity = Vec3(0, 0, 0);
-  // Body 2: Heavy, starts low, thrown up
+  
   b2.mass = 5.0f;
   b2.inv_mass = 0.2f;
   b2.position = Vec3(2.0f, 0.0f, 0);
@@ -52,11 +52,11 @@ OutputMetrics run_scenario_1(Integrator *integrator, float dt,
   for (int i = 0; i <= steps; ++i) {
     float t = i * dt;
 
-    // Analytical
+    
     float b1_ana = 10.0f - 0.5f * 9.81f * t * t;
     float b2_ana = 0.0f + 5.0f * t - 0.5f * 9.81f * t * t;
 
-    // Error tracking
+    
     sum_sq_err1 += std::pow(b1.position.y - b1_ana, 2.0f);
     sum_sq_err2 += std::pow(b2.position.y - b2_ana, 2.0f);
 
@@ -71,9 +71,9 @@ OutputMetrics run_scenario_1(Integrator *integrator, float dt,
   return {max_drift, std::sqrt(sum_sq_err1), std::sqrt(sum_sq_err2)};
 }
 
-// ==============================================================================
-// Scenario 2: Superposition test (Gravity + Spring Field)
-// ==============================================================================
+
+
+
 OutputMetrics run_scenario_2(Integrator *integrator, float dt,
                              float total_time) {
   World world(dt);
@@ -83,10 +83,10 @@ OutputMetrics run_scenario_2(Integrator *integrator, float dt,
   b1.position = Vec3(1.0f, 10.0f, 0);
   b1.velocity = Vec3(0, 0, 0);
 
-  // Superposed fields
+  
   UniformGravityField gravity(9.8f);
   LinearSpringField spring(15.0f,
-                           0.0f); // Operates purely on X coordinates right now
+                           0.0f); 
 
   world.add_body(&b1);
   world.add_force_field(&gravity);

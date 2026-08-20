@@ -1,43 +1,40 @@
-// Abstract constraint base class
+
 #pragma once
 #include "../dynamics/rigid_body.hpp"
 #include "../math/vec3.hpp"
 
 namespace realis {
 
-/**
- * Mathematical form: J*v + b = 0
- * Where J is the Jacobian matrix and v is the velocity vector.
- */
+
 class Constraint {
 public:
   RigidBody *bodyA;
   RigidBody *bodyB;
 
-  // Jacobian components for 1D constraint between two bodies
+  
   Vec3 linearA;
   Vec3 angularA;
   Vec3 linearB;
   Vec3 angularB;
 
-  float bias;          // Baumgarte stabilization (or restitution bias)
-  float effectiveMass; // Only used by PGS temporarily if needed, but not by
-                       // exact solver if it builds global M
-  float lambda; // The stored exact multiplier (can be used for warm-starting or
-                // clamping)
+  float bias;          
+  float effectiveMass; 
+                       
+  float lambda; 
+                
 
-  // Continuous constraint quantities
-  float C_val;   // C(q) value
-  float J_dot_v; // \dot{J} * v value
+  
+  float C_val;   
+  float J_dot_v; 
 
-  // Limits for inequality constraints
+  
   float minLambda;
   float maxLambda;
 
-  // Motor support
+  
   bool motorEnabled;
   float targetVelocity;
-  float maxForce; // Max torque for hinge, max force for slider
+  float maxForce; 
 
   Constraint(RigidBody *a, RigidBody *b)
       : bodyA(a), bodyB(b), bias(0.0f), effectiveMass(0.0f), lambda(0.0f),
@@ -46,11 +43,11 @@ public:
 
   virtual ~Constraint() = default;
 
-  // Prepare solver data: compute Jacobian, C_val, J_dot_v, Effective Mass, and
-  // Bias
+  
+  
   virtual void pre_step(float dt) = 0;
 
-  // Apply the computed constraint force to bodies
+  
   void apply_constraint_force(float lambda_val) {
     if (bodyA && bodyA->inv_mass > 0) {
       bodyA->apply_force(linearA * lambda_val);
@@ -63,4 +60,4 @@ public:
   }
 };
 
-} // namespace realis
+} 

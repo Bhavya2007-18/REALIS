@@ -4,9 +4,7 @@ namespace realis::scene {
 
 class SceneNode;
 
-/**
- * @brief Manages the current selection state in the scene.
- */
+
 class SelectionSystem {
 public:
   SelectionSystem() : m_selectedNode(nullptr) {}
@@ -25,4 +23,4 @@ private:
   SceneNode *m_selectedNode;
 };
 
-} // namespace realis::scene
+} 

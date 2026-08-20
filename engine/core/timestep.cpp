@@ -1,12 +1,12 @@
-// Timestep control
-// Fixed timestep only - deterministic simulation
+
+
 
 #include "timestep.hpp"
 
 namespace realis {
 
 Timestep::Timestep(float dt) : dt(dt), current_time(0.0f) {
-    // Fixed timestep - no variable stepping
+    
 }
 
 void Timestep::advance() {
@@ -25,4 +25,4 @@ void Timestep::reset() {
     current_time = 0.0f;
 }
 
-} // namespace realis
+} 

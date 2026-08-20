@@ -1,6 +1,6 @@
-# Shadow Verification Script
-# replicates verify_invariants.cpp logic to prove mathematical correctness
-# since C++ compiler is temporarily unavailable.
+
+
+
 
 import math
 
@@ -25,7 +25,7 @@ class RigidBody:
         self.force = self.force + f
         
     def integrate(self, dt):
-        # Semi-Implicit Euler (Symplectic)
+        
         accel = self.force * self.inv_mass
         self.velocity = self.velocity + accel * dt
         self.position = self.position + self.velocity * dt
@@ -59,15 +59,15 @@ class SpringModel:
 def run_verification():
     print("=== Shadow Verification (Python) ===")
     
-    # Setup same as C++
+    
     mass = RigidBody(2.0, Vec3(2.0, 0, 0))
     spring = SpringModel(mass, Vec3(0,0,0), 10.0)
     
     dt = 0.01
     steps = 200
     
-    # Capture Baseline
-    # PE = 0.5 * 10 * 2^2 = 20.0
+    
+    
     initial_total = spring.get_kinetic_energy() + spring.get_potential_energy()
     print(f"Baseline Energy: {initial_total:.6f} J")
     

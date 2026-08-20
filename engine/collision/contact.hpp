@@ -1,31 +1,31 @@
-// Contact information
+
 #pragma once
 #include "../math/vec3.hpp"
 
 namespace realis {
 
-class RigidBody; // Forward declare
+class RigidBody; 
 
 struct Contact {
   RigidBody *body_a;
   RigidBody *body_b;
 
-  Vec3 normal;       // Direction of collision (from A to B)
-  float penetration; // Distance of overlap
-  Vec3 point;        // Contact point in world space
+  Vec3 normal;       
+  float penetration; 
+  Vec3 point;        
 
-  float restitution; // Coefficient of restitution (e)
+  float restitution; 
 
-  Vec3 tangent1;  // First tangent direction
-  Vec3 tangent2;  // Second tangent direction
-  float friction; // Coefficient of friction (mu)
+  Vec3 tangent1;  
+  Vec3 tangent2;  
+  float friction; 
 
-  // Iterative Solver Data
+  
   float accumulated_normal_impulse;
   float accumulated_tangent1_impulse;
   float accumulated_tangent2_impulse;
 
-  bool colliding; // Validation flag
+  bool colliding; 
 
   Contact()
       : body_a(nullptr), body_b(nullptr), penetration(0), restitution(1.0f),
@@ -34,4 +34,4 @@ struct Contact {
         colliding(false) {}
 };
 
-} // namespace realis
+} 

@@ -1,4 +1,4 @@
-// Force accumulation
+
 #pragma once
 #include <vector>
 #include "rigid_body.hpp"
@@ -26,4 +26,4 @@ public:
     void update_forces(float dt);
 };
 
-} // namespace realis
+} 

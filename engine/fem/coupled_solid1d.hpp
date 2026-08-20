@@ -7,20 +7,20 @@
 namespace realis {
 namespace fem {
 
-// 1D explicitly integrated Multiphysics solid domain
+
 class CoupledSolid1D {
 public:
   int num_nodes;
-  double T_reference; // Stress-free temperature
+  double T_reference; 
 
-  std::vector<double> position;     // x
-  std::vector<double> displacement; // u
-  std::vector<double> velocity;     // v
-  std::vector<double> mass;         // M (lumped)
+  std::vector<double> position;     
+  std::vector<double> displacement; 
+  std::vector<double> velocity;     
+  std::vector<double> mass;         
 
-  std::vector<double> temperature; // T
-  std::vector<double> force_ext;   // F_ext
-  std::vector<double> heat_rate;   // Q_dot [W]
+  std::vector<double> temperature; 
+  std::vector<double> force_ext;   
+  std::vector<double> heat_rate;   
 
   std::vector<bool> is_fixed;
 
@@ -47,58 +47,58 @@ public:
 
   void add_rigid_mass(int node_idx, double m_rigid) {
     mass[node_idx] += m_rigid;
-    // The rigid mass adds thermal capacity, but for consistency if we assume it
-    // has the same c_v for this test, we must account for its baseline energy 
-    // Or simply we must track that this extra mass is now part of the thermal pool.
-    // Actually, the simplest fix for strict accounting is to just track 
-    // the initial thermal energy of the added mass if we are going to compute E = m*c*T.
-    // Easiest is to avoid `mass[i]` in thermal energy computation, and use 
-    // the initial bar mass for thermal energy, since the rigid mass didn't bring any "T" with it in the test setup.
+    
+    
+    
+    
+    
+    
+    
   }
 
-  // Explicit Symplectic Euler step
+  
   void step(double dt) {
     std::vector<double> F_total(num_nodes, 0.0);
 
-    // 1. Gather component forces and internal heat fluxes
+    
     for (int i = 0; i < num_nodes; ++i) {
-      F_total[i] = force_ext[i]; // Start with external bounds
+      F_total[i] = force_ext[i]; 
     }
 
     for (const auto &el : elements) {
       el.compute_nodal_forces(displacement, temperature, T_reference, F_total);
-      el.compute_heat_flux(temperature, heat_rate); // updates heat_rate
+      el.compute_heat_flux(temperature, heat_rate); 
     }
 
-    // 2. Integration
+    
     for (int i = 0; i < num_nodes; ++i) {
       if (is_fixed[i]) {
         velocity[i] = 0.0;
-        displacement[i] = 0.0; // Strictly enforce
+        displacement[i] = 0.0; 
         continue;
       }
 
-      // Motion (accel = F/m)
+      
       double accel = F_total[i] / mass[i];
       velocity[i] += accel * dt;
       displacement[i] += velocity[i] * dt;
       position[i] += velocity[i] * dt;
 
-      // Temperature (dT = Q_dot * dt / (mass * c_v))
-      // To be precise, c_v per node must be aggregated from elements.
-      // For uniform mesh, cv is identical. Let's just pull it from arbitrary
-      // adj element.
+      
+      
+      
+      
       double cv = elements[0].cv;
       double dT = (heat_rate[i] / (mass[i] * cv)) * dt;
       temperature[i] += dT;
     }
 
-    // 3. Reset accumulators for next frame
+    
     std::fill(force_ext.begin(), force_ext.end(), 0.0);
     std::fill(heat_rate.begin(), heat_rate.end(), 0.0);
   }
 
-  // Exact energy accounting
+  
   double compute_kinetic_energy() const {
     double ke = 0.0;
     for (int i = 0; i < num_nodes; ++i) {
@@ -119,8 +119,8 @@ public:
         double te = 0.0;
         if (elements.empty()) return 0.0;
         
-        // Element density * Area * Le gives base mass.
-        // Nodal base mass is half from each connected element.
+        
+        
         std::vector<double> base_mass(num_nodes, 0.0);
         for (const auto& el : elements) {
             double em = el.rho * el.A * el.Le;
@@ -136,5 +136,5 @@ public:
     }
 };
 
-} // namespace fem
-} // namespace realis
+} 
+} 

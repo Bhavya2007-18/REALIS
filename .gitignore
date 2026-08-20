@@ -65,3 +65,36 @@ htmlcov/
 # Profiling
 *.prof
 *.pstats
+
+# Node.js and Frontend
+node_modules/
+tools/node/
+tools/download_node.ps1
+web/dist/
+.env
+.env*.local
+.parcel-cache/
+.eslintcache
+
+# OS Files
+Thumbs.db
+
+# Git Bash null-device artifact (created when a command writes "> nul")
+nul
+
+# C++ Tools and Caches
+.clangd/
+.cache/
+
+# Execution outputs and temp files
+*_output.txt
+*_err.txt
+error_*.txt
+build_*.txt
+validation_result.txt
+invariant_ledger.csv
+output.txt
+renderer_init.txt
+
+# Reference repos (learned patterns only, not part of REALIS)
+forks/

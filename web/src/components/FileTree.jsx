@@ -16,7 +16,7 @@ function ObjectIcon({ type, color }) {
 
 function ObjectTreeNode({ item, depth = 0 }) {
     const [isOpen, setIsOpen] = useState(true)
-    // Using activeFileId as selected object id for simplicity in this MVP
+    
     const activeFileId = useStore((s) => s.activeFileId)
     const setActiveFileId = useStore((s) => s.setActiveFileId)
 

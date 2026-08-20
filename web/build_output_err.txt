@@ -1,0 +1,5 @@
+
+> web@0.0.0 build
+> vite build
+
+sh: line 1: /home/bhavyaporwal007/work and study/work/REALIS/node_modules/.bin/vite: Permission denied

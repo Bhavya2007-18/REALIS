@@ -14,10 +14,10 @@ export default function ObjectHierarchy() {
     const handleSelect = (id, is3D = false) => {
         if (is3D) {
             setSelected3DIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [id])
-            setSelectedIds([]) // Clear 2D selection
+            setSelectedIds([]) 
         } else {
             setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [id])
-            setSelected3DIds([]) // Clear 3D selection
+            setSelected3DIds([]) 
         }
         useStore.setState({ activeFileId: activeFileId === id ? null : id })
     }
@@ -43,7 +43,7 @@ export default function ObjectHierarchy() {
         }
     }
 
-    // Helper to render an item
+    
     const renderItem = (obj, isChild = false, is3D = false) => {
         const isSelected = is3D ? selected3DIds.includes(obj.id) : activeFileId === obj.id;
         return (
@@ -71,7 +71,7 @@ export default function ObjectHierarchy() {
         )
     };
 
-    // Group objects by groupId
+    
     const groups = {};
     const standalone = [];
 
@@ -92,7 +92,7 @@ export default function ObjectHierarchy() {
                 </div>
             ) : (
                 <>
-                    {/* 3D Shapes */}
+                    {}
                     {shapes3D.length > 0 && (
                         <div className="mb-2">
                             <div className="px-1 py-1 text-[10px] uppercase font-bold text-slate-500 mb-1">3D Models</div>
@@ -100,14 +100,14 @@ export default function ObjectHierarchy() {
                         </div>
                     )}
 
-                    {/* 2D Drafts */}
+                    {}
                     {objects.length > 0 && (
                         <div>
                             <div className="px-1 py-1 text-[10px] uppercase font-bold text-slate-500 mb-1">2D Drafts</div>
-                            {/* Standalone Objects */}
+                            {}
                             {standalone.map(obj => renderItem(obj))}
 
-                            {/* Grouped Objects */}
+                            {}
                             {Object.entries(groups).map(([groupId, groupObjs]) => (
                                 <div key={groupId} className="space-y-0.5 mt-1">
                                     <div className="flex items-center gap-2 px-1 py-1 text-[10px] uppercase font-bold text-slate-500 bg-slate-800/20 rounded cursor-default">

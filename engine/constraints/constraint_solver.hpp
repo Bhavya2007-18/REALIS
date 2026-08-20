@@ -1,4 +1,4 @@
-// Constraint Solver (Projected Gauss-Seidel)
+
 #pragma once
 #include "constraint.hpp"
 #include <vector>
@@ -14,4 +14,4 @@ public:
     void solve(std::vector<Constraint*>& constraints, float dt);
 };
 
-} // namespace realis
+} 

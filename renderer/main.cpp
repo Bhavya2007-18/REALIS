@@ -1,4 +1,4 @@
-// IMPORTANT: glad.h MUST precede glfw3.h and other GL-dependent headers.
+
 #include <glad/glad.h>
 
 #include "AxisRenderer.hpp"
@@ -12,13 +12,13 @@
 #include "VertexBuffer.hpp"
 #include "Window.hpp"
 
-// Scene graph
+
 #include "scene/Ray.hpp"
 #include "scene/SceneNode.hpp"
 #include "scene/SelectionSystem.hpp"
 
-// Define GLFW_INCLUDE_NONE to prevent glfw3.h from including any OpenGL
-// headers.
+
+
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
@@ -35,9 +35,9 @@
 #include <memory>
 #include <vector>
 
-// -----------------------------------------------------------------------------
-// computeDeltaTime
-// -----------------------------------------------------------------------------
+
+
+
 typedef std::chrono::high_resolution_clock HRClock;
 typedef HRClock::time_point TimePoint;
 typedef std::chrono::duration<float> FloatSeconds;
@@ -53,9 +53,9 @@ static float computeDeltaTime(TimePoint &lastTime) {
   return dt;
 }
 
-// -----------------------------------------------------------------------------
-// processInput
-// -----------------------------------------------------------------------------
+
+
+
 static void processInput(realis::renderer::Window &window,
                          realis::renderer::GraphicsContext &ctx,
                          bool &vsyncEnabled) {
@@ -72,9 +72,9 @@ static void processInput(realis::renderer::Window &window,
   vKeyWasDown = vKeyIsDown;
 }
 
-// -----------------------------------------------------------------------------
-// Global State for Input (Simplified for test)
-// -----------------------------------------------------------------------------
+
+
+
 struct InputState {
   double lastMouseX = 0.0;
   double lastMouseY = 0.0;
@@ -83,7 +83,7 @@ struct InputState {
   bool middleMouseDown = false;
   float scrollDelta = 0.0f;
 
-  // Picking references
+  
   realis::renderer::Camera *camera = nullptr;
   realis::scene::SceneNode *sceneRoot = nullptr;
   realis::scene::SelectionSystem *selection = nullptr;
@@ -102,13 +102,13 @@ static void mouseButtonCallback(GLFWwindow *window, int button, int action,
       double mx, my;
       glfwGetCursorPos(window, &mx, &my);
 
-      // Generate picking ray
+      
       realis::scene::Ray ray = g_input.camera->generateRayFromMouse(
           static_cast<float>(mx), static_cast<float>(my),
           static_cast<float>(g_input.windowWidth),
           static_cast<float>(g_input.windowHeight));
 
-      // Pick object
+      
       float closestT = 0.0f;
       realis::scene::SceneNode *hit =
           g_input.sceneRoot->pickChild(ray, closestT);
@@ -125,15 +125,15 @@ static void mouseButtonCallback(GLFWwindow *window, int button, int action,
   }
 }
 
-// -----------------------------------------------------------------------------
-// main
-// -----------------------------------------------------------------------------
+
+
+
 int main() {
   std::fprintf(stdout, "=================================================\n"
                        "   REALIS - Object Selection Verification\n"
                        "=================================================\n\n");
 
-  // 1. Setup Window & Context
+  
   realis::renderer::Window window(1280, 720, "REALIS Object Selection");
 
   realis::renderer::GraphicsContext ctx(window.handle());
@@ -144,7 +144,7 @@ int main() {
   glfwSetScrollCallback(window.handle(), scrollCallback);
   glfwSetMouseButtonCallback(window.handle(), mouseButtonCallback);
 
-  // 2. Initialize Renderer, Camera, and Workspace
+  
   realis::renderer::Renderer renderer;
   renderer.setGLState();
 
@@ -154,19 +154,19 @@ int main() {
   realis::renderer::Grid workspaceGrid(100.0f);
   realis::renderer::AxisRenderer workspaceAxis(2.0f);
 
-  // Selection system
+  
   realis::scene::SelectionSystem selection;
 
-  // Hook up input state for picking
+  
   g_input.camera = &camera;
   g_input.selection = &selection;
   g_input.windowWidth = 1280;
   g_input.windowHeight = 720;
 
-  // 3. Create Test Geometry (Cube)
-  // [Pos3, Color3]
+  
+  
   float cubeVertices[] = {
-      // Front face (Red)
+      
       -0.5f,
       -0.5f,
       0.5f,
@@ -191,7 +191,7 @@ int main() {
       1.0f,
       0.0f,
       0.0f,
-      // Back face (Green)
+      
       -0.5f,
       -0.5f,
       -0.5f,
@@ -219,31 +219,31 @@ int main() {
   };
 
   unsigned int cubeIndices[] = {
-      0, 1, 2, 2, 3, 0, // front
-      1, 5, 6, 6, 2, 1, // right
-      7, 6, 5, 5, 4, 7, // back
-      4, 0, 3, 3, 7, 4, // left
-      4, 5, 1, 1, 0, 4, // bottom
-      3, 2, 6, 6, 7, 3  // top
+      0, 1, 2, 2, 3, 0, 
+      1, 5, 6, 6, 2, 1, 
+      7, 6, 5, 5, 4, 7, 
+      4, 0, 3, 3, 7, 4, 
+      4, 5, 1, 1, 0, 4, 
+      3, 2, 6, 6, 7, 3  
   };
 
   realis::renderer::VertexArray cubeVA;
   realis::renderer::VertexBuffer cubeVB(cubeVertices, sizeof(cubeVertices),
                                         GL_STATIC_DRAW);
   realis::renderer::VertexBufferLayout cubeLayout;
-  cubeLayout.pushFloat(3); // position
-  cubeLayout.pushFloat(3); // color
+  cubeLayout.pushFloat(3); 
+  cubeLayout.pushFloat(3); 
   cubeVA.addBuffer(cubeVB, cubeLayout);
   realis::renderer::IndexBuffer cubeIB(cubeIndices, 36, GL_STATIC_DRAW);
 
-  // ── Scene Graph Hierarchy ─────────────────────────────────────────────────
-  //
-  //  root   (identity position, animated Y-rotation each frame)
-  //    └─ child  (offset +2 on X, independent Z-rotation)
-  //         └─ grandchild  (offset +1.5 on X, scale 0.5)
-  //
-  // Each cube's world matrix is fetched from its SceneNode and uploaded as
-  // u_Model. The renderer never touches hierarchy math.
+  
+  
+  
+  
+  
+  
+  
+  
 
   auto sceneRoot = std::make_unique<realis::scene::SceneNode>("Root");
 
@@ -255,29 +255,29 @@ int main() {
   nodeGrandchild->localTransform.setPosition({1.5f, 0.0f, 0.0f});
   nodeGrandchild->localTransform.setScale({0.5f, 0.5f, 0.5f});
 
-  // Build hierarchy (ownership transferred)
+  
   realis::scene::SceneNode *rawChild =
       nodeChild->addChild(std::move(nodeGrandchild));
   realis::scene::SceneNode *rawGrandchild =
-      rawChild; // re-use pointer, see below
-  // Transfer child into root
+      rawChild; 
+  
   realis::scene::SceneNode *rawChildNode =
       sceneRoot->addChild(std::move(nodeChild));
-  // Get grandchild pointer through the now-adopted hierarchy
+  
   realis::scene::SceneNode *rawGrandNode = rawChildNode->getChildren()[0].get();
-  (void)rawGrandchild; // suppress unused-variable in case compiler warns
+  (void)rawGrandchild; 
 
-  // Set local AABBs for picking (Unit cubes: -0.5 to 0.5)
+  
   realis::scene::AABB unitCube({-0.5f, -0.5f, -0.5f}, {0.5f, 0.5f, 0.5f});
   sceneRoot->localAABB = unitCube;
   rawChildNode->localAABB = unitCube;
   rawGrandNode->localAABB = unitCube;
 
-  // Set scene root for picking
+  
   g_input.sceneRoot = sceneRoot.get();
 
-  // 4. Create Shader for Cube
-  // Vertex shader now accepts u_Model so each node can have its own transform.
+  
+  
   const std::string vertexSrc = R"(
     #version 450 core
     layout(location = 0) in vec3 position;
@@ -299,9 +299,9 @@ int main() {
     void main() {
         vec3 color = v_Color;
         if (u_Selected) {
-            // Emissive boost: mix with light yellow/white
+            
             color = mix(color, vec3(1.0, 1.0, 0.7), 0.4);
-            color += vec3(0.1, 0.1, 0.0); // additive glow
+            color += vec3(0.1, 0.1, 0.0); 
         }
         outColor = vec4(color, 1.0);
     }
@@ -309,11 +309,11 @@ int main() {
 
   realis::renderer::Shader cubeShader(vertexSrc, fragmentSrc);
 
-  // Animate accumulators
-  float rootAngle = 0.0f;  // root Y-rotation (rad)
-  float childAngle = 0.0f; // child Z-rotation (rad)
+  
+  float rootAngle = 0.0f;  
+  float childAngle = 0.0f; 
 
-  // 5. Render Loop
+  
   auto lastFrameTime = std::chrono::high_resolution_clock::now();
   bool pKeyWasDown = false;
 
@@ -322,7 +322,7 @@ int main() {
     float dt = std::chrono::duration<float>(now - lastFrameTime).count();
     lastFrameTime = now;
 
-    // -- Input Handling
+    
     double mx, my;
     glfwGetCursorPos(window.handle(), &mx, &my);
     if (g_input.firstMouse) {
@@ -362,18 +362,18 @@ int main() {
     if (window.isKeyPressed(GLFW_KEY_ESCAPE))
       glfwSetWindowShouldClose(window.handle(), true);
 
-    // -- Rendering
+    
     renderer.clear();
 
-    // 1. Grid (XZ plane)
+    
     workspaceGrid.draw(renderer, camera);
 
-    // 2. Axis (Origin)
+    
     workspaceAxis.draw(renderer, camera);
 
-    // 3. Scene Graph — animate and update hierarchy
-    rootAngle += dt * 0.6f;  // root rotates ~34°/s around Y
-    childAngle += dt * 1.2f; // child spins ~69°/s around Z
+    
+    rootAngle += dt * 0.6f;  
+    childAngle += dt * 1.2f; 
 
     sceneRoot->localTransform.setRotation(
         glm::angleAxis(rootAngle, glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -381,26 +381,26 @@ int main() {
     rawChildNode->localTransform.setRotation(
         glm::angleAxis(childAngle, glm::vec3(0.0f, 0.0f, 1.0f)));
 
-    // Full top-down world matrix propagation (Option A)
+    
     sceneRoot->updateWorldMatrix();
 
-    // 4. Draw each node using its world matrix
+    
     glm::mat4 vp = camera.getProjectionMatrix() * camera.getViewMatrix();
     cubeShader.bind();
     cubeShader.setUniformMat4("u_VP", vp);
 
-    // Root cube
+    
     cubeShader.setUniformMat4("u_Model", sceneRoot->getWorldMatrix());
     cubeShader.setUniformInt("u_Selected",
                              selection.isSelected(sceneRoot.get()));
     renderer.draw(cubeVA, cubeIB, cubeShader);
 
-    // Child cube
+    
     cubeShader.setUniformMat4("u_Model", rawChildNode->getWorldMatrix());
     cubeShader.setUniformInt("u_Selected", selection.isSelected(rawChildNode));
     renderer.draw(cubeVA, cubeIB, cubeShader);
 
-    // Grandchild cube
+    
     cubeShader.setUniformMat4("u_Model", rawGrandNode->getWorldMatrix());
     cubeShader.setUniformInt("u_Selected", selection.isSelected(rawGrandNode));
     renderer.draw(cubeVA, cubeIB, cubeShader);

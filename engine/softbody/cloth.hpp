@@ -1,4 +1,4 @@
-// Cloth simulation
+
 #pragma once
 
 namespace realis {
@@ -8,4 +8,4 @@ public:
     void simulate(float dt);
 };
 
-} // namespace realis
+} 

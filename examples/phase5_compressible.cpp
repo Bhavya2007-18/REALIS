@@ -1,4 +1,4 @@
-// Phase 5 Demonstration: 1D Compressible Flow (FV Method)
+
 #include "../engine/fluids/compressible_1d.hpp"
 #include <cmath>
 #include <iomanip>
@@ -7,7 +7,7 @@
 using namespace realis;
 using namespace realis::fluids;
 
-// Utility to print domain mass and energy
+
 void print_domain_stats(const FluidDomain1D &domain, const FVMSolver1D &solver,
                         const std::string &label) {
   float total_mass = 0.0f;
@@ -18,7 +18,7 @@ void print_domain_stats(const FluidDomain1D &domain, const FVMSolver1D &solver,
     total_momentum += domain.cells[i].rho_u * domain.dx;
     total_energy += domain.cells[i].E * domain.dx;
 
-    // Ensure positivity
+    
     if (domain.cells[i].rho <= 0.0f)
       std::cerr << "ERROR: Negative density at cell " << i << "\n";
     if (solver.get_internal_energy(domain.cells[i]) <= 0.0f)
@@ -36,18 +36,18 @@ void test_sod_shock_tube() {
   solver.gamma = 1.4f;
   solver.boundary_condition = FVMSolver1D::BoundaryCondition::OUTFLOW;
 
-  // Initial Conditions: x <= 0.5 is left state, x > 0.5 is right state
+  
   for (int i = 0; i < domain.num_cells; ++i) {
     float x = (i + 0.5f) * domain.dx;
     if (x <= 0.5f) {
-      // Left: High density, high pressure
+      
       float rho = 1.0f;
       float u = 0.0f;
       float p = 1.0f;
       float E = p / (solver.gamma - 1.0f) + 0.5f * rho * u * u;
       domain.cells[i] = FluidState1D(rho, rho * u, E);
     } else {
-      // Right: Low density, low pressure
+      
       float rho = 0.125f;
       float u = 0.0f;
       float p = 0.1f;
@@ -60,7 +60,7 @@ void test_sod_shock_tube() {
 
   float t = 0.0f;
   float t_end =
-      0.2f; // Short time to prevent boundaries from interacting with wave
+      0.2f; 
   float cfl = 0.8f;
   int step = 0;
 
@@ -122,15 +122,15 @@ void test_energy_conservation_and_heat() {
   FluidDomain1D domain(50, 0.5f);
   FVMSolver1D solver;
   solver.boundary_condition = FVMSolver1D::BoundaryCondition::PERIODIC;
-  solver.thermal_conductivity = 10.0f; // Turn on heat conduction
+  solver.thermal_conductivity = 10.0f; 
 
-  // Closed domain, initial hot spot in the middle
+  
   for (int i = 0; i < domain.num_cells; ++i) {
     float rho = 1.0f;
     float u = 0.0f;
     float p = (i >= 20 && i <= 30)
                   ? 5.0f
-                  : 1.0f; // Hot spot explicitly defined by pressure
+                  : 1.0f; 
     float E = p / (solver.gamma - 1.0f) + 0.5f * rho * u * u;
     domain.cells[i] = FluidState1D(rho, rho * u, E);
   }
@@ -169,7 +169,7 @@ void test_energy_conservation_and_heat() {
   float mass_err = std::abs(final_mass - initial_mass);
   float energy_err = std::abs(final_energy - initial_energy);
 
-  // Allowed error bounds due to single precision floating point accumulation
+  
   if (mass_err < 1e-4f && energy_err < 1e-4f) {
     std::cout << "✓ PASS: First Law of Thermodynamics obeyed. Mass and Total "
                  "Energy conserved up to floating point precision.\n";

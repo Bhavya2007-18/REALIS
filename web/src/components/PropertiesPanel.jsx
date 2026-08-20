@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers } from 'lucide-react'
+import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers, ChevronDown, Activity as ActivityIcon, SlidersHorizontal as SlidersIcon, Wrench, BookOpen, Compass, Gauge, ArrowDown, Sparkles } from 'lucide-react'
 import useStore from '../store/useStore'
 import { isClosedProfile } from '../utils/ProfileValidator'
+import { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver'
 
 const MATERIALS = {
     custom: { name: 'Custom' },
@@ -12,6 +13,378 @@ const MATERIALS = {
     plastic: { name: 'Generic Plastic', color: '#3b82f6', roughness: 0.8, metalness: 0.1, friction: 0.5, restitution: 0.6 },
     rubber: { name: 'Rubber', color: '#1f2937', roughness: 0.9, metalness: 0.0, friction: 0.9, restitution: 0.8 },
     titanium: { name: 'Titanium', color: '#e5e7eb', roughness: 0.2, metalness: 0.8, friction: 0.3, restitution: 0.4 }
+}
+
+// Compact stat tile used inside expanded sections
+function Stat({ label, value, unit, color = 'text-white' }) {
+    return (
+        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
+            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">{label}</span>
+            <div className={`text-base font-bold font-mono ${color}`}>
+                {value} <span className="text-xs font-normal text-slate-500">{unit}</span>
+            </div>
+        </div>
+    )
+}
+
+// PropertySection component for accordion sections (matching LayerPanel visual style)
+function PropertySection({ title, icon, accent, summary, children, sectionKey, openSections, toggleSection }) {
+    const isOpen = openSections[sectionKey] || false
+    return (
+        <div className="border-t border-slate-700/50 transition-colors duration-200 bg-slate-800/30">
+            <button
+                onClick={() => toggleSection(sectionKey)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-colors duration-200 group hover:bg-slate-800/50"
+                aria-expanded={isOpen}
+            >
+                <span className={`shrink-0 transition-colors ${isOpen ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>
+                    {icon}
+                </span>
+                <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${isOpen ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                    {title}
+                </span>
+                <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
+                <ChevronDown
+                    size={12}
+                    className={`shrink-0 transition-transform duration-200 ${openSections[sectionKey] ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`}
+                />
+            </button>
+            <div
+                className="grid"
+                style={{ gridTemplateRows: openSections[sectionKey] ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}
+            >
+                <div className="overflow-hidden min-h-0 px-4 pb-3">
+                    {children}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// Lab Properties component - renders lab data in Properties panel
+function LabProperties({ labData, openSections, toggleSection, handleLabConfigChange }) {
+    if (!labData) return null
+    
+    return (
+        <div className="space-y-4">
+            <div className="px-1 py-1 text-[10px] uppercase font-bold text-slate-500 mb-2">
+                {labData.title}
+            </div>
+            
+            {/* LIVE TELEMETRY */}
+            {labData.snapshot && (
+                <PropertySection
+                    sectionKey="telemetry"
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                    title="LIVE TELEMETRY"
+                    icon={<Activity size={13} />}
+                    accent="text-emerald-400"
+                    summary={labData.type === 'free_fall' 
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · y ${labData.snapshot.height.toFixed(1)}m · v ${labData.snapshot.velocity.toFixed(1)}m/s`
+                        : labData.type === 'single_pendulum'
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · θ ${labData.snapshot.angle.toFixed(1)}° · ω ${labData.snapshot.omega.toFixed(1)} rad/s`
+                        : `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(1)}m · y ${labData.snapshot.y.toFixed(1)}m · v ${labData.snapshot.speed.toFixed(1)}m/s`
+                    }
+                >
+                    <div className="space-y-3">
+                        {labData.type === 'free_fall' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Altitude (y)" value={labData.snapshot.height.toFixed(2)} unit="m" color="text-sky-400" />
+                                <Stat label="Time (t)" value={labData.snapshot.time.toFixed(2)} unit="s" />
+                                <Stat label="Velocity (v)" value={labData.snapshot.velocity.toFixed(2)} unit="m/s" color={labData.snapshot.velocity < 0 ? 'text-cyan-400' : 'text-emerald-400'} />
+                                <Stat label="Acceleration (g)" value={labData.snapshot.config.gravity.toFixed(2)} unit="m/s²" color="text-amber-400" />
+                            </div>
+                        )}
+                        {labData.type === 'single_pendulum' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Angle (θ)" value={labData.snapshot.angle.toFixed(2)} unit="°" color="text-sky-400" />
+                                <Stat label="Angular Vel. (ω)" value={labData.snapshot.omega.toFixed(2)} unit="rad/s" />
+                                <Stat label="Tangential Speed" value={labData.snapshot.speed.toFixed(2)} unit="m/s" color="text-emerald-400" />
+                                <Stat label="Rod Tension" value={labData.snapshot.tension.toFixed(2)} unit="N" color="text-amber-400" />
+                            </div>
+                        )}
+                        {labData.type === 'projectile_motion' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Time (t)" value={labData.snapshot.time.toFixed(2)} unit="s" />
+                                <Stat label="Position X" value={labData.snapshot.x.toFixed(2)} unit="m" />
+                                <Stat label="Position Y" value={labData.snapshot.y.toFixed(2)} unit="m" />
+                                <Stat label="Speed" value={labData.snapshot.speed.toFixed(2)} unit="m/s" />
+                            </div>
+                        )}
+                        
+                        {labData.snapshot.energy && (
+                            <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
+                                <span className="text-slate-400 text-[10px]">TOTAL ENERGY:</span>
+                                <span className="text-amber-400 font-bold">{Math.round(labData.snapshot.energy.total).toLocaleString()} J</span>
+                            </div>
+                        )}
+                    </div>
+                </PropertySection>
+            )}
+            
+            {/* LAUNCH PARAMETERS / INITIAL CONDITIONS */}
+            {labData.config && (
+                <PropertySection
+                    sectionKey="params"
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : 'INITIAL CONDITIONS'}
+                    icon={<SlidersHorizontal size={13} />}
+                    accent="text-amber-400"
+                    summary={labData.type === 'free_fall' 
+                        ? `h₀ ${labData.config.initialHeight}m · e ${labData.config.restitution.toFixed(2)} · m ${labData.config.mass}kg · g ${PLANETARY_GRAVITY[labData.config.selectedPlanet]?.g ?? 9.81}m/s²`
+                        : labData.type === 'single_pendulum'
+                        ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
+                        : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
+                    }
+                >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-5">
+                        {labData.type === 'free_fall' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">DROP HEIGHT (h₀)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.initialHeight} m</span>
+                                    </div>
+                                    <input type="range" min="10" max="250" step="5" value={labData.config.initialHeight}
+                                        onChange={(e) => handleLabConfigChange('initialHeight', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">SURFACE BOUNCE (e)</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.restitution.toFixed(2)}</span>
+                                    </div>
+                                    <input type="range" min="0.0" max="0.85" step="0.05" value={labData.config.restitution}
+                                        onChange={(e) => handleLabConfigChange('restitution', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    <div className="flex justify-between text-[8px] font-mono text-slate-500">
+                                        <span>0.0 (Steel Plop)</span>
+                                        <span>0.45 (Concrete)</span>
+                                        <span>0.85 (Superball)</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">SPHERE MASS (m)</span>
+                                        <span className="text-white font-bold">{labData.config.mass} kg</span>
+                                    </div>
+                                    <input type="range" min="1" max="50" step="1" value={labData.config.mass}
+                                        onChange={(e) => handleLabConfigChange('mass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">PLANET</span>
+                                        <span className="text-sky-400 font-bold">{PLANETARY_GRAVITY[labData.config.selectedPlanet]?.name ?? labData.config.selectedPlanet}</span>
+                                    </div>
+                                    <select
+                                        value={labData.config.selectedPlanet}
+                                        onChange={(e) => handleLabConfigChange('selectedPlanet', e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
+                                    >
+                                        {Object.entries(PLANETARY_GRAVITY).map(([key, data]) => (
+                                            <option key={key} value={key}>{data.name} (g = {data.g} m/s²)</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
+                        )}
+                        {labData.type === 'single_pendulum' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">LENGTH (L)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.length} m</span>
+                                    </div>
+                                    <input type="range" min="0.5" max="5" step="0.1" value={labData.config.length}
+                                        onChange={(e) => handleLabConfigChange('length', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL ANGLE (θ₀)</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.angle0}°</span>
+                                    </div>
+                                    <input type="range" min="10" max="170" step="5" value={labData.config.angle0}
+                                        onChange={(e) => handleLabConfigChange('angle0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">MASS (m)</span>
+                                        <span className="text-white font-bold">{labData.config.mass} kg</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="20" step="0.1" value={labData.config.mass}
+                                        onChange={(e) => handleLabConfigChange('mass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITY (g)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.gravity} m/s²</span>
+                                    </div>
+                                    <input type="range" min="1" max="30" step="0.1" value={labData.config.gravity}
+                                        onChange={(e) => handleLabConfigChange('gravity', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">DAMPING</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.damping}</span>
+                                    </div>
+                                    <input type="range" min="0" max="0.5" step="0.01" value={labData.config.damping}
+                                        onChange={(e) => handleLabConfigChange('damping', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">TIME SCALE</span>
+                                        <span className="text-purple-400 font-bold">{labData.config.timeScale}x</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="5" step="0.1" value={labData.config.timeScale}
+                                        onChange={(e) => handleLabConfigChange('timeScale', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                </div>
+                            </>
+                        )}
+                        {labData.type === 'projectile_motion' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL VELOCITY (v₀)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.v0} m/s</span>
+                                    </div>
+                                    <input type="range" min="5" max="50" step="1" value={labData.config.v0}
+                                        onChange={(e) => handleLabConfigChange('v0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">LAUNCH ANGLE (θ)</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.angle}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="90" step="1" value={labData.config.angle}
+                                        onChange={(e) => handleLabConfigChange('angle', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL HEIGHT (y₀)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.y0} m</span>
+                                    </div>
+                                    <input type="range" min="0" max="50" step="1" value={labData.config.y0}
+                                        onChange={(e) => handleLabConfigChange('y0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITY (g)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.gravity} m/s²</span>
+                                    </div>
+                                    <input type="range" min="1" max="30" step="0.1" value={labData.config.gravity}
+                                        onChange={(e) => handleLabConfigChange('gravity', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </PropertySection>
+            )}
+            
+            {/* ENGINEERING INSPECTOR */}
+            {labData.snapshot && (
+                <PropertySection
+                    sectionKey="inspector"
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                    title="ENGINEERING INSPECTOR"
+                    icon={<Wrench size={13} />}
+                    accent="text-purple-400"
+                    summary={labData.type === 'free_fall'
+                        ? `Falling sphere · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
+                        : labData.type === 'single_pendulum'
+                        ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
+                        : `Projectile · Analytical · Δt ${labData.snapshot.config.dt}s`
+                    }
+                >
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
+                            <div className="text-purple-400 font-bold text-[10px]">SIMULATION</div>
+                            {labData.type === 'free_fall' && (
+                                <>
+                                    <div>• Object: <span className="text-slate-200">Falling sphere ({labData.snapshot.config.mass} kg)</span></div>
+                                    <div>• Radius: <span className="text-slate-200">{labData.snapshot.config.radius} m</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (4 substeps)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
+                                    <div>• Restitution: <span className="text-slate-200">e = {labData.snapshot.config.restitution.toFixed(2)}</span></div>
+                                </>
+                            )}
+                            {labData.type === 'single_pendulum' && (
+                                <>
+                                    <div>• Object: <span className="text-slate-200">Simple pendulum ({labData.snapshot.config.mass} kg)</span></div>
+                                    <div>• Length: <span className="text-slate-200">{labData.snapshot.config.length} m</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (8 substeps)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
+                                    <div>• Damping: <span className="text-slate-200">{labData.snapshot.config.damping}</span></div>
+                                </>
+                            )}
+                            {labData.type === 'projectile_motion' && (
+                                <>
+                                    <div>• Object: <span className="text-slate-200">Projectile ({labData.snapshot.config.mass} kg)</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Analytical closed-form</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
+                                </>
+                            )}
+                            <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
+                        </div>
+                        
+                        <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
+                            <div className="text-amber-400 font-bold text-[10px]">ANALYTICAL SOLUTION</div>
+                            {labData.type === 'free_fall' && (
+                                <>
+                                    <div>• Height law: <span className="text-slate-200">y(t) = h₀ - ½gt²</span></div>
+                                    <div>• Velocity law: <span className="text-slate-200">v(t) = -g·t</span></div>
+                                    <div>• Time to ground: <span className="text-white font-bold">{labData.snapshot.theoretical?.firstImpactTime ?? 'N/A'} s</span></div>
+                                    <div>• Impact velocity: <span className="text-white font-bold">{labData.snapshot.theoretical?.impactVelocity ?? 'N/A'} m/s</span></div>
+                                </>
+                            )}
+                            {labData.type === 'single_pendulum' && (
+                                <>
+                                    <div>• Period (small angle): <span className="text-slate-200">{labData.snapshot.analytics?.smallAnglePeriod?.toFixed(3) ?? 'N/A'} s</span></div>
+                                    <div>• Period (exact): <span className="text-slate-200">{labData.snapshot.analytics?.exactPeriod?.toFixed(3) ?? 'N/A'} s</span></div>
+                                    <div>• Small-angle freq: <span className="text-slate-200">{labData.snapshot.analytics?.smallAngleFrequency?.toFixed(3) ?? 'N/A'} Hz</span></div>
+                                    <div>• Max speed: <span className="text-slate-200">{labData.snapshot.analytics?.speedAtBottom?.toFixed(2) ?? 'N/A'} m/s</span></div>
+                                </>
+                            )}
+                            {labData.type === 'projectile_motion' && (
+                                <>
+                                    <div>• Time of flight: <span className="text-white font-bold">{labData.snapshot.analytics?.timeOfFlight?.toFixed(3) ?? 'N/A'} s</span></div>
+                                    <div>• Range: <span className="text-white font-bold">{labData.snapshot.analytics?.range?.toFixed(3) ?? 'N/A'} m</span></div>
+                                    <div>• Max height: <span className="text-white font-bold">{labData.snapshot.analytics?.maxHeight?.toFixed(3) ?? 'N/A'} m</span></div>
+                                </>
+                            )}
+                        </div>
+                        
+                        <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
+                            <div className="text-emerald-400 font-bold text-[10px]">ENERGY / VALIDATION</div>
+                            {labData.snapshot.energy && (
+                                <>
+                                    <div>• Total: <span className="text-slate-200">{Math.round(labData.snapshot.energy.total).toLocaleString()} J</span></div>
+                                    <div>• Initial: <span className="text-slate-200">{Math.round(labData.snapshot.energy.initialTotal || 0).toLocaleString()} J</span></div>
+                                    {labData.snapshot.energy.dissipated !== undefined && (
+                                        <div>• Dissipated: <span className="text-rose-400 font-bold">{Math.round(labData.snapshot.energy.dissipated).toLocaleString()} J</span></div>
+                                    )}
+                                    <div>• Bounces: <span className="text-slate-200">{labData.snapshot.bounceCount ?? labData.snapshot.swingCount ?? 0}</span></div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </PropertySection>
+            )}
+        </div>
+    )
 }
 
 export default function PropertiesPanel() {
@@ -32,9 +405,28 @@ export default function PropertiesPanel() {
     const extrudeOperation = useStore(s => s.extrudeOperation)
     const setExtrudeOperation = useStore(s => s.setExtrudeOperation)
 
-    const [selectedObject, setSelectedObject] = useState(null)
+const [selectedObject, setSelectedObject] = useState(null)
 
-    // Joint form state
+    // Lab data for simulation properties
+    const labData = useStore(s => s.labData)
+    const [openSections, setOpenSections] = useState({})
+
+    const toggleSection = (key) => {
+        setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
+    }
+
+    // Handle lab configuration changes from Properties panel
+    const handleLabConfigChange = (key, value) => {
+        if (!labData) return
+        // Update the lab's internal state by triggering a config update
+        // The labs watch their config state and will update the solver
+        // We need to trigger the labs' config update by simulating the store changes
+        // Since labs watch their own state, we'll use a custom event
+        window.dispatchEvent(new CustomEvent('lab-config-change', { 
+            detail: { type: labData.type, key, value } 
+        }))
+    }
+
     const [jointType, setJointType] = useState('distance')
     const [jointTargetA, setJointTargetA] = useState('')
     const [jointTargetB, setJointTargetB] = useState('')
@@ -55,38 +447,86 @@ export default function PropertiesPanel() {
         }
     }, [activeFileId, objects, shapes3D])
 
-    const Layers = Maximize // placeholder for missing icon
+    const Layers = Maximize 
+
+    // PropertySection component for accordion sections (matching LayerPanel visual style)
+    function PropertySection({ title, icon, accent, summary, children, key: sectionKey }) {
+        const isOpen = openSections[sectionKey] || false
+        return (
+            <div className="border-t border-slate-700/50 transition-colors duration-200 bg-slate-800/30">
+                <button
+                    onClick={() => toggleSection(sectionKey)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-colors duration-200 group hover:bg-slate-800/50"
+                    aria-expanded={isOpen}
+                >
+                    <span className={`shrink-0 transition-colors ${isOpen ? accent : 'text-slate-500 group-hover:text-slate-300'}`}>
+                        {icon}
+                    </span>
+                    <span className={`text-[10px] font-bold tracking-widest uppercase shrink-0 transition-colors ${isOpen ? 'text-slate-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                        {title}
+                    </span>
+                    <span className="flex-1 min-w-0 text-xs font-mono text-slate-400 truncate">{summary}</span>
+                    <ChevronDown
+                        size={12}
+                        className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-slate-300' : 'text-slate-500 group-hover:text-slate-300'}`}
+                    />
+                </button>
+                <div
+                    className="grid"
+                    style={{ gridTemplateRows: isOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.2s ease-out' }}
+                >
+                    <div className="overflow-hidden min-h-0 px-4 pb-3">
+                        {children}
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     if (!selectedObject) {
+        // Determine what to show in the empty state
+        const showLabData = labData && !selectedObject
+        
         return (
             <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark flex flex-col shrink-0">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
                     <SlidersHorizontal size={14} className="text-slate-500" />
                     <h3 className="font-bold text-sm text-slate-500">Properties</h3>
                 </div>
-                <div className="flex-1 flex items-center justify-center p-8 text-center text-slate-500">
-                    <p className="text-xs">Select an object to view its properties.</p>
-                </div>
-
-                {/* Global Joints List */}
-                {constraints.length > 0 && (
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-2">
-                            <Link size={12} /> Joints ({constraints.length})
-                        </h4>
-                        <div className="space-y-1">
-                            {constraints.map(c => (
-                                <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1 rounded text-[10px] font-mono">
-                                    <span className="text-primary">{c.type}</span>
-                                    <span className="text-slate-400 truncate mx-1">{c.targetA} ↔ {c.targetB || '⚓'}</span>
-                                    <button onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))} className="text-red-400 hover:text-red-300 transition-colors shrink-0">
-                                        <Trash2 size={10} />
-                                    </button>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+{showLabData ? (
+                        <LabProperties
+                            labData={labData}
+                            openSections={openSections}
+                            toggleSection={toggleSection}
+                            handleLabConfigChange={handleLabConfigChange}
+                        />
+                    ) : (
+                        <>
+                            <div className="flex-1 flex items-center justify-center p-8 text-center text-slate-500">
+                                <p className="text-xs">Select an object to view its properties.</p>
+                            </div>
+                            {constraints.length > 0 && (
+                                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-2">
+                                        <Link size={12} /> Joints ({constraints.length})
+                                    </h4>
+                                    <div className="space-y-1">
+                                        {constraints.map(c => (
+                                            <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1 rounded text-[10px] font-mono">
+                                                <span className="text-primary">{c.type}</span>
+                                                <span className="text-slate-400 truncate mx-1">{c.targetA} ↔ {c.targetB || '⚓'}</span>
+                                                <button onClick={() => setConstraints(constraints.filter(x => x.id !== c.id))} className="text-red-400 hover:text-red-300 transition-colors shrink-0">
+                                                    <Trash2 size={10} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                            )}
+                        </>
+                    )}
+                </div>
             </aside>
         )
     }
@@ -95,9 +535,17 @@ export default function PropertiesPanel() {
         if (selectedObject.is3D) {
             setShapes3D(prev => prev.map(o => {
                 if (o.id === selectedObject.id) {
-                    if (subfield) {
-                        const val = value === '' ? 0 : parseFloat(value);
-                        return { ...o, [field]: { ...o[field], [subfield]: isNaN(val) ? 0 : val } }
+                    if (subfield !== null) {
+                        const val = value === '' ? '' : parseFloat(value);
+                        const safeVal = isNaN(val) && value !== '' ? 0 : val;
+                        const idx = subfield === 'x' ? 0 : subfield === 'y' ? 1 : 2;
+
+                        if (Array.isArray(o[field])) {
+                            const newArr = [...o[field]];
+                            newArr[idx] = safeVal;
+                            return { ...o, [field]: newArr }
+                        }
+                        return { ...o, [field]: { ...o[field], [subfield]: safeVal } }
                     }
                     if (field === 'params') {
                         const newParams = { ...o.params };
@@ -108,7 +556,7 @@ export default function PropertiesPanel() {
                         return { ...o, params: newParams }
                     }
 
-                    // Handle Boolean fields like isStatic
+                    
                     if (field === 'isStatic') {
                         return { ...o, [field]: !!value }
                     }
@@ -151,7 +599,7 @@ export default function PropertiesPanel() {
             targetB: jointTargetB || null,
             distance: parseFloat(jointDistance),
         };
-        setConstraints(prev => [...prev, newConstraint]);
+        setConstraints([...(constraints || []), newConstraint]);
     };
 
     return (
@@ -184,7 +632,7 @@ export default function PropertiesPanel() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
 
-                {/* Advanced Extrude Setup */}
+                {}
                 {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && isClosedProfile(selectedObject) && (
                     <div className="space-y-3 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
@@ -259,7 +707,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* General Info */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Settings size={12} /> General
@@ -293,7 +741,7 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* 3D Transform */}
+                {}
                 {selectedObject.is3D && (
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -308,7 +756,7 @@ export default function PropertiesPanel() {
                                         <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
                                         <input
                                             type="number"
-                                            value={selectedObject.position[axis]}
+                                            value={Array.isArray(selectedObject.position) ? selectedObject.position[['x','y','z'].indexOf(axis)] : (selectedObject.position?.[axis] ?? 0)}
                                             onChange={e => handleChange('position', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -326,7 +774,7 @@ export default function PropertiesPanel() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={selectedObject.rotation[axis]}
+                                            value={Array.isArray(selectedObject.rotation) ? selectedObject.rotation[['x','y','z'].indexOf(axis)] : (selectedObject.rotation?.[axis] ?? 0)}
                                             onChange={e => handleChange('rotation', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -344,7 +792,7 @@ export default function PropertiesPanel() {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={selectedObject.scale[axis]}
+                                            value={Array.isArray(selectedObject.scale) ? selectedObject.scale[['x','y','z'].indexOf(axis)] : (selectedObject.scale?.[axis] ?? 1)}
                                             onChange={e => handleChange('scale', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -355,7 +803,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* 2D Transform */}
+                {}
                 {!selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -633,7 +1081,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* 3D Parameters */}
+                {}
                 {selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -656,7 +1104,7 @@ export default function PropertiesPanel() {
                     </div>
                 )}
 
-                {/* Appearance */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Palette size={12} /> Appearance
@@ -728,7 +1176,7 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* Physics */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Activity size={12} /> Physics
@@ -784,14 +1232,14 @@ export default function PropertiesPanel() {
                     </div>
                 </div>
 
-                {/* Joints & Constraints */}
+                {}
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Link size={12} /> Joints & Constraints
                     </h4>
 
                     <div className="space-y-2 pt-1 p-3 bg-slate-800/30 rounded-xl border border-slate-700/40">
-                        {/* Joint Type */}
+                        {}
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Constraint Type</label>
                             <select
@@ -804,7 +1252,7 @@ export default function PropertiesPanel() {
                             </select>
                         </div>
 
-                        {/* Body A */}
+                        {}
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Body A</label>
                             <select
@@ -813,13 +1261,12 @@ export default function PropertiesPanel() {
                                 className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                             >
                                 <option value="">-- Select Object --</option>
-                                {objects.map(o => (
-                                    <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                {[...objects, ...shapes3D].map(o => (
+                                    <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Body B (only for distance joint) */}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Body B</label>
@@ -829,14 +1276,13 @@ export default function PropertiesPanel() {
                                     className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                                 >
                                     <option value="">-- Select Object --</option>
-                                    {objects.filter(o => o.id !== jointTargetA).map(o => (
-                                        <option key={o.id} value={o.id}>{o.type} ({o.id.substring(0, 6)}…)</option>
+                                    {[...objects, ...shapes3D].filter(o => String(o.id) !== String(jointTargetA)).map(o => (
+                                        <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
                                     ))}
                                 </select>
                             </div>
                         )}
 
-                        {/* Distance parameter */}
                         {jointType === 'distance' && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Target Distance</label>
@@ -858,17 +1304,16 @@ export default function PropertiesPanel() {
                         </button>
                     </div>
 
-                    {/* Existing Joints */}
                     {constraints.length > 0 && (
                         <div className="space-y-1">
                             {constraints.map(c => (
                                 <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700/30">
                                     <div className="flex flex-col">
                                         <span className="text-primary font-bold">{c.type}</span>
-                                        <span className="text-slate-400">{c.targetA?.substring(0, 6)} ↔ {c.targetB?.substring(0, 6) || '⚓ world'}</span>
+                                        <span className="text-slate-400">{String(c.targetA || '').substring(0, 6)} ↔ {c.targetB ? String(c.targetB).substring(0, 6) : '⚓ world'}</span>
                                     </div>
                                     <button
-                                        onClick={() => setConstraints(prev => prev.filter(x => x.id !== c.id))}
+                                        onClick={() => setConstraints((constraints || []).filter(x => x.id !== c.id))}
                                         className="text-red-400 hover:text-red-300 transition-colors p-1"
                                     >
                                         <Trash2 size={10} />
@@ -883,4 +1328,3 @@ export default function PropertiesPanel() {
         </aside>
     )
 }
-

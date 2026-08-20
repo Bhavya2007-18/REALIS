@@ -6,6 +6,9 @@ import BottomBar from '../components/BottomBar'
 import WorkspaceRenderer from '../workspaces/WorkspaceRenderer'
 import AIImportPanel from '../components/AIImportPanel'
 import PropertiesPanel from '../components/PropertiesPanel'
+import SketchImportPanel from '../components/SketchImportPanel'
+import SketchPreviewOverlay from '../components/SketchPreviewOverlay'
+import EnergyMonitor from '../components/EnergyMonitor'
 import useStore from '../store/useStore'
 import { useEffect } from 'react'
 
@@ -17,7 +20,7 @@ export default function AppLayout() {
     const undo = useStore((s) => s.undo)
     const redo = useStore((s) => s.redo)
 
-    // Global keyboard shortcuts
+    
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.ctrlKey || e.metaKey) {
@@ -43,13 +46,18 @@ export default function AppLayout() {
                 <Sidebar />
                 <div className="flex-1 relative bg-[#0a0f1a]">
                     <WorkspaceRenderer />
+                    <SketchPreviewOverlay />
+                    <EnergyMonitor />
                 </div>
                 {isRightPanelOpen && rightPanelView === 'properties' && <PropertiesPanel />}
                 
-                {/* Floating AI Panel Overlay */}
+                {}
+                <SketchImportPanel />
+                
+                {}
                 {isAIPanelOpen && (
                     <div className="absolute right-4 bottom-20 z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10 h-[600px] max-h-[80vh] flex flex-col slide-in-panel">
-                        <AIChatBot />
+                        <AIChatBot toggleAIPanel={toggleAIPanel} />
                     </div>
                 )}
                 <AIImportPanel />

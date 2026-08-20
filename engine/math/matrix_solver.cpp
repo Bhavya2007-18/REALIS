@@ -1,4 +1,4 @@
-// Matrix solver implementation
+
 #include "matrix_solver.hpp"
 #include <algorithm>
 #include <cmath>
@@ -16,7 +16,7 @@ bool MatrixSolver::solve_gaussian(std::vector<float> &A, std::vector<float> &b,
 
   x.assign(n, 0.0f);
 
-  // Create a working augmented matrix [A | b]
+  
   std::vector<std::vector<float>> aug(n, std::vector<float>(n + 1));
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
@@ -25,9 +25,9 @@ bool MatrixSolver::solve_gaussian(std::vector<float> &A, std::vector<float> &b,
     aug[i][n] = b[i];
   }
 
-  // Forward elimination with partial pivoting
+  
   for (int k = 0; k < n; ++k) {
-    // Find pivot
+    
     int pivot_row = k;
     float max_val = std::abs(aug[k][k]);
 
@@ -39,17 +39,17 @@ bool MatrixSolver::solve_gaussian(std::vector<float> &A, std::vector<float> &b,
       }
     }
 
-    // Singular matrix check
+    
     if (max_val < 1e-6f) {
       return false;
     }
 
-    // Swap rows
+    
     if (pivot_row != k) {
       std::swap(aug[k], aug[pivot_row]);
     }
 
-    // Eliminate column k for rows below
+    
     for (int i = k + 1; i < n; ++i) {
       float factor = aug[i][k] / aug[k][k];
       for (int j = k; j <= n; ++j) {
@@ -58,7 +58,7 @@ bool MatrixSolver::solve_gaussian(std::vector<float> &A, std::vector<float> &b,
     }
   }
 
-  // Backward substitution
+  
   for (int i = n - 1; i >= 0; --i) {
     float sum = 0.0f;
     for (int j = i + 1; j < n; ++j) {
@@ -70,4 +70,4 @@ bool MatrixSolver::solve_gaussian(std::vector<float> &A, std::vector<float> &b,
   return true;
 }
 
-} // namespace realis
+} 

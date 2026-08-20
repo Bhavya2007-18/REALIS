@@ -1,8 +1,8 @@
-// Contact Constraint
-// Enforces non-penetration and friction
+
+
 #pragma once
 #include "constraint.hpp"
-#include "../geometry/contact_generator.hpp" // For ContactPoint
+#include "../geometry/contact_generator.hpp" 
 
 namespace realis {
 
@@ -20,7 +20,7 @@ public:
     geometry::ContactPoint contact;
     Vec3 tangent;
     float friction_coeff;
-    ContactConstraint* normal_constraint; // To clamp against normal load
+    ContactConstraint* normal_constraint; 
     
     FrictionConstraint(RigidBody* a, RigidBody* b, const geometry::ContactPoint& cp, 
                        const Vec3& tan, float mu, ContactConstraint* nc);
@@ -28,4 +28,4 @@ public:
     void pre_step(float dt) override;
 };
 
-} // namespace realis
+} 

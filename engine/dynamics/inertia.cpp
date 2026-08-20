@@ -1,4 +1,4 @@
-// Inertia tensor helper functions
+
 #include "../math/mat3.hpp"
 #include "../math/vec3.hpp"
 
@@ -47,7 +47,7 @@ Mat3 Inertia::cylinder(float mass, float radius, float height) {
       (1.0f / 12.0f) * mass * (3 * radius * radius + height * height);
 
   Mat3 m;
-  // Assuming Y is up/axis
+  
   m.data[0] = i_trans;
   m.data[1] = 0;
   m.data[2] = 0;
@@ -60,6 +60,6 @@ Mat3 Inertia::cylinder(float mass, float radius, float height) {
   return m;
 }
 
-} // namespace realis
+} 
 
-} // namespace realis
+} 

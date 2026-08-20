@@ -1,6 +1,6 @@
-// Visual State DTO (Immutable 2D Snapshot)
-// Contains ONLY what the renderer needs to verify physics.
-// No references to physics objects allowed.
+
+
+
 #pragma once
 #include <vector>
 #include <string>
@@ -20,16 +20,16 @@ struct VisColor {
 enum class VisShapeType {
     CIRCLE,
     BOX,
-    LINE // For constraints/links
+    LINE 
 };
 
 struct VisualBody {
     int id;
     VisVec2 position;
-    float orientation; // Radians, 2D (Z-axis rotation)
+    float orientation; 
     
     VisShapeType shape;
-    VisVec2 dimensions; // Radius (x) or Half-extents (x,y)
+    VisVec2 dimensions; 
     VisColor color;
 };
 
@@ -45,11 +45,11 @@ struct VisualFrame {
     int step_count;
     std::vector<VisualBody> bodies;
     std::vector<VisualDebugVector> debug_vectors;
-    // Energy info for HUD
+    
     float kinetic_energy;
     float potential_energy;
     float total_energy;
 };
 
-} // namespace visualization
-} // namespace realis
+} 
+} 

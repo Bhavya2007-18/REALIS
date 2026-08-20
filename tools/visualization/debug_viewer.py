@@ -1,8 +1,4 @@
-"""
-Debug Viewer for REALIS
 
-Visualize simulation results in real-time.
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 
 
 class DebugViewer:
-    """Real-time debug visualization"""
+    
     
     def __init__(self, title="REALIS Debug Viewer"):
         self.title = title
@@ -18,11 +14,11 @@ class DebugViewer:
         self.objects = []
     
     def add_object(self, obj_id, position, shape='circle'):
-        """Add object to visualization"""
+        
         self.objects.append({'id': obj_id, 'pos': position, 'shape': shape})
     
     def update(self, positions):
-        """Update object positions"""
+        
         self.ax.clear()
         self.ax.set_title(self.title)
         self.ax.set_xlim(-10, 10)
@@ -35,7 +31,7 @@ class DebugViewer:
         plt.pause(0.01)
     
     def show(self):
-        """Display viewer"""
+        
         plt.show()
 
 
