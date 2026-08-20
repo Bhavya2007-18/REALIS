@@ -10,6 +10,7 @@ import FreeFallLab from '../components/FreeFallLab';
 import ProjectileLab from '../components/ProjectileLab';
 import PendulumLab from '../components/PendulumLab';
 import DoublePendulumLab from '../components/DoublePendulumLab';
+import SpringOscillatorLab from '../components/SpringOscillatorLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -28,6 +29,7 @@ const LAB_SCREENS = {
     projectile_motion: ProjectileLab,
     single_pendulum: PendulumLab,
     double_pendulum: DoublePendulumLab,
+    spring_oscillator: SpringOscillatorLab,
 };
 
 export default function SimulateWorkspace() {
@@ -93,7 +95,8 @@ export default function SimulateWorkspace() {
     const isProjectileActive = simulationPreset === 'projectile_motion';
     const isPendulumActive = simulationPreset === 'single_pendulum';
     const isDoublePendulumActive = simulationPreset === 'double_pendulum';
-    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isDoublePendulumActive;
+    const isSpringOscillatorActive = simulationPreset === 'spring_oscillator';
+    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isDoublePendulumActive || isSpringOscillatorActive;
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());

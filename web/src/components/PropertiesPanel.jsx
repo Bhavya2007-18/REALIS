@@ -86,6 +86,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `t ${labData.snapshot.time.toFixed(2)}s · θ ${labData.snapshot.angle.toFixed(1)}° · ω ${labData.snapshot.omega.toFixed(1)} rad/s`
                         : labData.type === 'double_pendulum'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · θ₁ ${labData.snapshot.angle1.toFixed(1)}° · θ₂ ${labData.snapshot.angle2.toFixed(1)}°`
+                        : labData.type === 'spring_oscillator'
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(2)}m · v ${labData.snapshot.v.toFixed(2)}m/s · ω₀ ${labData.snapshot.omega0.toFixed(1)} rad/s`
                         : `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(1)}m · y ${labData.snapshot.y.toFixed(1)}m · v ${labData.snapshot.speed.toFixed(1)}m/s`
                     }
                 >
@@ -148,6 +150,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
                         : labData.type === 'double_pendulum'
                         ? `m₁ ${labData.config.mass1}kg · m₂ ${labData.config.mass2}kg · θ₁ ${labData.config.theta1}° · θ₂ ${labData.config.theta2}°`
+                        : labData.type === 'spring_oscillator'
+                        ? `m ${labData.config.mass}kg · k ${labData.config.springConstant}N/m · x₀ ${labData.config.x0}m · g ${labData.config.gravity}m/s²`
                         : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
@@ -364,6 +368,101 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                             </>
                         )}
+                        {labData.type === 'spring_oscillator' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">MASS (m)</span>
+                                        <span className="text-white font-bold">{labData.config.mass} kg</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="20" step="0.1" value={labData.config.mass}
+                                        onChange={(e) => handleLabConfigChange('mass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">SPRING CONSTANT (k)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.springConstant} N/m</span>
+                                    </div>
+                                    <input type="range" min="0.5" max="100" step="0.5" value={labData.config.springConstant}
+                                        onChange={(e) => handleLabConfigChange('springConstant', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">NATURAL LENGTH (L₀)</span>
+                                        <span className="text-violet-400 font-bold">{labData.config.naturalLength} m</span>
+                                    </div>
+                                    <input type="range" min="0.3" max="3" step="0.05" value={labData.config.naturalLength}
+                                        onChange={(e) => handleLabConfigChange('naturalLength', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">DISPLACEMENT (x₀)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.x0} m</span>
+                                    </div>
+                                    <input type="range" min="-1.5" max="1.5" step="0.05" value={labData.config.x0}
+                                        onChange={(e) => handleLabConfigChange('x0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL VELOCITY (v₀)</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.v0} m/s</span>
+                                    </div>
+                                    <input type="range" min="-5" max="5" step="0.1" value={labData.config.v0}
+                                        onChange={(e) => handleLabConfigChange('v0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">DAMPING (c)</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.damping}</span>
+                                    </div>
+                                    <input type="range" min="0" max="20" step="0.05" value={labData.config.damping}
+                                        onChange={(e) => handleLabConfigChange('damping', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITY (g)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.gravity} m/s²</span>
+                                    </div>
+                                    <input type="range" min="0" max="30" step="0.1" value={labData.config.gravity}
+                                        onChange={(e) => handleLabConfigChange('gravity', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">TIME SCALE</span>
+                                        <span className="text-purple-400 font-bold">{labData.config.timeScale}x</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="10" step="0.1" value={labData.config.timeScale}
+                                        onChange={(e) => handleLabConfigChange('timeScale', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[10px] font-mono">
+                                        <span className="text-amber-400">FORCED OSCILLATION</span>
+                                        <button onClick={() => handleLabConfigChange('forced', !labData.config.forced)}
+                                            className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${labData.config.forced ? 'bg-amber-500/30 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>
+                                            {labData.config.forced ? 'ON' : 'OFF'}
+                                        </button>
+                                    </div>
+                                    {labData.config.forced && (
+                                        <div className="mt-1 flex gap-2">
+                                            <input type="number" min="0" max="50" step="0.1" value={labData.config.forceAmplitude}
+                                                onChange={(e) => handleLabConfigChange('forceAmplitude', parseFloat(e.target.value))}
+                                                className="w-1/2 bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs font-mono text-amber-200" title="F₀ (N)" />
+                                            <input type="number" min="0" max="20" step="0.1" value={labData.config.drivingFrequency}
+                                                onChange={(e) => handleLabConfigChange('drivingFrequency', parseFloat(e.target.value))}
+                                                className="w-1/2 bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs font-mono text-amber-200" title="ω_d (rad/s)" />
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
                         {labData.type === 'projectile_motion' && (
                             <>
                                 <div className="space-y-1">
@@ -423,6 +522,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
                         : labData.type === 'double_pendulum'
                         ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config.dt}s`
+                        : labData.type === 'spring_oscillator'
+                        ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config.dt}s · frame-rate independent`
                         : `Projectile · Analytical · Δt ${labData.snapshot.config.dt}s`
                     }
                 >
@@ -463,6 +564,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping}</span></div>
                                 </>
                             )}
+                            {labData.type === 'spring_oscillator' && (
+                                <>
+                                    <div>• Object: <span className="text-slate-200">Oscillator mass ({labData.snapshot.config.mass} kg)</span></div>
+                                    <div>• Spring: <span className="text-slate-200">k = {labData.snapshot.config.springConstant} N/m · L₀ = {labData.snapshot.config.naturalLength} m</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (fixed timestep)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
+                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping} N·s/m</span></div>
+                                </>
+                            )}
                             <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
                         </div>
                         
@@ -499,11 +609,29 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Exact closed form: <span className="text-slate-200">none (coupled nonlinear ODEs)</span></div>
                                 </>
                             )}
+                            {labData.type === 'spring_oscillator' && (
+                                <>
+                                    <div>• Solution: <span className="text-slate-200">x(t) = A·cos(ω₀t + φ)</span></div>
+                                    <div>• Period: <span className="text-white font-bold">{labData.snapshot.period?.toFixed(3) ?? 'N/A'} s</span></div>
+                                    <div>• Natural freq: <span className="text-slate-200">{labData.snapshot.naturalFrequency?.toFixed(3) ?? 'N/A'} Hz</span></div>
+                                    <div>• ω₀ = √(k/m): <span className="text-slate-200">{labData.snapshot.omega0?.toFixed(3) ?? 'N/A'} rad/s</span></div>
+                                    <div>• num − ana: <span className="text-orange-300">{labData.snapshot.analyticalError?.toFixed(5) ?? 'N/A'} m</span></div>
+                                </>
+                            )}
                         </div>
                         
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
                             <div className="text-emerald-400 font-bold text-[10px]">ENERGY / VALIDATION</div>
-                            {labData.snapshot.energy && (
+{labData.type === 'spring_oscillator' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Displacement (x)" value={labData.snapshot.x.toFixed(2)} unit="m" color="text-emerald-400" />
+                                <Stat label="Velocity (v)" value={labData.snapshot.v.toFixed(2)} unit="m/s" color="text-sky-400" />
+                                <Stat label="Acceleration (a)" value={labData.snapshot.a.toFixed(2)} unit="m/s²" color="text-amber-400" />
+                                <Stat label="ω₀ = √(k/m)" value={labData.snapshot.omega0.toFixed(2)} unit="rad/s" color="text-violet-400" />
+                            </div>
+                        )}
+                        
+                        {labData.snapshot.energy && (
                                 <>
                                     <div>• Total: <span className="text-slate-200">{Math.round(labData.snapshot.energy.total).toLocaleString()} J</span></div>
                                     <div>• Initial: <span className="text-slate-200">{Math.round(labData.snapshot.energy.initialTotal || 0).toLocaleString()} J</span></div>
@@ -511,6 +639,13 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                         <div>• Dissipated: <span className="text-rose-400 font-bold">{Math.round(labData.snapshot.energy.dissipated).toLocaleString()} J</span></div>
                                     )}
                                     <div>• Bounces: <span className="text-slate-200">{labData.snapshot.bounceCount ?? labData.snapshot.swingCount ?? 0}</span></div>
+                                </>
+                            )}
+                            {labData.type === 'spring_oscillator' && (
+                                <>
+                                    <div>• Damping ratio (ζ): <span className="text-rose-300">{labData.snapshot.dampingRatio ?? '—'} · {labData.snapshot.dampingClass ?? '—'}</span></div>
+                                    <div>• Spring force: <span className="text-sky-300">F_s = −kx = {labData.snapshot.fSpring ?? '—'} N</span></div>
+                                    <div>• Energy drift: <span className="text-amber-300">ΔE/E ≈ {labData.snapshot.energyErrorPct ?? '—'} %</span></div>
                                 </>
                             )}
                         </div>
