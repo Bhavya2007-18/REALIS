@@ -93,8 +93,10 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                         : labData.type === 'inclined_friction_ramp'
                                             ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
                                             : labData.type === 'v6_engine'
-                                                ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutputkW?.toFixed(1) || 0}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
-                                                : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
+                                                ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutput.toFixed(1)}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
+                                                : labData.type === 'elastic_collision'
+                                                    ? `A: ${(labData.snapshot.objectA?.velocity ?? 0).toFixed(2)} m/s · B: ${(labData.snapshot.objectB?.velocity ?? 0).toFixed(2)} m/s · p = ${(labData.snapshot.system?.totalMomentum ?? 0).toFixed(3)} kg·m/s`
+                                                    : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
                     }
                 >
                     <div className="space-y-3">
@@ -142,8 +144,47 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Stat label="Engine RPM" value={Math.round(labData.snapshot.RPM)} unit="rpm" color="text-sky-400" />
                                 <Stat label="Total Torque" value={Math.round(labData.snapshot.totalTorque)} unit="N·m" color="text-amber-400" />
-                                <Stat label="Power Output" value={(labData.snapshot.powerOutputkW ?? 0).toFixed(1)} unit="kW" color="text-emerald-400" />
-                                <Stat label="Crank Angle" value={(labData.snapshot.crankAngleDeg ?? 0).toFixed(1)} unit="°" />
+                                <Stat label="Power Output" value={labData.snapshot.powerOutput.toFixed(1)} unit="kW" color="text-emerald-400" />
+                                <Stat label="Crank Angle" value={labData.snapshot.crankAngleDeg.toFixed(1)} unit="°" />
+                            </div>
+                        )}
+
+                        {labData.type === 'elastic_collision' && labData.snapshot.objectA && (
+                            <div className="space-y-3">
+                                {/* Object A */}
+                                <div className="bg-sky-950/30 rounded-xl border border-sky-500/20 p-3">
+                                    <div className="text-[9px] font-bold uppercase text-sky-400 tracking-widest mb-2">OBJECT A</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Stat label="Position (x)" value={(labData.snapshot.objectA.position ?? 0).toFixed(3)} unit="m" color="text-sky-400" />
+                                        <Stat label="Velocity (v)" value={(labData.snapshot.objectA.velocity ?? 0).toFixed(3)} unit="m/s" color="text-cyan-400" />
+                                        <Stat label="Momentum (p)" value={(labData.snapshot.objectA.momentum ?? 0).toFixed(3)} unit="kg·m/s" color="text-blue-400" />
+                                        <Stat label="Kinetic Energy" value={(labData.snapshot.objectA.kineticEnergy ?? 0).toFixed(3)} unit="J" color="text-emerald-400" />
+                                    </div>
+                                </div>
+                                {/* Object B */}
+                                <div className="bg-amber-950/30 rounded-xl border border-amber-500/20 p-3">
+                                    <div className="text-[9px] font-bold uppercase text-amber-400 tracking-widest mb-2">OBJECT B</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Stat label="Position (x)" value={(labData.snapshot.objectB.position ?? 0).toFixed(3)} unit="m" color="text-amber-400" />
+                                        <Stat label="Velocity (v)" value={(labData.snapshot.objectB.velocity ?? 0).toFixed(3)} unit="m/s" color="text-yellow-400" />
+                                        <Stat label="Momentum (p)" value={(labData.snapshot.objectB.momentum ?? 0).toFixed(3)} unit="kg·m/s" color="text-orange-400" />
+                                        <Stat label="Kinetic Energy" value={(labData.snapshot.objectB.kineticEnergy ?? 0).toFixed(3)} unit="J" color="text-emerald-400" />
+                                    </div>
+                                </div>
+                                {/* System */}
+                                <div className="bg-slate-950/60 rounded-xl border border-white/5 p-3">
+                                    <div className="text-[9px] font-bold uppercase text-purple-400 tracking-widest mb-2">SYSTEM</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Stat label="Total Momentum" value={(labData.snapshot.system.totalMomentum ?? 0).toFixed(4)} unit="kg·m/s" color="text-purple-400" />
+                                        <Stat label="Total KE" value={(labData.snapshot.system.totalKineticEnergy ?? 0).toFixed(4)} unit="J" color="text-emerald-400" />
+                                        <Stat label="Distance" value={(labData.snapshot.system.distance ?? 0).toFixed(3)} unit="m" />
+                                        <Stat label="Relative Vel." value={(labData.snapshot.system.relativeVelocity ?? 0).toFixed(3)} unit="m/s" color="text-rose-400" />
+                                    </div>
+                                    <div className="mt-2 bg-black/30 px-2 py-1 rounded-lg flex justify-between text-[9px] font-mono">
+                                        <span className="text-slate-500">COLLISION STATE</span>
+                                        <span className="text-white font-bold">{(labData.snapshot.phase ?? 'READY').toUpperCase()}</span>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -157,13 +198,203 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                 </PropertySection>
             )}
 
-            {/* LAUNCH PARAMETERS / INITIAL CONDITIONS */}
-            {labData.config && (
+            {/* COLLISION PARAMETERS — only for elastic_collision */}
+            {labData.type === 'elastic_collision' && labData.config && (
+                <PropertySection
+                    sectionKey="collision-params"
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                    title="COLLISION PARAMETERS"
+                    icon={<SlidersHorizontal size={13} />}
+                    accent="text-amber-400"
+                    summary={`${labData.config.collisionType?.replace('_', ' ')} · e = ${(labData.config.restitution ?? 1).toFixed(2)} · m_A = ${labData.config.massA}kg · m_B = ${labData.config.massB}kg`}
+                >
+                    <div className="space-y-4">
+                        {/* Collision Type */}
+                        <div className="space-y-1">
+                            <div className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">COLLISION TYPE</div>
+                            <div className="flex gap-1">
+                                {[['elastic', 'Elastic'], ['inelastic', 'Inelastic'], ['perfectly_inelastic', 'Perf. Inelastic']].map(([val, label]) => (
+                                    <button
+                                        key={val}
+                                        onClick={() => handleLabConfigChange('collisionType', val)}
+                                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer border ${
+                                            labData.config.collisionType === val
+                                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                                : 'bg-slate-800/40 text-slate-500 border-transparent hover:text-slate-300'
+                                        }`}
+                                    >{label}</button>
+                                ))}
+                            </div>
+                        </div>
+                        {/* Restitution */}
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-mono">
+                                <span className="text-slate-400">COEFFICIENT OF RESTITUTION (e)</span>
+                                <span className="text-violet-400 font-bold">{(labData.config.restitution ?? 1).toFixed(2)}</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.05" value={labData.config.restitution ?? 1}
+                                onChange={(e) => handleLabConfigChange('restitution', parseFloat(e.target.value))}
+                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500" />
+                            <div className="flex justify-between text-[8px] font-mono text-slate-600">
+                                <span>0.0 Perf. Inelastic</span><span>0.5 Inelastic</span><span>1.0 Elastic</span>
+                            </div>
+                        </div>
+                        {/* Object A */}
+                        <div className="bg-sky-950/20 p-3 rounded-xl border border-sky-500/15 space-y-2">
+                            <div className="text-[9px] font-bold uppercase text-sky-400 tracking-widest">OBJECT A</div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">MASS (m_A)</span>
+                                    <span className="text-sky-400 font-bold">{labData.config.massA} kg</span>
+                                </div>
+                                <input type="range" min="0.1" max="20" step="0.1" value={labData.config.massA}
+                                    onChange={(e) => handleLabConfigChange('massA', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">INITIAL VELOCITY (v_A)</span>
+                                    <span className="text-cyan-400 font-bold">{labData.config.velocityA} m/s</span>
+                                </div>
+                                <input type="range" min="-10" max="10" step="0.5" value={labData.config.velocityA}
+                                    onChange={(e) => handleLabConfigChange('velocityA', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">INITIAL POSITION (x_A)</span>
+                                    <span className="text-blue-400 font-bold">{labData.config.positionA} m</span>
+                                </div>
+                                <input type="range" min="-7" max="-0.5" step="0.5" value={labData.config.positionA}
+                                    onChange={(e) => handleLabConfigChange('positionA', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">RADIUS (r_A)</span>
+                                    <span className="text-indigo-400 font-bold">{labData.config.radiusA} m</span>
+                                </div>
+                                <input type="range" min="0.1" max="2" step="0.1" value={labData.config.radiusA}
+                                    onChange={(e) => handleLabConfigChange('radiusA', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                            </div>
+                        </div>
+                        {/* Object B */}
+                        <div className="bg-amber-950/20 p-3 rounded-xl border border-amber-500/15 space-y-2">
+                            <div className="text-[9px] font-bold uppercase text-amber-400 tracking-widest">OBJECT B</div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">MASS (m_B)</span>
+                                    <span className="text-amber-400 font-bold">{labData.config.massB} kg</span>
+                                </div>
+                                <input type="range" min="0.1" max="20" step="0.1" value={labData.config.massB}
+                                    onChange={(e) => handleLabConfigChange('massB', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">INITIAL VELOCITY (v_B)</span>
+                                    <span className="text-yellow-400 font-bold">{labData.config.velocityB} m/s</span>
+                                </div>
+                                <input type="range" min="-10" max="10" step="0.5" value={labData.config.velocityB}
+                                    onChange={(e) => handleLabConfigChange('velocityB', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">INITIAL POSITION (x_B)</span>
+                                    <span className="text-orange-400 font-bold">{labData.config.positionB} m</span>
+                                </div>
+                                <input type="range" min="0.5" max="7" step="0.5" value={labData.config.positionB}
+                                    onChange={(e) => handleLabConfigChange('positionB', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-slate-400">RADIUS (r_B)</span>
+                                    <span className="text-rose-400 font-bold">{labData.config.radiusB} m</span>
+                                </div>
+                                <input type="range" min="0.1" max="2" step="0.1" value={labData.config.radiusB}
+                                    onChange={(e) => handleLabConfigChange('radiusB', parseFloat(e.target.value))}
+                                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                            </div>
+                        </div>
+                    </div>
+                </PropertySection>
+            )}
+
+            {/* CONSERVATION ANALYSIS — only for elastic_collision */}
+            {labData.type === 'elastic_collision' && labData.snapshot?.system && (
+                <PropertySection
+                    sectionKey="conservation"
+                    openSections={openSections}
+                    toggleSection={toggleSection}
+                    title="CONSERVATION ANALYSIS"
+                    icon={<Activity size={13} />}
+                    accent="text-emerald-400"
+                    summary={(() => {
+                        const sys = labData.snapshot.system;
+                        const momOk = sys.collisionOccurred ? (sys.momentumRelativeError < 0.001 ? 'Momentum ✓' : 'Momentum ≈') : 'Momentum —';
+                        const keOk = sys.collisionOccurred
+                            ? (labData.config.collisionType === 'elastic' ? 'KE conserved' : `KE loss ${(sys.energyLossPct ?? 0).toFixed(1)}%`)
+                            : 'KE —';
+                        return `${momOk} · ${keOk}`;
+                    })()}
+                >
+                    {(() => {
+                        const sys = labData.snapshot.system;
+                        const momStatus = !sys.collisionOccurred ? 'PRE-COLLISION' : sys.momentumRelativeError < 0.001 ? 'CONSERVED ✓' : 'NUMERICAL ERROR';
+                        const momColor = !sys.collisionOccurred ? 'text-slate-400' : sys.momentumRelativeError < 0.001 ? 'text-emerald-400' : 'text-amber-400';
+                        const keStatus = !sys.collisionOccurred ? 'PRE-COLLISION' : labData.config.collisionType === 'elastic' ? 'CONSERVED ✓' : 'NOT CONSERVED (expected)';
+                        const keColor = !sys.collisionOccurred ? 'text-slate-400' : labData.config.collisionType === 'elastic' ? 'text-emerald-400' : 'text-amber-400';
+                        return (
+                            <div className="space-y-4">
+                                {/* Momentum */}
+                                <div className="bg-black/30 p-3 rounded-xl border border-white/5">
+                                    <div className="text-[9px] font-bold uppercase text-purple-400 tracking-widest mb-2">MOMENTUM (p = mv)</div>
+                                    <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                                        <div><span className="text-slate-500">p_initial:</span> <span className="text-white">{(sys.initialMomentum ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div><span className="text-slate-500">p_before:</span> <span className="text-white">{(sys.momentumBefore ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div><span className="text-slate-500">p_after:</span> <span className="text-white">{(sys.momentumAfter ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div><span className="text-slate-500">|Δp|:</span> <span className="text-rose-400">{(sys.momentumError ?? 0).toExponential(2)} kg·m/s</span></div>
+                                    </div>
+                                    <div className={`mt-2 text-[9px] font-bold uppercase tracking-widest ${momColor}`}>STATUS: {momStatus}</div>
+                                </div>
+                                {/* Kinetic Energy */}
+                                <div className="bg-black/30 p-3 rounded-xl border border-white/5">
+                                    <div className="text-[9px] font-bold uppercase text-emerald-400 tracking-widest mb-2">KINETIC ENERGY (KE = ½mv²)</div>
+                                    <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                                        <div><span className="text-slate-500">KE_before:</span> <span className="text-white">{(sys.keBefore ?? 0).toFixed(4)} J</span></div>
+                                        <div><span className="text-slate-500">KE_after:</span> <span className="text-white">{(sys.keAfter ?? 0).toFixed(4)} J</span></div>
+                                        <div><span className="text-slate-500">Energy Loss:</span> <span className="text-rose-400">{(sys.energyLoss ?? 0).toFixed(4)} J</span></div>
+                                        <div><span className="text-slate-500">Loss %:</span> <span className="text-rose-400">{(sys.energyLossPct ?? 0).toFixed(2)}%</span></div>
+                                    </div>
+                                    <div className={`mt-2 text-[9px] font-bold uppercase tracking-widest ${keColor}`}>STATUS: {keStatus}</div>
+                                </div>
+                                {/* Restitution */}
+                                {sys.collisionOccurred && sys.actualRestitution !== null && (
+                                    <div className="bg-black/30 p-3 rounded-xl border border-white/5">
+                                        <div className="text-[9px] font-bold uppercase text-violet-400 tracking-widest mb-2">COEFFICIENT OF RESTITUTION</div>
+                                        <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                                            <div><span className="text-slate-500">Target e:</span> <span className="text-white">{(labData.config.restitution ?? 0).toFixed(4)}</span></div>
+                                            <div><span className="text-slate-500">Actual e:</span> <span className="text-violet-300">{(sys.actualRestitution ?? 0).toFixed(4)}</span></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </PropertySection>
+            )}
+
+            {/* LAUNCH PARAMETERS / INITIAL CONDITIONS — hidden for elastic_collision (uses dedicated COLLISION PARAMETERS section) */}
+            {labData.config && labData.type !== 'elastic_collision' && (
                 <PropertySection
                     sectionKey="params"
                     openSections={openSections}
                     toggleSection={toggleSection}
-                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : labData.type === 'v6_engine' ? 'ENGINE PARAMETERS' : 'INITIAL CONDITIONS'}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : labData.type === 'v6_engine' ? 'ENGINE PARAMETERS' : labData.type === 'elastic_collision' ? 'SIMULATION SETUP' : 'INITIAL CONDITIONS'}
                     icon={<SlidersHorizontal size={13} />}
                     accent="text-amber-400"
                     summary={labData.type === 'free_fall'
@@ -180,7 +411,9 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                             ? `m ${labData.config.mass}kg · θ ${labData.config.thetaDeg}° · μ_s ${labData.config.muS} · μ_k ${labData.config.muK}`
                                             : labData.type === 'v6_engine'
                                                 ? `Target RPM ${labData.config.targetRPM || labData.config.initialRPM} · Crank R ${labData.config.crankRadius}mm · Rod L ${labData.config.rodLength}mm`
-                                                : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
+                                                : labData.type === 'elastic_collision'
+                                                    ? `Collision type configured in COLLISION PARAMETERS`
+                                                    : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-5">
@@ -837,7 +1070,9 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                             ? `Block on Incline · RK4 Solver · Δt ${labData.config?.dt ?? 0.008}s`
                                             : labData.type === 'crank_slider'
                                                 ? `Crank-Slider · Analytical Kinematics · ω ${labData.config?.omega ?? 10} rad/s`
-                                                : `Projectile · Analytical · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
+                                                : labData.type === 'elastic_collision'
+                                                    ? `1D Collision · Momentum + Restitution · Δt ${labData.snapshot.dt ?? '1/240'}s`
+                                                    : `Projectile · Analytical · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                     }
                 >
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -914,7 +1149,19 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Timestep: <span className="text-slate-200">Δt = {labData.config.dt}s · frame-rate independent</span></div>
                                 </>
                             )}
-                            <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
+                            {labData.type === 'elastic_collision' && (
+                                <>
+                                    <div>• Model: <span className="text-slate-200">1D Two-Body Collision</span></div>
+                                    <div>• Dimension: <span className="text-slate-200">1D (horizontal axis)</span></div>
+                                    <div>• Collision Model: <span className="text-slate-200">{labData.config.collisionType?.replace('_', ' ')}</span></div>
+                                    <div>• Momentum Model: <span className="text-emerald-400">Conserved (p = mv)</span></div>
+                                    <div>• Restitution Model: <span className="text-slate-200">Coefficient of Restitution (COR)</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Instantaneous Impulse + Overlap Separation</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {(labData.snapshot.dt ?? 1/240).toFixed(5)}s · fixed-step accumulator</span></div>
+                                    <div>• Integration: <span className="text-slate-200">Semi-implicit Euler</span></div>
+                                </>
+                            )}
+                            <div>• State: <span className="text-slate-200">{labData.type === 'elastic_collision' ? (labData.snapshot.phase ?? 'ready').toUpperCase() : (labData.snapshot.isResting ? 'AT REST' : 'RUNNING')}</span></div>
                         </div>
 
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
@@ -996,6 +1243,23 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     </>
                                 );
                             })()}
+                            {labData.type === 'elastic_collision' && (() => {
+                                const sys = labData.snapshot.system;
+                                const cfg = labData.config;
+                                const occured = sys?.collisionOccurred;
+                                return (
+                                    <>
+                                        <div>• Target e: <span className="text-violet-400 font-bold">{(cfg?.restitution ?? 1).toFixed(4)}</span></div>
+                                        <div>• Actual e: <span className="text-violet-300">{occured && sys?.actualRestitution != null ? sys.actualRestitution.toFixed(4) : '— (pre-collision)'}</span></div>
+                                        <div>• v_A (pre): <span className="text-sky-400">{sys?.preVelA != null ? sys.preVelA.toFixed(4) : '—'} m/s</span></div>
+                                        <div>• v_B (pre): <span className="text-amber-400">{sys?.preVelB != null ? sys.preVelB.toFixed(4) : '—'} m/s</span></div>
+                                        <div>• v_A (post): <span className="text-sky-300">{sys?.postVelA != null ? sys.postVelA.toFixed(4) : '—'} m/s</span></div>
+                                        <div>• v_B (post): <span className="text-amber-300">{sys?.postVelB != null ? sys.postVelB.toFixed(4) : '—'} m/s</span></div>
+                                        <div>• Impulse J: <span className="text-rose-400 font-bold">{sys?.impulse != null ? sys.impulse.toFixed(4) : '—'} N·s</span></div>
+                                        <div>• Collision @t: <span className="text-white">{sys?.collisionTime != null ? sys.collisionTime.toFixed(4) : '—'} s</span></div>
+                                    </>
+                                );
+                            })()}
                         </div>
 
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
@@ -1043,6 +1307,22 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <div>• Apsis rp / ra: <span className="text-slate-300">{labData.snapshot.orbit.rp.toFixed(1)} / {Number.isFinite(labData.snapshot.orbit.ra) ? labData.snapshot.orbit.ra.toFixed(1) : '∞'} km</span></div>
                                 </>
                             )}
+                            {labData.type === 'elastic_collision' && (() => {
+                                const sys = labData.snapshot.system;
+                                return (
+                                    <>
+                                        <div>• Initial p: <span className="text-purple-400 font-bold">{(sys?.initialMomentum ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div>• p_before: <span className="text-white">{(sys?.momentumBefore ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div>• p_after: <span className="text-white">{(sys?.momentumAfter ?? 0).toFixed(4)} kg·m/s</span></div>
+                                        <div>• |Δp|: <span className="text-rose-400">{(sys?.momentumError ?? 0).toExponential(2)} kg·m/s</span></div>
+                                        <div>• KE_before: <span className="text-emerald-400">{(sys?.keBefore ?? 0).toFixed(4)} J</span></div>
+                                        <div>• KE_after: <span className="text-emerald-300">{(sys?.keAfter ?? 0).toFixed(4)} J</span></div>
+                                        <div>• Energy Loss: <span className="text-rose-400 font-bold">{(sys?.energyLoss ?? 0).toFixed(4)} J</span></div>
+                                        <div>• Loss %: <span className="text-rose-300">{(sys?.energyLossPct ?? 0).toFixed(2)}%</span></div>
+                                        <div>• Momentum Rel. Err: <span className="text-amber-400">{((sys?.momentumRelativeError ?? 0) * 100).toExponential(2)}%</span></div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </PropertySection>

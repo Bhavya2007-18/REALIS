@@ -78,6 +78,12 @@ const PRESETS = {
     elastic_inelastic_collision: {
         metadata: { id: 'elastic_inelastic_collision', name: 'Elastic & Inelastic Collisions', version: '1.0' },
         world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.016, substeps: 4 },
+        lab: {
+            type: 'elastic_collision',
+            massA: 1.0, velocityA: 2.0, positionA: -3.0, radiusA: 0.5,
+            massB: 1.0, velocityB: -1.0, positionB: 3.0, radiusB: 0.5,
+            collisionType: 'elastic', restitution: 1.0, timeScale: 1.0, dt: 0.016
+        },
         bodies: [
             { id: 'sphereA', type: 'sphere', position: [-80, 100, 0], params: { radius: 12 }, color: '#ef4444', mass: 1.0, restitution: 1.0, friction: 0, initialVelocity: { x: 40, y: 0, z: 0 } },
             { id: 'sphereB', type: 'sphere', position: [80, 100, 0], params: { radius: 12 }, color: '#3b82f6', mass: 1.0, restitution: 1.0, friction: 0, initialVelocity: { x: -40, y: 0, z: 0 } },
