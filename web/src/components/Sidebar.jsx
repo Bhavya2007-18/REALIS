@@ -1,11 +1,21 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, MoreHorizontal, Maximize2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreHorizontal, Maximize2, Beaker, Play, Wrench, Layers, Box, Trash2 } from 'lucide-react'
 import useStore from '../store/useStore'
 import useResizable from '../hooks/useResizable'
 import ObjectHierarchy from './ObjectHierarchy'
 import LayerPanel from './LayerPanel'
 import componentLibrary from '../models/componentLibrary'
-import { Box, Play, Trash2, Layers } from 'lucide-react'
+
+// Standalone physics labs (no DesignWorkspace scene needed)
+const PHYSICS_LABS = [
+    { id: 'free_fall', name: 'Free Fall', icon: Beaker, accent: '#38bdf8' },
+    { id: 'projectile_motion', name: 'Projectile Motion', icon: Beaker, accent: '#f59e0b' },
+    { id: 'single_pendulum', name: 'Single Pendulum', icon: Beaker, accent: '#34d399' },
+    { id: 'double_pendulum', name: 'Double Pendulum', icon: Beaker, accent: '#a78bfa' },
+    { id: 'spring_oscillator', name: 'Spring Oscillator', icon: Beaker, accent: '#fbbf24' },
+    { id: 'orbital_mechanics', name: 'Orbital Mechanics', icon: Beaker, accent: '#22d3ee' },
+    { id: 'inclined_friction_ramp', name: 'Inclined Friction Ramp', icon: Beaker, accent: '#fb7185' },
+]
 
 export default function Sidebar() {
     const isSidebarOpen = useStore((s) => s.isSidebarOpen)
@@ -18,7 +28,8 @@ export default function Sidebar() {
         editors: false,
         hierarchy: true,
         layers: true,
-        library: true
+        library: true,
+        labs: true
     })
 
     const toggleSection = (section) => {
@@ -124,6 +135,41 @@ export default function Sidebar() {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Physics Labs — standalone experiments (no scene needed) */}
+                        <div className={`flex flex-col border-b border-slate-200 dark:border-slate-800 ${expanded.labs ? 'overflow-hidden' : ''}`} style={expanded.labs ? { minHeight: '160px' } : {}}>
+                            <div onClick={() => toggleSection('labs')} className="flex items-center gap-1 px-1 py-1 bg-slate-200 dark:bg-slate-800/30 cursor-pointer group hover:bg-slate-300 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800/50">
+                                {expanded.labs ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                                <span className="text-[11px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                                    <Wrench size={12} className="text-slate-400" />
+                                    Physics Labs
+                                </span>
+                            </div>
+                            {expanded.labs && (
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {PHYSICS_LABS.map((lab) => {
+                                        const Icon = lab.icon
+                                        return (
+                                            <button
+                                                key={lab.id}
+                                                onClick={() => {
+                                                    useStore.getState().setActiveWorkspace('simulate')
+                                                    useStore.getState().setSimulationPreset(lab.id)
+                                                    useStore.getState().setIsPlaying(true)
+                                                }}
+                                                className="group w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden text-left"
+                                                style={{ borderLeft: `3px solid ${lab.accent}` }}
+                                            >
+                                                <Icon size={14} className="text-slate-400 group-hover:text-primary transition-colors" style={{ color: lab.accent }} />
+                                                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors flex-1">
+                                                    {lab.name}
+                                                </span>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>

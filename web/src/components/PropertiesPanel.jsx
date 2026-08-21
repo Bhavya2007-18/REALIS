@@ -90,7 +90,9 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(2)}m · v ${labData.snapshot.v.toFixed(2)}m/s · ω₀ ${labData.snapshot.omega0.toFixed(1)} rad/s`
                         : labData.type === 'orbital_mechanics'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · r ${labData.snapshot.position.r.toFixed(1)}km · v ${labData.snapshot.velocity.v.toFixed(2)}km/s · ${labData.snapshot.orbit.type.toLowerCase()}`
-                        : `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(1)}m · y ${labData.snapshot.y.toFixed(1)}m · v ${labData.snapshot.speed.toFixed(1)}m/s`
+                        : labData.type === 'inclined_friction_ramp'
+                        ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
+                        : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
                     }
                 >
                     <div className="space-y-3">
@@ -126,6 +128,14 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 <Stat label="α₂" value={labData.snapshot.alpha2.toFixed(2)} unit="rad/s²" color="text-cyan-400" />
                             </div>
                         )}
+                        {labData.type === 'inclined_friction_ramp' && labData.snapshot.rampState && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Ramp Pos (s)" value={labData.snapshot.rampState.s.toFixed(2)} unit="m" color="text-sky-400" />
+                                <Stat label="Time (t)" value={labData.snapshot.time.toFixed(2)} unit="s" />
+                                <Stat label="Velocity (v)" value={labData.snapshot.rampState.v.toFixed(2)} unit="m/s" color="text-cyan-400" />
+                                <Stat label="Critical θ_c" value={labData.snapshot.thetaCDeg ? labData.snapshot.thetaCDeg.toFixed(1) : '—'} unit="°" color="text-amber-400" />
+                            </div>
+                        )}
                         
                         {labData.snapshot.energy && (
                             <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
@@ -143,11 +153,11 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     sectionKey="params"
                     openSections={openSections}
                     toggleSection={toggleSection}
-                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : 'INITIAL CONDITIONS'}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : 'INITIAL CONDITIONS'}
                     icon={<SlidersHorizontal size={13} />}
                     accent="text-amber-400"
                     summary={labData.type === 'free_fall' 
-                        ? `h₀ ${labData.config.initialHeight}m · e ${labData.config.restitution.toFixed(2)} · m ${labData.config.mass}kg · g ${PLANETARY_GRAVITY[labData.config.selectedPlanet]?.g ?? 9.81}m/s²`
+                        ? `h₀ ${labData.config.initialHeight}m · e ${labData.config.restitution?.toFixed(2)} · m ${labData.config.mass}kg · g ${PLANETARY_GRAVITY[labData.config.selectedPlanet]?.g ?? 9.81}m/s²`
                         : labData.type === 'single_pendulum'
                         ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
                         : labData.type === 'double_pendulum'
@@ -156,6 +166,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `m ${labData.config.mass}kg · k ${labData.config.springConstant}N/m · x₀ ${labData.config.x0}m · g ${labData.config.gravity}m/s²`
                         : labData.type === 'orbital_mechanics'
                         ? `r₀ ${labData.config.r0}km · v₀ ${labData.config.v0}km/s · θ₀ ${labData.config.theta0}° · μ ${labData.config.mu}`
+                        : labData.type === 'inclined_friction_ramp'
+                        ? `m ${labData.config.mass}kg · θ ${labData.config.thetaDeg}° · μ_s ${labData.config.muS} · μ_k ${labData.config.muK}`
                         : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
@@ -623,10 +635,86 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                             </>
                         )}
+                        {labData.type === 'inclined_friction_ramp' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">RAMP ANGLE (θ)</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.thetaDeg}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="75" step="1" value={labData.config.thetaDeg}
+                                        onChange={(e) => handleLabConfigChange('thetaDeg', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">STATIC FRICTION (μ_s)</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.muS?.toFixed(2)}</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.01" value={labData.config.muS}
+                                        onChange={(e) => handleLabConfigChange('muS', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">KINETIC FRICTION (μ_k)</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.muK?.toFixed(2)}</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.01" value={labData.config.muK}
+                                        onChange={(e) => handleLabConfigChange('muK', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">BLOCK MASS (m)</span>
+                                        <span className="text-white font-bold">{labData.config.mass} kg</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="10" step="0.1" value={labData.config.mass}
+                                        onChange={(e) => handleLabConfigChange('mass', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">GRAVITY (g)</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.g} m/s²</span>
+                                    </div>
+                                    <input type="range" min="0" max="25" step="0.1" value={labData.config.g}
+                                        onChange={(e) => handleLabConfigChange('g', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">RAMP LENGTH (L)</span>
+                                        <span className="text-violet-400 font-bold">{labData.config.rampLength} m</span>
+                                    </div>
+                                    <input type="range" min="1" max="12" step="0.1" value={labData.config.rampLength}
+                                        onChange={(e) => handleLabConfigChange('rampLength', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL POS (s₀)</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.s0} m</span>
+                                    </div>
+                                    <input type="range" min="0" max={labData.config.rampLength} step="0.1" value={labData.config.s0}
+                                        onChange={(e) => handleLabConfigChange('s0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">INITIAL VELOCITY (v₀)</span>
+                                        <span className="text-indigo-400 font-bold">{labData.config.v0} m/s</span>
+                                    </div>
+                                    <input type="range" min="-6" max="6" step="0.1" value={labData.config.v0}
+                                        onChange={(e) => handleLabConfigChange('v0', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                            </>
+                        )}
                     </div>
                 </PropertySection>
             )}
-            
+
             {/* ENGINEERING INSPECTOR */}
             {labData.snapshot && (
                 <PropertySection
@@ -637,16 +725,18 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     icon={<Wrench size={13} />}
                     accent="text-purple-400"
                     summary={labData.type === 'free_fall'
-                        ? `Falling sphere · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
+                        ? `Falling sphere · Semi-implicit Euler · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                         : labData.type === 'single_pendulum'
-                        ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config.dt}s`
+                        ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                         : labData.type === 'double_pendulum'
-                        ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config.dt}s`
+                        ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                         : labData.type === 'spring_oscillator'
-                        ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config.dt}s · frame-rate independent`
+                        ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · frame-rate independent`
                         : labData.type === 'orbital_mechanics'
-                        ? `Orbital mechanics · RK4 · Δt ${labData.snapshot.config.dt}s · ${labData.snapshot.orbit.type.toLowerCase()}`
-                        : `Projectile · Analytical · Δt ${labData.snapshot.config.dt}s`
+                        ? `Orbital mechanics · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · ${labData.snapshot.orbit?.type?.toLowerCase()}`
+                        : labData.type === 'inclined_friction_ramp'
+                        ? `Block on Incline · RK4 Solver · Δt ${labData.config?.dt ?? 0.008}s`
+                        : `Projectile · Analytical · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                     }
                 >
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -654,59 +744,68 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                             <div className="text-purple-400 font-bold text-[10px]">SIMULATION</div>
                             {labData.type === 'free_fall' && (
                                 <>
-                                    <div>• Object: <span className="text-slate-200">Falling sphere ({labData.snapshot.config.mass} kg)</span></div>
-                                    <div>• Radius: <span className="text-slate-200">{labData.snapshot.config.radius} m</span></div>
+                                    <div>• Object: <span className="text-slate-200">Falling sphere ({labData.snapshot.config?.mass} kg)</span></div>
+                                    <div>• Radius: <span className="text-slate-200">{labData.snapshot.config?.radius} m</span></div>
                                     <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (4 substeps)</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
-                                    <div>• Restitution: <span className="text-slate-200">e = {labData.snapshot.config.restitution.toFixed(2)}</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s</span></div>
+                                    <div>• Restitution: <span className="text-slate-200">e = {labData.snapshot.config?.restitution?.toFixed(2)}</span></div>
                                 </>
                             )}
                             {labData.type === 'single_pendulum' && (
                                 <>
-                                    <div>• Object: <span className="text-slate-200">Simple pendulum ({labData.snapshot.config.mass} kg)</span></div>
-                                    <div>• Length: <span className="text-slate-200">{labData.snapshot.config.length} m</span></div>
+                                    <div>• Object: <span className="text-slate-200">Simple pendulum ({labData.snapshot.config?.mass} kg)</span></div>
+                                    <div>• Length: <span className="text-slate-200">{labData.snapshot.config?.length} m</span></div>
                                     <div>• Solver: <span className="text-slate-200">Semi-implicit Euler (8 substeps)</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
-                                    <div>• Damping: <span className="text-slate-200">{labData.snapshot.config.damping}</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s</span></div>
+                                    <div>• Damping: <span className="text-slate-200">{labData.snapshot.config?.damping}</span></div>
                                 </>
                             )}
                             {labData.type === 'projectile_motion' && (
                                 <>
-                                    <div>• Object: <span className="text-slate-200">Projectile ({labData.snapshot.config.mass} kg)</span></div>
+                                    <div>• Object: <span className="text-slate-200">Projectile ({labData.snapshot.config?.mass} kg)</span></div>
                                     <div>• Solver: <span className="text-slate-200">Analytical closed-form</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s</span></div>
                                 </>
                             )}
                             {labData.type === 'double_pendulum' && (
                                 <>
-                                    <div>• Objects: <span className="text-slate-200">m₁ {labData.snapshot.config.mass1} kg / m₂ {labData.snapshot.config.mass2} kg</span></div>
-                                    <div>• Rods: <span className="text-slate-200">L₁ {labData.snapshot.config.length1} m / L₂ {labData.snapshot.config.length2} m</span></div>
+                                    <div>• Objects: <span className="text-slate-200">m₁ {labData.snapshot.config?.mass1} kg / m₂ {labData.snapshot.config?.mass2} kg</span></div>
+                                    <div>• Rods: <span className="text-slate-200">L₁ {labData.snapshot.config?.length1} m / L₂ {labData.snapshot.config?.length2} m</span></div>
                                     <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (8 substeps)</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
-                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping}</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s · frame-rate independent</span></div>
+                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config?.damping}</span></div>
                                 </>
                             )}
                             {labData.type === 'spring_oscillator' && (
                                 <>
-                                    <div>• Object: <span className="text-slate-200">Oscillator mass ({labData.snapshot.config.mass} kg)</span></div>
-                                    <div>• Spring: <span className="text-slate-200">k = {labData.snapshot.config.springConstant} N/m · L₀ = {labData.snapshot.config.naturalLength} m</span></div>
+                                    <div>• Object: <span className="text-slate-200">Oscillator mass ({labData.snapshot.config?.mass} kg)</span></div>
+                                    <div>• Spring: <span className="text-slate-200">k = {labData.snapshot.config?.springConstant} N/m · L₀ = {labData.snapshot.config?.naturalLength} m</span></div>
                                     <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (fixed timestep)</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
-                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config.damping} N·s/m</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s · frame-rate independent</span></div>
+                                    <div>• Damping: <span className="text-slate-200">c = {labData.snapshot.config?.damping} N·s/m</span></div>
                                 </>
                             )}
                             {labData.type === 'orbital_mechanics' && (
                                 <>
-                                    <div>• Central body: <span className="text-slate-200">μ = {labData.snapshot.orbit.mu} km³/s² · M = {labData.snapshot.orbit.centralMass} kg</span></div>
-                                    <div>• Satellite: <span className="text-slate-200">m = {labData.snapshot.orbit.satelliteMass} kg</span></div>
-                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit.type.toLowerCase()} · e = {labData.snapshot.orbit.ecc.toFixed(4)}</span></div>
+                                    <div>• Central body: <span className="text-slate-200">μ = {labData.snapshot.orbit?.mu} km³/s² · M = {labData.snapshot.orbit?.centralMass} kg</span></div>
+                                    <div>• Satellite: <span className="text-slate-200">m = {labData.snapshot.orbit?.satelliteMass} kg</span></div>
+                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit?.type?.toLowerCase()} · e = {labData.snapshot.orbit?.ecc?.toFixed(4)}</span></div>
                                     <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (fixed timestep)</span></div>
-                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config.dt}s · frame-rate independent</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.snapshot.config?.dt}s · frame-rate independent</span></div>
+                                </>
+                            )}
+                            {labData.type === 'inclined_friction_ramp' && (
+                                <>
+                                    <div>• Object: <span className="text-slate-200">Ramp block ({labData.config.mass} kg)</span></div>
+                                    <div>• Ramp: <span className="text-slate-200">L = {labData.config.rampLength}m · θ = {labData.config.thetaDeg}°</span></div>
+                                    <div>• Friction: <span className="text-slate-200">μ_s = {labData.config.muS} · μ_k = {labData.config.muK}</span></div>
+                                    <div>• Solver: <span className="text-slate-200">Runge-Kutta 4 (exact stick/slip)</span></div>
+                                    <div>• Timestep: <span className="text-slate-200">Δt = {labData.config.dt}s</span></div>
                                 </>
                             )}
                             <div>• State: <span className="text-slate-200">{labData.snapshot.isResting ? 'AT REST' : 'RUNNING'}</span></div>
                         </div>
-                        
+
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
                             <div className="text-amber-400 font-bold text-[10px]">ANALYTICAL SOLUTION</div>
                             {labData.type === 'free_fall' && (
@@ -735,7 +834,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                             {labData.type === 'double_pendulum' && (
                                 <>
                                     <div>• θ–ω portrait: <span className="text-slate-200">phase-space plot in lab overlay</span></div>
-                                    <div>• Small-angle estimate: <span className="text-slate-200">ω ≈ √(g/L₁) = {(9.81 / (labData.snapshot.config.length1 || 1)).toFixed(2)} rad/s (m₂→L₁)</span></div>
+                                    <div>• Small-angle estimate: <span className="text-slate-200">ω ≈ √(g/L₁) = {(9.81 / (labData.snapshot.config?.length1 || 1)).toFixed(2)} rad/s (m₂→L₁)</span></div>
                                     <div>• Chaotic signature: <span className="text-slate-200">2 ICs, δθ₀ = 0.01 rad → exponential divergence</span></div>
                                     <div>• Exact closed form: <span className="text-slate-200">none (coupled nonlinear ODEs)</span></div>
                                 </>
@@ -751,35 +850,43 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                             )}
                             {labData.type === 'orbital_mechanics' && (
                                 <>
-                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit.type.toLowerCase()}</span></div>
-                                    <div>• Semi-major (a): <span className="text-white font-bold">{Number.isFinite(labData.snapshot.orbit.semiMajor) ? labData.snapshot.orbit.semiMajor.toFixed(1) : '∞'} km</span></div>
-                                    <div>• Peri / Apoapsis: <span className="text-slate-200">{labData.snapshot.orbit.rp.toFixed(1)} / {Number.isFinite(labData.snapshot.orbit.ra) ? labData.snapshot.orbit.ra.toFixed(1) : '∞'} km</span></div>
-                                    <div>• Period: <span className="text-slate-200">{Number.isFinite(labData.snapshot.orbit.period) ? labData.snapshot.orbit.period.toFixed(2) : '∞'} s</span></div>
-                                    <div>• v_circ / v_esc: <span className="text-slate-200">{labData.snapshot.orbit.vCirc.toFixed(2)} / {labData.snapshot.orbit.vEsc.toFixed(2)} km/s</span></div>
+                                    <div>• Orbit: <span className="text-slate-200">{labData.snapshot.orbit?.type?.toLowerCase()}</span></div>
+                                    <div>• Semi-major (a): <span className="text-white font-bold">{Number.isFinite(labData.snapshot.orbit?.semiMajor) ? labData.snapshot.orbit.semiMajor.toFixed(1) : '∞'} km</span></div>
+                                    <div>• Peri / Apoapsis: <span className="text-slate-200">{labData.snapshot.orbit?.rp?.toFixed(1)} / {Number.isFinite(labData.snapshot.orbit?.ra) ? labData.snapshot.orbit.ra.toFixed(1) : '∞'} km</span></div>
+                                    <div>• Period: <span className="text-slate-200">{Number.isFinite(labData.snapshot.orbit?.period) ? labData.snapshot.orbit.period.toFixed(2) : '∞'} s</span></div>
+                                    <div>• v_circ / v_esc: <span className="text-slate-200">{labData.snapshot.orbit?.vCirc?.toFixed(2)} / {labData.snapshot.orbit?.vEsc?.toFixed(2)} km/s</span></div>
+                                </>
+                            )}
+                            {labData.type === 'inclined_friction_ramp' && (
+                                <>
+                                    <div>• Critical angle (θ_c): <span className="text-white font-bold">{labData.snapshot.thetaCDeg?.toFixed(2)}°</span></div>
+                                    <div>• Normal force (N): <span className="text-slate-200">{labData.snapshot.forces?.normal?.toFixed(2)} N</span></div>
+                                    <div>• Static max (f_s,max): <span className="text-slate-200">{labData.snapshot.forces?.fStaticMax?.toFixed(2)} N</span></div>
+                                    <div>• Kinetic friction (f_k): <span className="text-slate-200">{labData.snapshot.forces?.kineticFriction?.toFixed(2)} N</span></div>
                                 </>
                             )}
                         </div>
-                        
+
                         <div className="bg-black/40 p-3 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 space-y-1">
                             <div className="text-emerald-400 font-bold text-[10px]">ENERGY / VALIDATION</div>
-{labData.type === 'spring_oscillator' && (
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                <Stat label="Displacement (x)" value={labData.snapshot.x.toFixed(2)} unit="m" color="text-emerald-400" />
-                                <Stat label="Velocity (v)" value={labData.snapshot.v.toFixed(2)} unit="m/s" color="text-sky-400" />
-                                <Stat label="Acceleration (a)" value={labData.snapshot.a.toFixed(2)} unit="m/s²" color="text-amber-400" />
-                                <Stat label="ω₀ = √(k/m)" value={labData.snapshot.omega0.toFixed(2)} unit="rad/s" color="text-violet-400" />
-                            </div>
-                        )}
-                        {labData.type === 'orbital_mechanics' && (
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                <Stat label="Radius (r)" value={labData.snapshot.position.r.toFixed(1)} unit="km" color="text-sky-400" />
-                                <Stat label="Speed (v)" value={labData.snapshot.velocity.v.toFixed(2)} unit="km/s" color="text-emerald-400" />
-                                <Stat label="Orbit Type" value={labData.snapshot.orbit.type} unit="" color={labData.snapshot.orbit.type === 'CIRCULAR' ? 'text-sky-400' : 'text-violet-400'} />
-                                <Stat label="Orbits" value={labData.snapshot.orbitCount.toFixed(2)} unit="n" color="text-amber-400" />
-                            </div>
-                        )}
-                        
-                        {labData.snapshot.energy && (
+                            {labData.type === 'spring_oscillator' && (
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <Stat label="Displacement (x)" value={labData.snapshot.x.toFixed(2)} unit="m" color="text-emerald-400" />
+                                    <Stat label="Velocity (v)" value={labData.snapshot.v.toFixed(2)} unit="m/s" color="text-sky-400" />
+                                    <Stat label="Acceleration (a)" value={labData.snapshot.a.toFixed(2)} unit="m/s²" color="text-amber-400" />
+                                    <Stat label="ω₀ = √(k/m)" value={labData.snapshot.omega0.toFixed(2)} unit="rad/s" color="text-violet-400" />
+                                </div>
+                            )}
+                            {labData.type === 'orbital_mechanics' && (
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <Stat label="Radius (r)" value={labData.snapshot.position.r.toFixed(1)} unit="km" color="text-sky-400" />
+                                    <Stat label="Speed (v)" value={labData.snapshot.velocity.v.toFixed(2)} unit="km/s" color="text-emerald-400" />
+                                    <Stat label="Orbit Type" value={labData.snapshot.orbit.type} unit="" color={labData.snapshot.orbit.type === 'CIRCULAR' ? 'text-sky-400' : 'text-violet-400'} />
+                                    <Stat label="Orbits" value={labData.snapshot.orbitCount.toFixed(2)} unit="n" color="text-amber-400" />
+                                </div>
+                            )}
+                            
+                            {labData.snapshot.energy && (
                                 <>
                                     <div>• Total: <span className="text-slate-200">{Math.round(labData.snapshot.energy.total).toLocaleString()} J</span></div>
                                     <div>• Initial: <span className="text-slate-200">{Math.round(labData.snapshot.energy.initialTotal || 0).toLocaleString()} J</span></div>

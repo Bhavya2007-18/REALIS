@@ -36,6 +36,41 @@ const LAB_SCREENS = {
     inclined_friction_ramp: InclinedRampLab,
 };
 
+class LabErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error("Lab Runtime Error caught by boundary:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-4 p-6 z-50">
+                    <div className="text-xl font-bold tracking-widest text-rose-400 font-mono">LAB INITIALIZATION ERROR</div>
+                    <div className="text-xs text-slate-400 font-mono max-w-lg text-center bg-black/60 p-4 rounded-xl border border-rose-500/20">
+                        {this.state.error?.toString() || 'An error occurred while loading this simulation laboratory.'}
+                    </div>
+                    <button
+                        onClick={() => {
+                            this.setState({ hasError: false, error: null });
+                            useStore.getState().resetPlayback();
+                        }}
+                        className="px-4 py-2 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold uppercase tracking-wider hover:bg-rose-500/30 transition-all cursor-pointer font-mono"
+                    >
+                        Reset & Reload Lab
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 export default function SimulateWorkspace() {
     
     const objects = useStore(state => state.objects);
@@ -502,7 +537,9 @@ export default function SimulateWorkspace() {
             {}
             <div className="flex-1 relative pt-14">
                 {ActiveLab ? (
-                    <ActiveLab />
+                    <LabErrorBoundary key={simulationPreset}>
+                        <ActiveLab />
+                    </LabErrorBoundary>
                 ) : simulationPreset && renderBodies.length === 0 && !is3DView ? (
                     <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center gap-4">
                         <div className="text-2xl font-bold tracking-widest text-red-400/80">SIMULATION UNAVAILABLE</div>

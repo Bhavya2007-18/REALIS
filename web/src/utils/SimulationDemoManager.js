@@ -161,8 +161,8 @@ const PRESETS = {
         overlay: { title: 'Four-Bar Linkage', description: 'Closed-loop mechanism\nRevolute pin joints' }
     },
 
-    v6_engine_demonstrator: {
-        metadata: { id: 'v6_engine_demonstrator', name: 'V6 Engine Demonstrator', version: '1.0' },
+    v6_engine_simulation: {
+        metadata: { id: 'v6_engine_simulation', name: 'V6 Engine Demonstrator', version: '1.0' },
         world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.016, substeps: 8 },
         bodies: [
             { id: 'crank_center', type: 'sphere', position: [0, 150, 0], params: { radius: 6 }, color: '#fbbf24', isStatic: true },

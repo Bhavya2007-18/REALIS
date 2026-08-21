@@ -219,21 +219,24 @@ export default function InclinedRampLab() {
     const [cameraMode, setCameraMode] = useState('fit'); // 'fit' | 'follow'
     const [needsFit, setNeedsFit] = useState(true);
 
-    // ── Accordion state ──────────────────────────────────────────────────────
-    const [openSection, setOpenSection] = useState('telemetry');
+    // ── Accordion state (closed by default so live telemetry is in Properties tab) ──
+    const [openSection, setOpenSection] = useState(null);
     const toggleSection = (key) => setOpenSection(prev => (prev === key ? null : key));
 
     // ── Graph tab ────────────────────────────────────────────────────────────
     const [graphTab, setGraphTab] = useState('position');
 
     // ── Physics solver ───────────────────────────────────────────────────────
-    const solverRef = useRef(new InclinedRampSolver({
-        mass: 2.0, g: 9.81, thetaDeg: 30, muS: 0.5, muK: 0.3,
-        rampLength: 5.0, initialPosition: 3.0, initialVelocity: 0,
-        dt: 1 / 120, timeScale: 1.0, blockSize: 0.45,
-    }));
+    const solverRef = useRef(null);
+    if (!solverRef.current) {
+        solverRef.current = new InclinedRampSolver({
+            mass: 2.0, g: 9.81, thetaDeg: 30, muS: 0.5, muK: 0.3,
+            rampLength: 5.0, initialPosition: 3.0, initialVelocity: 0,
+            dt: 1 / 120, timeScale: 1.0, blockSize: 0.45,
+        });
+    }
 
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+    const [snapshot, setSnapshot] = useState(() => solverRef.current ? solverRef.current.getSnapshot() : null);
 
     // ── Viewport dimensions ──────────────────────────────────────────────────
     const containerRef = useRef(null);
@@ -286,13 +289,15 @@ export default function InclinedRampLab() {
 
     // ── Sync configuration into the solver (core changes reset) ──────────────
     useEffect(() => {
-        solverRef.current.updateConfig({
-            mass, g, thetaDeg, muS, muK, rampLength,
-            initialPosition: clamp(s0, 0, rampLength),
-            initialVelocity: v0,
-            dt, timeScale,
-        });
-        setSnapshot(solverRef.current.getSnapshot());
+        if (solverRef.current) {
+            solverRef.current.updateConfig({
+                mass, g, thetaDeg, muS, muK, rampLength,
+                initialPosition: clamp(s0, 0, rampLength),
+                initialVelocity: v0,
+                dt, timeScale,
+            });
+            setSnapshot(solverRef.current.getSnapshot());
+        }
     }, [mass, g, thetaDeg, muS, muK, rampLength, s0, v0, dt, timeScale]);
 
     // ── Camera helpers ───────────────────────────────────────────────────────
@@ -351,20 +356,22 @@ export default function InclinedRampLab() {
 
     const handleReset = () => {
         resetPlayback();
-        solverRef.current.reset();
-        setSnapshot(solverRef.current.getSnapshot());
+        if (solverRef.current) {
+            solverRef.current.reset();
+            setSnapshot(solverRef.current.getSnapshot());
+        }
         setNeedsFit(true);
     };
 
     const handleStepForward = () => {
-        if (!isPlaying) {
+        if (!isPlaying && solverRef.current) {
             setSnapshot({ ...solverRef.current.step(1 / 60) });
         }
     };
 
     // Main 60 FPS physics loop (frame-rate independent)
     useEffect(() => {
-        if (!isPlaying) {
+        if (!isPlaying || !solverRef.current) {
             cancelAnimationFrame(reqRef.current);
             return;
         }
@@ -372,11 +379,13 @@ export default function InclinedRampLab() {
         const loop = (now) => {
             const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
             lastTimeRef.current = now;
-            const next = solverRef.current.step(elapsed);
-            if (cameraMode === 'follow') {
-                setCamera(c => ({ ...c, cx: next.position.x, cy: next.position.y }));
+            if (solverRef.current) {
+                const next = solverRef.current.step(elapsed);
+                if (cameraMode === 'follow') {
+                    setCamera(c => ({ ...c, cx: next.position.x, cy: next.position.y }));
+                }
+                setSnapshot({ ...next });
             }
-            setSnapshot({ ...next });
             reqRef.current = requestAnimationFrame(loop);
         };
         reqRef.current = requestAnimationFrame(loop);
@@ -800,238 +809,7 @@ export default function InclinedRampLab() {
                 </svg>
             </div>
 
-            {/* ── Collapsible Engineering Information Bars ─────────────────────── */}
-            <div className="shrink-0 relative z-20 max-h-[38vh] overflow-y-auto">
-                {/* LIVE TELEMETRY */}
-                <InfoBar
-                    icon={<Activity size={13} />}
-                    accent="text-emerald-400"
-                    title="Live Telemetry"
-                    summary={telemetrySummary}
-                    open={openSection === 'telemetry'}
-                    onToggle={() => toggleSection('telemetry')}
-                    status={
-                        <span
-                            className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded"
-                            style={isPlaying
-                                ? { backgroundColor: 'rgba(16,185,129,0.2)', color: '#34d399' }
-                                : { backgroundColor: `${stateColor}22`, color: stateColor }}
-                        >
-                            {isPlaying ? 'RUNNING' : 'PAUSED'}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Sim Time (t)" value={formatSimTime(snapshot.time)} color="text-white" />
-                            <Stat label="Position along ramp (s)" value={fmt(snapshot.rampState.s, 4)} unit="m" color="text-sky-400" />
-                            <Stat label="Horizontal x" value={fmt(snapshot.position.x, 3)} unit="m" />
-                            <Stat label="Vertical y / height h" value={fmt(snapshot.height, 3)} unit="m" color="text-emerald-400" />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Velocity (along ramp)" value={fmt(snapshot.rampState.v, 4)} unit="m/s" color="text-cyan-400" />
-                            <Stat label="Acceleration (along ramp)" value={fmt(snapshot.rampState.a, 4)} unit="m/s²" color="text-fuchsia-400" />
-                            <Stat label="Ramp angle θ" value={fmt(p.thetaDeg, 2)} unit="°" color="text-sky-300" />
-                            <Stat label="Critical angle θ_c" value={fmt(snapshot.thetaCDeg, 2)} unit="°" color={atCritical ? 'text-pink-400' : 'text-amber-400'} />
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Mass m" value={fmt(p.mass, 3)} unit="kg" />
-                            <Stat label="Gravity g" value={fmt(p.g, 3)} unit="m/s²" color="text-amber-400" />
-                            <Stat label="μ_s (static)" value={fmt(p.muS, 3)} color="text-slate-300" />
-                            <Stat label="μ_k (kinetic)" value={fmt(p.muK, 3)} color="text-slate-300" />
-                        </div>
-                        <div className="bg-slate-950/60 border border-white/5 rounded-lg px-3 py-2 font-mono text-[10px] flex items-start gap-2">
-                            <span style={{ color: stateColor }} className="font-bold whitespace-nowrap">● {state}</span>
-                            <span className="text-slate-400">{stateNote}</span>
-                        </div>
-                    </div>
-                </InfoBar>
 
-                {/* FORCES */}
-                <InfoBar
-                    icon={<Gauge size={13} />}
-                    accent="text-purple-400"
-                    title="Forces · Free-Body Diagram"
-                    summary={forceSummary}
-                    open={openSection === 'forces'}
-                    onToggle={() => toggleSection('forces')}
-                    status={
-                        <span className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400">
-                            {Math.abs(f.friction) < 1e-6 ? 'f_s balances mg·sinθ' : `friction opposes motion`}
-                        </span>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="grid grid-cols-2 gap-2 content-start">
-                                <Stat label="Weight mg" value={fmt(f.weight, 3)} unit="N" color="text-amber-400" />
-                                <Stat label="Normal N = mg·cosθ" value={fmt(f.normal, 3)} unit="N" color="text-emerald-400" />
-                                <Stat label="Parallel mg·sinθ" value={fmt(f.parallel, 3)} unit="N" color="text-sky-400" />
-                                <Stat label="Perp. mg·cosθ" value={fmt(f.perp, 3)} unit="N" color="text-violet-400" />
-                                <Stat label="f_s,max = μ_s·N" value={fmt(f.fStaticMax, 3)} unit="N" color="text-amber-300" />
-                                <Stat label="f_k = μ_k·N" value={fmt(f.kineticFriction, 3)} unit="N" color="text-rose-300" />
-                                <Stat label={f.frictionKind === 'static' ? 'Actual friction (static)' : 'Actual friction (kinetic)'}
-                                    value={fmt(f.friction, 3)} unit="N" color="text-rose-400" />
-                                <Stat label="Net force (along ramp)" value={fmt(f.netForce, 3)} unit="N" color="text-fuchsia-400" />
-                            </div>
-                            <FreeBodyDiagram forces={f} thetaDeg={p.thetaDeg} state={state} />
-                        </div>
-                        <div className="bg-slate-950/60 px-3 py-2 rounded-lg font-mono text-[9px] text-slate-400 space-y-1 border border-white/5">
-                            <div className="text-slate-300 font-bold text-[10px]">FRICTION MODEL</div>
-                            <div>Static: f_s = required value up to f_s,max = μ_s·N = {fmt(f.fStaticMax, 3)} N</div>
-                            <div>Critical angle θ_c = arctan(μ_s) = {fmt(snapshot.thetaCDeg, 3)}° — block slips when tanθ &gt; μ_s</div>
-                            <div>Kinetic: f_k = μ_k·N = {fmt(f.kineticFriction, 3)} N, always opposing relative motion</div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* ENERGY */}
-                <InfoBar
-                    icon={<TrendingUp size={13} />}
-                    accent="text-sky-400"
-                    title="Energy · Friction Work"
-                    summary={energySummary}
-                    open={openSection === 'energy'}
-                    onToggle={() => toggleSection('energy')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-3">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <Stat label="Kinetic Energy ½mv²" value={fmt(e.kinetic, 4)} unit="J" color="text-emerald-400" />
-                            <Stat label="Potential mgh" value={fmt(e.potential, 4)} unit="J" color="text-sky-400" />
-                            <Stat label="Total E = KE + PE" value={fmt(e.total, 4)} unit="J" color="text-amber-400" />
-                            <Stat label="Energy lost to friction" value={fmt(e.lost, 4)} unit="J" color="text-rose-400" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Stat label="Sliding distance (kinetic)" value={fmt(snapshot.slidingDistance, 3)} unit="m" color="text-slate-300" />
-                            <Stat label="W_f = −μ_k·N·d" value={`−${fmt(e.lost, 3)}`} unit="J" color="text-rose-300" />
-                        </div>
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                            <div className="flex justify-between text-[9px] font-mono text-slate-400 mb-1">
-                                <span>ENERGY vs TIME (real samples)</span>
-                                <span>E + lost ≈ const: {fmt(e.total + e.lost, 4)} J</span>
-                            </div>
-                            <TrendGraph
-                                x={snapshot.history.t}
-                                unit="J"
-                                height={140}
-                                series={[
-                                    { name: 'KE', data: snapshot.history.ke, color: '#34d399' },
-                                    { name: 'PE', data: snapshot.history.pe, color: '#38bdf8' },
-                                    { name: 'E_total', data: snapshot.history.e, color: '#fbbf24' },
-                                    { name: 'lost', data: snapshot.history.lost, color: '#fb7185' },
-                                ]}
-                            />
-                            <div className="text-[9px] font-mono text-slate-500 mt-1">
-                                With kinetic friction, total mechanical energy decreases — the dissipated amount (rose) is W_f = μ_k·N·d.
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* GRAPHS */}
-                <InfoBar
-                    icon={<BarChart3 size={13} />}
-                    accent="text-fuchsia-400"
-                    title="Scientific Graphs"
-                    summary="position · velocity · acceleration · energy · friction · net force · phase"
-                    open={openSection === 'graphs'}
-                    onToggle={() => toggleSection('graphs')}
-                >
-                    <div className="px-5 py-4 border-t border-white/5 space-y-2">
-                        <div className="flex flex-wrap gap-1">
-                            {[['position', 's(t)'], ['velocity', 'v(t)'], ['acceleration', 'a(t)'], ['energy', 'E(t)'], ['friction', 'f(t)'], ['netforce', 'F_net(t)'], ['phase', 's–v']].map(([id, label]) => (
-                                <button
-                                    key={id}
-                                    onClick={() => setGraphTab(id)}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${graphTab === id ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40' : 'text-slate-500 border border-white/10 hover:text-white'}`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                            {graphTab === 'position' && <TrendGraph x={snapshot.history.t} unit="m" series={[{ name: 's', data: snapshot.history.s, color: '#38bdf8' }]} />}
-                            {graphTab === 'velocity' && <TrendGraph x={snapshot.history.t} unit="m/s" series={[{ name: 'v', data: snapshot.history.v, color: '#22d3ee' }]} />}
-                            {graphTab === 'acceleration' && <TrendGraph x={snapshot.history.t} unit="m/s²" series={[{ name: 'a', data: snapshot.history.a, color: '#e879f9' }]} />}
-                            {graphTab === 'energy' && <TrendGraph x={snapshot.history.t} unit="J" series={[
-                                { name: 'KE', data: snapshot.history.ke, color: '#34d399' },
-                                { name: 'PE', data: snapshot.history.pe, color: '#38bdf8' },
-                                { name: 'E', data: snapshot.history.e, color: '#fbbf24' },
-                                { name: 'lost', data: snapshot.history.lost, color: '#fb7185' },
-                            ]} />}
-                            {graphTab === 'friction' && <TrendGraph x={snapshot.history.t} unit="N" series={[{ name: 'f (along ramp)', data: snapshot.history.friction, color: '#fb7185' }]} />}
-                            {graphTab === 'netforce' && <TrendGraph x={snapshot.history.t} unit="N" series={[{ name: 'F_net', data: snapshot.history.netForce, color: '#f472b6' }]} />}
-                            {graphTab === 'phase' && (
-                                <TrendGraph x={snapshot.history.s} unit="s = pos (m)" series={[{ name: 'v', data: snapshot.history.v, color: '#34d399' }]} />
-                            )}
-                            <div className="text-[9px] font-mono text-slate-500 mt-1">
-                                All curves are sampled directly from the RK4 integration (rolling {snapshot.history.t.length} points).
-                            </div>
-                        </div>
-                    </div>
-                </InfoBar>
-
-                {/* SETUP */}
-                <InfoBar
-                    icon={<Sliders size={13} />}
-                    accent="text-slate-300"
-                    title="Setup (Parameters — SI units)"
-                    summary={setupSummary}
-                    open={openSection === 'setup'}
-                    onToggle={() => toggleSection('setup')}
-                    status={
-                        <button
-                            onClick={(e) => { e.stopPropagation(); applyPreset('above_critical'); }}
-                            className="shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 hover:bg-sky-500/40 cursor-pointer transition-colors"
-                            title="Set θ above critical so the block slides"
-                        >
-                            θ &gt; θ_c
-                        </button>
-                    }
-                >
-                    <div className="px-5 py-4 border-t border-white/5 max-h-[46vh] overflow-y-auto space-y-4">
-                        {/* Gravity presets */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Gravity</span>
-                            {GRAVITY_PRESETS.map(gp => (
-                                <button
-                                    key={gp.id}
-                                    onClick={() => applyGravity(gp.id)}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${Math.abs(g - gp.g) < 1e-9 ? 'text-white border' : 'text-slate-500 border border-transparent hover:text-white'}`}
-                                    style={Math.abs(g - gp.g) < 1e-9 ? { color: gp.accent, borderColor: `${gp.accent}55`, backgroundColor: `${gp.accent}1a` } : {}}
-                                >
-                                    {gp.name} · {fmt(gp.g, 2)}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-4">
-                            <SliderField label="Mass m (kg)" value={mass} min={0.1} max={10} step={0.1} onChange={setMass} fmt={fmt(mass, 3)} />
-                            <SliderField label="Gravity g (m/s²)" value={g} min={0} max={25} step={0.05} onChange={setG} fmt={fmt(g, 3)} />
-                            <SliderField label="Ramp angle θ (deg)" value={thetaDeg} min={0} max={75} step={1} onChange={(v) => { setThetaDeg(v); setNeedsFit(true); }} fmt={`${thetaDeg.toFixed(0)}°`} />
-                            <SliderField label="Ramp length L (m)" value={rampLength} min={1} max={12} step={0.1} onChange={(v) => { setRampLength(v); setS0(cur => Math.min(cur, v)); }} fmt={fmt(rampLength, 2)} />
-                            <SliderField label="Static friction μ_s" value={muS} min={0} max={1} step={0.01} onChange={(v) => { setMuS(v); if (muK > v) setMuK(v); }} fmt={fmt(muS, 2)} />
-                            <SliderField label="Kinetic friction μ_k" value={muK} min={0} max={1} step={0.01} onChange={(v) => setMuK(Math.min(v, muS))} fmt={fmt(muK, 2)} />
-                            <SliderField label="Initial position s₀ (m)" value={s0} min={0} max={rampLength} step={0.1} onChange={setS0} fmt={fmt(s0, 2)} />
-                            <SliderField label="Initial velocity v₀ (m/s, + = up)" value={v0} min={-6} max={6} step={0.05} onChange={setV0} fmt={fmt(v0, 2)} />
-                            <SliderField label="Physics Δt (s)" value={dt} min={0.001} max={0.05} step={0.0005} onChange={setDt} fmt={`${(dt * 1000).toFixed(1)} ms`} />
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-mono">
-                                    <span className="text-slate-400">θ_c = arctan(μ_s)</span>
-                                    <span className="text-amber-400 font-bold">{fmt(snapshot.thetaCDeg, 3)}°</span>
-                                </div>
-                                <div className="text-[9px] font-mono text-slate-500">
-                                    tanθ = {fmt(Math.tan(thetaDeg * DEG), 3)} · μ_s = {fmt(muS, 3)} → {snapshot.rampState.v === 0 && p.muS > 0 ? (Math.tan(thetaDeg * DEG) <= p.muS ? 'static holds' : 'block slips') : '—'}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-slate-950/60 px-3 py-2 rounded-lg font-mono text-[9px] text-slate-400 space-y-0.5 border border-white/5">
-                            <div className="text-slate-300 font-bold">REFERENCE EQUATIONS</div>
-                            <div>N = mg·cosθ &nbsp;·&nbsp; F_par = mg·sinθ &nbsp;·&nbsp; θ_c = arctan(μ_s)</div>
-                            <div>sliding down: a = g(sinθ − μ_k·cosθ) &nbsp;·&nbsp; sliding up: a = −g(sinθ + μ_k·cosθ)</div>
-                        </div>
-                    </div>
-                </InfoBar>
-            </div>
 
             {/* ── Bottom Playback & Timeline Bar ───────────────────────────────── */}
             <div className="h-16 bg-slate-950/95 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center justify-between z-30 shrink-0">
