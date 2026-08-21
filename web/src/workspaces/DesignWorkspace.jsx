@@ -1478,11 +1478,16 @@ export default function DesignWorkspace() {
 
     return (
         <div className={`w-full h-full relative flex flex-col overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
-            {/* Scene file actions live in their own bar, top-right, so they are not
-                confused with the drawing tools and do not shift position when the
-                2D/3D tool set changes. Save/Load/Validate belong in the workspace
-                where scenes are authored, not only in Simulate. */}
-            <div className="absolute top-4 right-4 z-30 flex gap-1 glass p-1.5 rounded-xl shadow-2xl">
+            {/* Scene file actions live in their own bar, so they are not confused
+                with the drawing tools and do not shift position when the 2D/3D tool
+                set changes. Save/Load/Validate belong in the workspace where scenes
+                are authored, not only in Simulate.
+
+                Offset to right-16 to clear the vertical view-controls column that
+                already occupies top-4 right-4 — both are z-30, so at the same
+                anchor the file buttons would have sat underneath the grid and snap
+                toggles and been unclickable. */}
+            <div className="absolute top-4 right-16 z-30 flex gap-1 glass p-1.5 rounded-xl shadow-2xl">
                 <SceneFileActions />
             </div>
             {}

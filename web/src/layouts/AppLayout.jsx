@@ -82,7 +82,15 @@ export default function AppLayout() {
             <main className="flex-1 flex overflow-hidden">
                 <ActivityBar />
                 <Sidebar />
-                <div className="flex-1 relative bg-[#0a0f1a]">
+                {/* min-w-0 is load-bearing, not cosmetic. A `flex-1` item defaults
+                    to min-width:auto, so it will not shrink below the intrinsic
+                    width of its content — and the 3D canvas reports a large one.
+                    Without this the viewport refused to yield, pushed the w-80
+                    properties panel past the right edge of the window, and main's
+                    overflow-hidden clipped it: every label in the panel was cut
+                    mid-word. min-w-0 lets the canvas absorb the remaining space
+                    instead of dictating it. */}
+                <div className="flex-1 min-w-0 relative bg-[#0a0f1a]">
                     <WorkspaceRenderer />
                     <SketchPreviewOverlay />
                     <EnergyMonitor />
