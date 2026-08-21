@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
+import { SCENE_SCHEMA_VERSION, SCENE_COORDINATE_SPACE, migrateScene, validateScene } from '../models/sceneSchema'
 
 // Scene fields tracked by the undo/redo history (Pascal use-scene temporal pattern).
 const HISTORY_PARTIALIZE = (s) => ({
@@ -478,6 +479,8 @@ const useStore = create(temporal((set) => ({
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
     setIsPlaying: (playing) => {
+        // Pause undo tracking DURING playback so per-frame physics mutations don't flood the
+        // 50-entry history ring; resume when stopped so design edits stay undoable.
         if (playing) useStore.temporal.getState().pause();
         else useStore.temporal.getState().resume();
         set({ isPlaying: playing });
@@ -488,6 +491,7 @@ const useStore = create(temporal((set) => ({
     
     togglePlayback: () => set((state) => {
         const nextPlaying = !state.isPlaying;
+        // See setIsPlaying: pause undo tracking during playback, resume when stopped.
         if (nextPlaying) useStore.temporal.getState().pause();
         else useStore.temporal.getState().resume();
         return { isPlaying: nextPlaying };
@@ -532,47 +536,84 @@ const useStore = create(temporal((set) => ({
     sketchDraft: null, 
     setSketchDraft: (draft) => set({ sketchDraft: draft }),
 
-    // ── Save/Load Persistence (Section 3.2 JSON round-trip) ──────────────
+    // ── Save/Load Persistence (versioned scene round-trip; contract in models/sceneSchema.js) ──
     exportSceneJSON: () => {
         const s = useStore.getState();
-        return JSON.stringify({
-            scene: {
-                metadata: { version: '1.0', exportedAt: new Date().toISOString() },
-                world: { gravity: s.simulationSettings.gravity, timestep: s.simulationSettings.timeStep, substeps: s.simulationSettings.subSteps, units: 'SI' },
-                camera: s.camera,
-                bodies: [...s.objects, ...s.shapes3D],
-                materials: s.materials,
-                constraints: s.constraints || [],
-                forces: [],
-                simulation: { time_scale: s.simulationSettings.timeScale, running: s.isPlaying, elapsed_time: s.simulationState?.time || 0 }
-            }
-        }, null, 2);
+        const scene = {
+            metadata: {
+                schemaVersion: SCENE_SCHEMA_VERSION,
+                version: SCENE_SCHEMA_VERSION,          // legacy alias for older readers
+                exportedAt: new Date().toISOString(),
+            },
+            world: {
+                gravity: s.simulationSettings.gravity,
+                timestep: s.simulationSettings.timeStep,
+                substeps: s.simulationSettings.subSteps,
+                units: 'mixed-authoring',               // honest: bodies are authoring-space, not pure SI
+                coordinateSpace: SCENE_COORDINATE_SPACE,
+            },
+            camera: s.camera,
+            bodies: [...s.objects, ...s.shapes3D],
+            materials: s.materials,
+            constraints: s.constraints || [],
+            forces: [],
+            simulation: { time_scale: s.simulationSettings.timeScale, running: s.isPlaying, elapsed_time: s.simulationState?.time || 0 },
+        };
+        // Defensive self-check: never emit a scene we would reject on import (rule 3.4).
+        const check = validateScene(scene);
+        if (!check.valid) console.error('[exportSceneJSON] produced an invalid scene:', check.errors);
+        return JSON.stringify({ scene }, null, 2);
     },
+
+    /**
+     * Import a scene. Migrates the file forward, validates it, and ONLY mutates the store when the
+     * scene is structurally valid — so a malformed file can never wipe the current design (rule 3.6).
+     * @returns {{ valid:boolean, errors:string[], warnings:string[] }}
+     */
     importSceneJSON: (jsonStr) => {
+        let parsed;
         try {
-            const data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
-            const scene = data.scene || data;
+            parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+        } catch (e) {
+            console.error('[importSceneJSON] JSON parse failed:', e?.message || e);
+            return { valid: false, errors: [`JSON parse failed: ${e?.message || e}`], warnings: [] };
+        }
+
+        const { scene, migrations } = migrateScene(parsed);
+        const { valid, errors, warnings } = validateScene(scene);
+
+        if (migrations.length) console.info('[importSceneJSON] migrations applied:', migrations);
+        if (warnings.length) console.warn('[importSceneJSON] warnings:', warnings);
+
+        // Fail safe: leave the current design untouched if the incoming scene is invalid (rule 3.4/3.6).
+        if (!valid) {
+            console.error('[importSceneJSON] invalid scene, import aborted (current design preserved):', errors);
+            return { valid: false, errors, warnings };
+        }
+
+        try {
             const state = useStore.getState();
             state.clearDesign();
             if (scene.world) {
                 state.setSimulationSettings({
                     gravity: scene.world.gravity || { x: 0, y: 9.81, z: 0 },
                     timeStep: scene.world.timestep || 0.016,
-                    subSteps: scene.world.substeps || 1
+                    subSteps: scene.world.substeps || 1,
                 });
             }
             if (scene.camera) state.setCamera(scene.camera);
-            if (scene.bodies) {
+            if (Array.isArray(scene.bodies)) {
                 scene.bodies.forEach(b => {
                     if (b.position || b.type === 'sphere' || b.params) state.addShape3D(b);
                     else state.addCADObject(b);
                 });
             }
-            if (scene.constraints) scene.constraints.forEach(c => state.addConstraint(c));
-            return true;
+            if (Array.isArray(scene.constraints)) scene.constraints.forEach(c => state.addConstraint(c));
+            return { valid: true, errors: [], warnings };
         } catch (e) {
-            console.error('[importSceneJSON] Error:', e);
-            return false;
+            // A throw mid-apply leaves a partial design; surface it loudly rather than swallowing (rule 3.4).
+            console.error('[importSceneJSON] error while applying scene:', e);
+            return { valid: false, errors: [`Apply failed: ${e?.message || e}`], warnings };
         }
     }
 }), {

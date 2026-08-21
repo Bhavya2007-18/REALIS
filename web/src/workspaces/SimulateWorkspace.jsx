@@ -521,9 +521,17 @@ export default function SimulateWorkspace() {
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         const reader = new FileReader();
-                                        reader.onload = (evt) => importSceneJSON(evt.target.result);
+                                        reader.onload = (evt) => {
+                                            const result = importSceneJSON(evt.target.result);
+                                            // No silent failures (rule 3.4): a rejected import must reach the user,
+                                            // not just the console. importSceneJSON leaves the design untouched on failure.
+                                            if (result && result.valid === false) {
+                                                window.alert(`Scene import failed — current design was preserved.\n\n${(result.errors || []).join('\n')}`);
+                                            }
+                                        };
                                         reader.readAsText(file);
                                     }
+                                    e.target.value = ''; // let the same file be re-selected later
                                 }}
                             />
                         </label>

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import FreeFallPhysicsSolver, { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
+import { createSolverHandle, SOLVER_FAMILY } from '../utils/solverInterface';
 
 export default function FreeFallLab() {
     const isPlaying = useStore(state => state.isPlaying);
@@ -35,7 +36,14 @@ export default function FreeFallLab() {
         timeScale: 1.0
     }));
 
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+    // Canonical solver handle (Phase 2). Routes every solver call through the one contract in
+    // utils/solverInterface.js, adding the single clock + pause/resume + dt guards. This is the
+    // first pilot adoption: FreeFall is a LAB-family solver whose step() returns getSnapshot(), so
+    // the handle is behavior-identical here (the dt>0 guard and 0.5s clamp never trigger — the loop
+    // already feeds a positive, ≤0.05s dt). Other loops should migrate onto createSolverHandle next.
+    const handleRef = useRef(createSolverHandle(solverRef.current, { family: SOLVER_FAMILY.LAB }));
+
+    const [snapshot, setSnapshot] = useState(handleRef.current.getSnapshot());
     
     // Push lab data to store for Properties panel
     useEffect(() => {
@@ -76,28 +84,28 @@ export default function FreeFallLab() {
 
     // Update solver when configuration changes
     useEffect(() => {
-        solverRef.current.updateConfig({
+        handleRef.current.updateConfig({
             initialHeight,
             gravity: PLANETARY_GRAVITY[selectedPlanet]?.g ?? 9.81,
             restitution,
             mass,
             timeScale
         });
-        setSnapshot(solverRef.current.getSnapshot());
+        setSnapshot(handleRef.current.getSnapshot());
     }, [initialHeight, selectedPlanet, restitution, mass, timeScale]);
 
     // Handle Reset
     const handleReset = () => {
         resetPlayback();
-        solverRef.current.reset();
+        handleRef.current.reset();
         prevBounceCount.current = 0;
-        setSnapshot(solverRef.current.getSnapshot());
+        setSnapshot(handleRef.current.getSnapshot());
     };
 
     // Single step forward
     const handleStepForward = () => {
         if (!isPlaying) {
-            const nextSnap = solverRef.current.step(0.016);
+            const nextSnap = handleRef.current.step(0.016);
             setSnapshot({ ...nextSnap });
         }
     };
@@ -115,7 +123,7 @@ export default function FreeFallLab() {
             const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
             lastTimeRef.current = now;
 
-            const nextSnap = solverRef.current.step(elapsed);
+            const nextSnap = handleRef.current.step(elapsed);
             setSnapshot({ ...nextSnap });
 
             // Detect impact event for ground shockwave animation
