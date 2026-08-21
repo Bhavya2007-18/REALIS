@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
+import { createDefaultScene } from '../types/scene'
 
 // Scene fields tracked by the undo/redo history (Pascal use-scene temporal pattern).
 const HISTORY_PARTIALIZE = (s) => ({
@@ -7,7 +8,15 @@ const HISTORY_PARTIALIZE = (s) => ({
     shapes3D: s.shapes3D,
     constraints: s.constraints || [],
     layers: s.layers,
-    activeLayerId: s.activeLayerId
+    activeLayerId: s.activeLayerId,
+    scene: {
+        metadata: s.scene.metadata,
+        objects: s.scene.objects,
+        materials: s.scene.materials,
+        constraints: s.scene.constraints || [],
+        layers: s.scene.layers,
+        activeLayerId: s.activeLayerId
+    }
 });
 
 const HISTORY_LIMIT = 50;
@@ -135,6 +144,7 @@ const useStore = create(temporal((set) => ({
             objects: [],
             shapes3D: [],
             constraints: [],
+            scene: createDefaultScene(),
             history: [],
             historyIndex: -1,
             selectedIds: [],
@@ -436,6 +446,7 @@ const useStore = create(temporal((set) => ({
         ambientTemp: 20,
         timeScale: 1.0
     },
+    scene: createDefaultScene(),
     setSimulationSettings: (settings) => set((state) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
@@ -537,13 +548,11 @@ const useStore = create(temporal((set) => ({
         const s = useStore.getState();
         return JSON.stringify({
             scene: {
-                metadata: { version: '1.0', exportedAt: new Date().toISOString() },
-                world: { gravity: s.simulationSettings.gravity, timestep: s.simulationSettings.timeStep, substeps: s.simulationSettings.subSteps, units: 'SI' },
-                camera: s.camera,
-                bodies: [...s.objects, ...s.shapes3D],
-                materials: s.materials,
-                constraints: s.constraints || [],
-                forces: [],
+                metadata: s.scene.metadata,
+                objects: s.scene.objects,
+                materials: s.scene.materials,
+                constraints: s.scene.constraints || [],
+                forces: s.scene.forces || [],
                 simulation: { time_scale: s.simulationSettings.timeScale, running: s.isPlaying, elapsed_time: s.simulationState?.time || 0 }
             }
         }, null, 2);
@@ -556,17 +565,13 @@ const useStore = create(temporal((set) => ({
             state.clearDesign();
             if (scene.world) {
                 state.setSimulationSettings({
-                    gravity: scene.world.gravity || { x: 0, y: 9.81, z: 0 },
+                    gravity: scene.world.gravity || { x: 0, y: -9.81, z: 0 },
                     timeStep: scene.world.timestep || 0.016,
                     subSteps: scene.world.substeps || 1
                 });
             }
-            if (scene.camera) state.setCamera(scene.camera);
-            if (scene.bodies) {
-                scene.bodies.forEach(b => {
-                    if (b.position || b.type === 'sphere' || b.params) state.addShape3D(b);
-                    else state.addCADObject(b);
-                });
+            if (scene.objects) {
+                scene.objects.forEach(b => state.addCADObject(b));
             }
             if (scene.constraints) scene.constraints.forEach(c => state.addConstraint(c));
             return true;
