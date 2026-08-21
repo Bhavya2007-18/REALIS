@@ -203,17 +203,19 @@ const PRESETS = {
     },
 
     inclined_friction_ramp: {
-        metadata: { id: 'inclined_friction_ramp', name: 'Inclined Friction Ramp', version: '1.0' },
-        world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 0.016, substeps: 4 },
-        bodies: [
-            { id: 'ramp', type: 'rect', x: -60, y: 120, width: 200, height: 10, rotation: -20, stroke: '#64748b', fill: 'rgba(100,116,139,0.4)', isStatic: true, friction: 0.4 },
-            { id: 'ground', type: 'rect', x: -100, y: 200, width: 400, height: 15, stroke: '#475569', fill: 'rgba(71,85,105,0.4)', isStatic: true, friction: 0.5 },
-            { id: 'block_low_friction', type: 'rect', x: -100, y: 80, width: 20, height: 20, stroke: '#3b82f6', fill: 'rgba(59,130,246,0.3)', mass: 1.0, friction: 0.1, restitution: 0.2 },
-            { id: 'block_high_friction', type: 'rect', x: -70, y: 60, width: 20, height: 20, stroke: '#ef4444', fill: 'rgba(239,68,68,0.3)', mass: 1.0, friction: 0.8, restitution: 0.2 }
-        ],
+        metadata: { id: 'inclined_friction_ramp', name: 'Inclined Friction Ramp', version: '2.0' },
+        world: { gravity: { x: 0, y: 9.81, z: 0 }, timestep: 1 / 120, substeps: 1 },
+        lab: {
+            type: 'inclined_ramp',
+            mass: 2, gravity: 9.81, thetaDeg: 30,
+            muStatic: 0.5, muKinetic: 0.3,
+            rampLength: 5, startPos: 3, startVel: 0,
+            dt: 1 / 120, timeScale: 1
+        },
+        bodies: [],
         materials: [], forces: [], constraints: [],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'Inclined Friction Ramp', description: 'Static vs Dynamic Friction\nBlue: μ=0.1 | Red: μ=0.8' }
+        overlay: { title: 'Inclined Friction Ramp', description: 'Static & kinetic friction on an incline · RK4 integration\nθ=30° with μ_s=0.5 (θ_c≈26.6°) — block slides' }
     },
     free_fall: {
         metadata: { id: 'free_fall', name: 'Free Fall (100m Drop)', version: '1.0' },
