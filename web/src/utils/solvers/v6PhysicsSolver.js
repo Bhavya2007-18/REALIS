@@ -90,6 +90,9 @@ export default class V6PhysicsSolver {
     
     updateConfig(updates) {
         this.config = { ...this.config, ...updates };
+        if (updates.targetRPM !== undefined) {
+            this.setTargetRPM(updates.targetRPM);
+        }
     }
 
     

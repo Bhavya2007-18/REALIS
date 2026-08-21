@@ -20,7 +20,6 @@ import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
 import MechanicalAssemblySolver from '../utils/solvers/mechanicalAssemblySolver';
 import V6RenderAdapter from '../utils/v6RenderAdapter';
 import { SIM_UNITS, FIXED_STEP, clamp, isFiniteNumber, createSimulationLogger } from '../utils/simulationSafety';
-import V6ControlPanel from '../components/V6ControlPanel';
 import ModelControls from '../components/ModelControls';
 import { stepWater } from '../utils/waterPhysics';
 import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoManager';
@@ -147,7 +146,6 @@ export default function SimulateWorkspace() {
     const v6LogRef = useRef(createSimulationLogger('SimulateWorkspace:V6', { throttleFrames: 30 }));
     const mechanicalSolverRef = useRef(new MechanicalAssemblySolver({ dt: 0.016, substeps: 4 }));
     const [v6EngineState, setV6EngineState] = useState(null);
-    const [showV6Panel, setShowV6Panel] = useState(false);
     const [isMechanicalAssemblyActive, setIsMechanicalAssemblyActive] = useState(false);
 
     
@@ -163,16 +161,24 @@ export default function SimulateWorkspace() {
                 frictionTorque:  20,
                 vAngleDeg:       60,
             });
-            setShowV6Panel(true);
             setV6EngineState(v6SolverRef.current.getSnapshot());
             useStore.getState().setSimulationFrames([]);
             useStore.getState().setCurrentFrameIndex(0);
         } else {
             v6SolverRef.current = null;
-            setShowV6Panel(false);
             setV6EngineState(null);
         }
     }, [isV6Active]);
+
+    useEffect(() => {
+        const handleConfigChange = (event) => {
+            const { type, key, value } = (event && event.detail) || {};
+            if (type !== 'v6_engine' || !v6SolverRef.current) return;
+            v6SolverRef.current.updateConfig({ [key]: value });
+        };
+        window.addEventListener('lab-config-change', handleConfigChange);
+        return () => window.removeEventListener('lab-config-change', handleConfigChange);
+    }, []);
 
     useEffect(() => {
         if (isV6Active || !isMechanicalAssemblyPreset) {
@@ -278,13 +284,21 @@ export default function SimulateWorkspace() {
                     lastTelemetryTimeRef.current = time;
                     setV6EngineState(snap);
                     setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
+                    useStore.getState().setLabData({
+                        title: 'V6 Engine',
+                        type: 'v6_engine',
+                        snapshot: snap,
+                        config: v6SolverRef.current.config
+                    });
                 }
-                setShapes3D(prev => {
-                    v6RenderAdapterRef.current.snapshotToTransforms(snap, prev, clampedDelta, v6SolverRef.current.config);
-                    const alpha = clamp(snap.interpolationAlpha ?? 0, 0, 1);
-                    const interpolated = v6RenderAdapterRef.current.getInterpolatedTransforms(alpha);
-                    return v6RenderAdapterRef.current.apply(prev, interpolated);
-                });
+                // Compute transforms and apply to BOTH shapes3D (store) and renderBodies (Viewport3D source)
+                const currentShapes = useStore.getState().shapes3D;
+                v6RenderAdapterRef.current.snapshotToTransforms(snap, currentShapes, clampedDelta, v6SolverRef.current.config);
+                const alpha = clamp(snap.interpolationAlpha ?? 0, 0, 1);
+                const interpolated = v6RenderAdapterRef.current.getInterpolatedTransforms(alpha);
+                const updatedShapes = v6RenderAdapterRef.current.apply(currentShapes, interpolated);
+                setShapes3D(updatedShapes);
+                setRenderBodies(updatedShapes);
 
             } else if (isMechanicalAssemblyActive && mechanicalSolverRef.current) {
                 const { states, time: simTime } = mechanicalSolverRef.current.tick(clampedDelta);
@@ -371,7 +385,7 @@ export default function SimulateWorkspace() {
 
         reqRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isLabActive, setShapes3D, setSimulationState]);
+    }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isLabActive, setShapes3D, setSimulationState, setRenderBodies]);
 
     
     useEffect(() => {
@@ -557,7 +571,7 @@ export default function SimulateWorkspace() {
                         </button>
                     </div>
                 ) : is3DView ? (
-                    <Viewport3D objects={finalViewportObjects} isSimulating={isPlaying} />
+                    <Viewport3D objects={finalViewportObjects} renderBodies={renderBodies} isSimulating={isPlaying} />
                 ) : (
                     <div className="absolute inset-0 bg-slate-950/80">
                         <svg className="absolute inset-0 w-full h-full z-10">

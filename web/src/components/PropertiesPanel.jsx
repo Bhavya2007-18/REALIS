@@ -64,13 +64,13 @@ function PropertySection({ title, icon, accent, summary, children, sectionKey, o
 // Lab Properties component - renders lab data in Properties panel
 function LabProperties({ labData, openSections, toggleSection, handleLabConfigChange }) {
     if (!labData) return null
-    
+
     return (
         <div className="space-y-4">
             <div className="px-1 py-1 text-[10px] uppercase font-bold text-slate-500 mb-2">
                 {labData.title}
             </div>
-            
+
             {/* LIVE TELEMETRY */}
             {labData.snapshot && (
                 <PropertySection
@@ -80,21 +80,21 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     title="LIVE TELEMETRY"
                     icon={<Activity size={13} />}
                     accent="text-emerald-400"
-                    summary={labData.type === 'free_fall' 
+                    summary={labData.type === 'free_fall'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · y ${labData.snapshot.height.toFixed(1)}m · v ${labData.snapshot.velocity.toFixed(1)}m/s`
                         : labData.type === 'single_pendulum'
-                        ? `t ${labData.snapshot.time.toFixed(2)}s · θ ${labData.snapshot.angle.toFixed(1)}° · ω ${labData.snapshot.omega.toFixed(1)} rad/s`
-                        : labData.type === 'double_pendulum'
-                        ? `t ${labData.snapshot.time.toFixed(2)}s · θ₁ ${labData.snapshot.angle1.toFixed(1)}° · θ₂ ${labData.snapshot.angle2.toFixed(1)}°`
-                        : labData.type === 'spring_oscillator'
-                        ? `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(2)}m · v ${labData.snapshot.v.toFixed(2)}m/s · ω₀ ${labData.snapshot.omega0.toFixed(1)} rad/s`
-                        : labData.type === 'orbital_mechanics'
-                        ? `t ${labData.snapshot.time.toFixed(2)}s · r ${labData.snapshot.position.r.toFixed(1)}km · v ${labData.snapshot.velocity.v.toFixed(2)}km/s · ${labData.snapshot.orbit.type.toLowerCase()}`
-                        : labData.type === 'inclined_friction_ramp'
-                        ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
-                        : labData.type === 'crank_slider'
-                        ? `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · θ ${(labData.snapshot.thetaDeg ?? 0).toFixed(1)}° · x ${(labData.snapshot.x ?? 0).toFixed(3)}m · v ${(labData.snapshot.v ?? 0).toFixed(3)}m/s`
-                        : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
+                            ? `t ${labData.snapshot.time.toFixed(2)}s · θ ${labData.snapshot.angle.toFixed(1)}° · ω ${labData.snapshot.omega.toFixed(1)} rad/s`
+                            : labData.type === 'double_pendulum'
+                                ? `t ${labData.snapshot.time.toFixed(2)}s · θ₁ ${labData.snapshot.angle1.toFixed(1)}° · θ₂ ${labData.snapshot.angle2.toFixed(1)}°`
+                                : labData.type === 'spring_oscillator'
+                                    ? `t ${labData.snapshot.time.toFixed(2)}s · x ${labData.snapshot.x.toFixed(2)}m · v ${labData.snapshot.v.toFixed(2)}m/s · ω₀ ${labData.snapshot.omega0.toFixed(1)} rad/s`
+                                    : labData.type === 'orbital_mechanics'
+                                        ? `t ${labData.snapshot.time.toFixed(2)}s · r ${labData.snapshot.position.r.toFixed(1)}km · v ${labData.snapshot.velocity.v.toFixed(2)}km/s · ${labData.snapshot.orbit.type.toLowerCase()}`
+                                        : labData.type === 'inclined_friction_ramp'
+                                            ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
+                                            : labData.type === 'v6_engine'
+                                                ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutput.toFixed(1)}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
+                                                : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
                     }
                 >
                     <div className="space-y-3">
@@ -138,19 +138,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 <Stat label="Critical θ_c" value={labData.snapshot.thetaCDeg ? labData.snapshot.thetaCDeg.toFixed(1) : '—'} unit="°" color="text-amber-400" />
                             </div>
                         )}
-                        {labData.type === 'crank_slider' && (
+                        {labData.type === 'v6_engine' && (
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                <Stat label="Crank Angle (θ)" value={(labData.snapshot.thetaDeg ?? 0).toFixed(1)} unit="°" color="text-fuchsia-400" />
-                                <Stat label="Angular Vel. (ω)" value={(labData.snapshot.omega ?? 0).toFixed(2)} unit="rad/s" color="text-amber-400" />
-                                <Stat label="Piston Pos (x)" value={(labData.snapshot.x ?? 0).toFixed(4)} unit="m" color="text-emerald-400" />
-                                <Stat label="Piston Vel. (v)" value={(labData.snapshot.v ?? 0).toFixed(4)} unit="m/s" color="text-sky-400" />
-                                <Stat label="Piston Acc. (a)" value={(labData.snapshot.a ?? 0).toFixed(4)} unit="m/s²" color="text-rose-400" />
-                                <Stat label="Crank Pin X" value={(labData.snapshot.crankPinX ?? 0).toFixed(4)} unit="m" color="text-violet-400" />
-                                <Stat label="Crank Pin Y" value={(labData.snapshot.crankPinY ?? 0).toFixed(4)} unit="m" color="text-violet-400" />
-                                <Stat label="Sim Time (t)" value={(labData.snapshot.time ?? 0).toFixed(2)} unit="s" />
+                                <Stat label="Engine RPM" value={Math.round(labData.snapshot.RPM)} unit="rpm" color="text-sky-400" />
+                                <Stat label="Total Torque" value={Math.round(labData.snapshot.totalTorque)} unit="N·m" color="text-amber-400" />
+                                <Stat label="Power Output" value={labData.snapshot.powerOutput.toFixed(1)} unit="kW" color="text-emerald-400" />
+                                <Stat label="Crank Angle" value={labData.snapshot.crankAngleDeg.toFixed(1)} unit="°" />
                             </div>
                         )}
-                        
+
                         {labData.snapshot.energy && (
                             <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
                                 <span className="text-slate-400 text-[10px]">TOTAL ENERGY:</span>
@@ -160,31 +156,31 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     </div>
                 </PropertySection>
             )}
-            
+
             {/* LAUNCH PARAMETERS / INITIAL CONDITIONS */}
             {labData.config && (
                 <PropertySection
                     sectionKey="params"
                     openSections={openSections}
                     toggleSection={toggleSection}
-                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : labData.type === 'crank_slider' ? 'MECHANISM PARAMETERS' : 'INITIAL CONDITIONS'}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : labData.type === 'v6_engine' ? 'ENGINE PARAMETERS' : 'INITIAL CONDITIONS'}
                     icon={<SlidersHorizontal size={13} />}
                     accent="text-amber-400"
-                    summary={labData.type === 'free_fall' 
+                    summary={labData.type === 'free_fall'
                         ? `h₀ ${labData.config.initialHeight}m · e ${labData.config.restitution?.toFixed(2)} · m ${labData.config.mass}kg · g ${PLANETARY_GRAVITY[labData.config.selectedPlanet]?.g ?? 9.81}m/s²`
                         : labData.type === 'single_pendulum'
-                        ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
-                        : labData.type === 'double_pendulum'
-                        ? `m₁ ${labData.config.mass1}kg · m₂ ${labData.config.mass2}kg · θ₁ ${labData.config.theta1}° · θ₂ ${labData.config.theta2}°`
-                        : labData.type === 'spring_oscillator'
-                        ? `m ${labData.config.mass}kg · k ${labData.config.springConstant}N/m · x₀ ${labData.config.x0}m · g ${labData.config.gravity}m/s²`
-                        : labData.type === 'orbital_mechanics'
-                        ? `r₀ ${labData.config.r0}km · v₀ ${labData.config.v0}km/s · θ₀ ${labData.config.theta0}° · μ ${labData.config.mu}`
-                        : labData.type === 'inclined_friction_ramp'
-                        ? `m ${labData.config.mass}kg · θ ${labData.config.thetaDeg}° · μ_s ${labData.config.muS} · μ_k ${labData.config.muK}`
-                        : labData.type === 'crank_slider'
-                        ? `r ${labData.config.crankRadius}m · L ${labData.config.rodLength}m · ω ${labData.config.omega} rad/s · α ${labData.config.alpha} rad/s²`
-                        : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
+                            ? `L ${labData.config.length}m · θ₀ ${labData.config.angle0}° · m ${labData.config.mass}kg · g ${labData.config.gravity}m/s²`
+                            : labData.type === 'double_pendulum'
+                                ? `m₁ ${labData.config.mass1}kg · m₂ ${labData.config.mass2}kg · θ₁ ${labData.config.theta1}° · θ₂ ${labData.config.theta2}°`
+                                : labData.type === 'spring_oscillator'
+                                    ? `m ${labData.config.mass}kg · k ${labData.config.springConstant}N/m · x₀ ${labData.config.x0}m · g ${labData.config.gravity}m/s²`
+                                    : labData.type === 'orbital_mechanics'
+                                        ? `r₀ ${labData.config.r0}km · v₀ ${labData.config.v0}km/s · θ₀ ${labData.config.theta0}° · μ ${labData.config.mu}`
+                                        : labData.type === 'inclined_friction_ramp'
+                                            ? `m ${labData.config.mass}kg · θ ${labData.config.thetaDeg}° · μ_s ${labData.config.muS} · μ_k ${labData.config.muK}`
+                                            : labData.type === 'v6_engine'
+                                                ? `Target RPM ${labData.config.targetRPM || labData.config.initialRPM} · Crank R ${labData.config.crankRadius}mm · Rod L ${labData.config.rodLength}mm`
+                                                : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-5">
@@ -727,61 +723,52 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                             </>
                         )}
-                        {labData.type === 'crank_slider' && (
+                        {labData.type === 'v6_engine' && (
                             <>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">CRANK RADIUS (r)</span>
-                                        <span className="text-amber-400 font-bold">{labData.config.crankRadius?.toFixed(3)} m</span>
+                                        <span className="text-slate-400">TARGET RPM</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.targetRPM || labData.config.initialRPM}</span>
                                     </div>
-                                    <input type="range" min="0.02" max="0.3" step="0.005" value={labData.config.crankRadius ?? 0.1}
+                                    <input type="range" min="200" max="8000" step="100" value={labData.config.targetRPM || labData.config.initialRPM}
+                                        onChange={(e) => handleLabConfigChange('targetRPM', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">CRANK RADIUS</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.crankRadius} mm</span>
+                                    </div>
+                                    <input type="range" min="20" max="80" step="1" value={labData.config.crankRadius}
                                         onChange={(e) => handleLabConfigChange('crankRadius', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">ROD LENGTH (L)</span>
-                                        <span className="text-sky-400 font-bold">{labData.config.rodLength?.toFixed(3)} m</span>
+                                        <span className="text-slate-400">ROD LENGTH</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.rodLength} mm</span>
                                     </div>
-                                    <input type="range" min="0.05" max="0.6" step="0.01" value={labData.config.rodLength ?? 0.3}
+                                    <input type="range" min="100" max="250" step="1" value={labData.config.rodLength}
                                         onChange={(e) => handleLabConfigChange('rodLength', parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">ANGULAR VELOCITY (ω)</span>
-                                        <span className="text-fuchsia-400 font-bold">{labData.config.omega?.toFixed(1)} rad/s</span>
+                                        <span className="text-slate-400">COMBUSTION FORCE</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.combustionForce} N</span>
                                     </div>
-                                    <input type="range" min="0.5" max="50" step="0.5" value={labData.config.omega ?? 10}
-                                        onChange={(e) => handleLabConfigChange('omega', parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">ANGULAR ACCEL. (α)</span>
-                                        <span className="text-rose-400 font-bold">{labData.config.alpha?.toFixed(1)} rad/s²</span>
-                                    </div>
-                                    <input type="range" min="-20" max="20" step="0.5" value={labData.config.alpha ?? 0}
-                                        onChange={(e) => handleLabConfigChange('alpha', parseFloat(e.target.value))}
+                                    <input type="range" min="10000" max="80000" step="1000" value={labData.config.combustionForce}
+                                        onChange={(e) => handleLabConfigChange('combustionForce', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">GUIDE OFFSET (y)</span>
-                                        <span className="text-violet-400 font-bold">{labData.config.guideOffset?.toFixed(3)} m</span>
+                                        <span className="text-slate-400">FRICTION TORQUE</span>
+                                        <span className="text-fuchsia-400 font-bold">{labData.config.frictionTorque} N·m</span>
                                     </div>
-                                    <input type="range" min="-0.1" max="0.1" step="0.005" value={labData.config.guideOffset ?? 0}
-                                        onChange={(e) => handleLabConfigChange('guideOffset', parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">TIME SCALE</span>
-                                        <span className="text-purple-400 font-bold">{labData.config.timeScale?.toFixed(1)}x</span>
-                                    </div>
-                                    <input type="range" min="0.1" max="5" step="0.1" value={labData.config.timeScale ?? 1}
-                                        onChange={(e) => handleLabConfigChange('timeScale', parseFloat(e.target.value))}
-                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                    <input type="range" min="0" max="100" step="5" value={labData.config.frictionTorque}
+                                        onChange={(e) => handleLabConfigChange('frictionTorque', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
                                 </div>
                             </>
                         )}
@@ -801,18 +788,18 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     summary={labData.type === 'free_fall'
                         ? `Falling sphere · Semi-implicit Euler · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                         : labData.type === 'single_pendulum'
-                        ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
-                        : labData.type === 'double_pendulum'
-                        ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
-                        : labData.type === 'spring_oscillator'
-                        ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · frame-rate independent`
-                        : labData.type === 'orbital_mechanics'
-                        ? `Orbital mechanics · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · ${labData.snapshot.orbit?.type?.toLowerCase()}`
-                        : labData.type === 'inclined_friction_ramp'
-                        ? `Block on Incline · RK4 Solver · Δt ${labData.config?.dt ?? 0.008}s`
-                        : labData.type === 'crank_slider'
-                        ? `Crank-Slider · Analytical Kinematics · ω ${labData.config?.omega ?? 10} rad/s`
-                        : `Projectile · Analytical · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
+                            ? `Simple pendulum · Semi-implicit Euler · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
+                            : labData.type === 'double_pendulum'
+                                ? `Coupled pendula · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
+                                : labData.type === 'spring_oscillator'
+                                    ? `Spring oscillator · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · frame-rate independent`
+                                    : labData.type === 'orbital_mechanics'
+                                        ? `Orbital mechanics · RK4 · Δt ${labData.snapshot.config?.dt ?? 0.016}s · ${labData.snapshot.orbit?.type?.toLowerCase()}`
+                                        : labData.type === 'inclined_friction_ramp'
+                                            ? `Block on Incline · RK4 Solver · Δt ${labData.config?.dt ?? 0.008}s`
+                                            : labData.type === 'crank_slider'
+                                                ? `Crank-Slider · Analytical Kinematics · ω ${labData.config?.omega ?? 10} rad/s`
+                                                : `Projectile · Analytical · Δt ${labData.snapshot.config?.dt ?? 0.016}s`
                     }
                 >
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -991,7 +978,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <Stat label="Orbits" value={labData.snapshot.orbitCount.toFixed(2)} unit="n" color="text-amber-400" />
                                 </div>
                             )}
-                            
+
                             {labData.snapshot.energy && (
                                 <>
                                     <div>• Total: <span className="text-slate-200">{Math.round(labData.snapshot.energy.total).toLocaleString()} J</span></div>
@@ -1022,7 +1009,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     </div>
                 </PropertySection>
             )}
-        {labData.type === 'orbital_mechanics' && (
+            {labData.type === 'orbital_mechanics' && (
                 <OrbitalLabPanels
                     labData={labData}
                     openSections={openSections}
@@ -1248,7 +1235,7 @@ export default function PropertiesPanel() {
     const extrudeOperation = useStore(s => s.extrudeOperation)
     const setExtrudeOperation = useStore(s => s.setExtrudeOperation)
 
-const [selectedObject, setSelectedObject] = useState(null)
+    const [selectedObject, setSelectedObject] = useState(null)
 
     // Lab data for simulation properties
     const labData = useStore(s => s.labData)
@@ -1265,8 +1252,8 @@ const [selectedObject, setSelectedObject] = useState(null)
         // The labs watch their config state and will update the solver
         // We need to trigger the labs' config update by simulating the store changes
         // Since labs watch their own state, we'll use a custom event
-        window.dispatchEvent(new CustomEvent('lab-config-change', { 
-            detail: { type: labData.type, key, value } 
+        window.dispatchEvent(new CustomEvent('lab-config-change', {
+            detail: { type: labData.type, key, value }
         }))
     }
 
@@ -1290,7 +1277,7 @@ const [selectedObject, setSelectedObject] = useState(null)
         }
     }, [activeFileId, objects, shapes3D])
 
-    const Layers = Maximize 
+    const Layers = Maximize
 
     // PropertySection component for accordion sections (matching LayerPanel visual style)
     function PropertySection({ title, icon, accent, summary, children, key: sectionKey }) {
@@ -1329,7 +1316,7 @@ const [selectedObject, setSelectedObject] = useState(null)
     if (!selectedObject) {
         // Determine what to show in the empty state
         const showLabData = labData && !selectedObject
-        
+
         return (
             <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark flex flex-col shrink-0">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
@@ -1337,7 +1324,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                     <h3 className="font-bold text-sm text-slate-500">Properties</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-{showLabData ? (
+                    {showLabData ? (
                         <LabProperties
                             labData={labData}
                             openSections={openSections}
@@ -1399,7 +1386,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                         return { ...o, params: newParams }
                     }
 
-                    
+
                     if (field === 'isStatic') {
                         return { ...o, [field]: !!value }
                     }
@@ -1475,13 +1462,13 @@ const [selectedObject, setSelectedObject] = useState(null)
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
 
-                {}
+                { }
                 {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && isClosedProfile(selectedObject) && (
                     <div className="space-y-3 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
                             <Layers size={12} /> Extrude Profile
                         </h4>
-                        
+
                         <div className="space-y-2">
                             <label className="text-xs text-slate-300">Distance</label>
                             <input
@@ -1504,7 +1491,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                                 <option value="symmetric">Symmetric (Both)</option>
                             </select>
                         </div>
-                        
+
                         <div className="space-y-2">
                             <label className="text-xs text-slate-300">Operation</label>
                             <select
@@ -1518,7 +1505,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                             </select>
                         </div>
 
-                        <button 
+                        <button
                             className="w-full py-1.5 mt-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-md transition-colors"
                             onClick={() => {
                                 const solidId = `extsolid_${Math.random().toString(36).substring(2, 7)}`;
@@ -1542,15 +1529,15 @@ const [selectedObject, setSelectedObject] = useState(null)
                         </button>
                     </div>
                 )}
-                
+
                 {active3DTool === 'extrude' && selectedObject && !selectedObject.is3D && !isClosedProfile(selectedObject) && (
                     <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-xs text-red-500">
-                        <strong>Invalid Profile</strong><br/>
+                        <strong>Invalid Profile</strong><br />
                         Extrude requires a closed 2D profile. The selected {selectedObject.type} is not properly closed.
                     </div>
                 )}
 
-                {}
+                { }
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Settings size={12} /> General
@@ -1584,7 +1571,48 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 </div>
 
-                {}
+                {(() => {
+                    if (labData?.type === 'v6_engine' && selectedObject) {
+                        const match = selectedObject.id.match(/v6_(?:piston|con_rod|crank_throw)_(\d+)/);
+                        if (match && labData.snapshot?.cylinders) {
+                            const cylIdx = parseInt(match[1]);
+                            const cyl = labData.snapshot.cylinders[cylIdx];
+                            if (cyl) {
+                                return (
+                                    <div className="space-y-2 mb-4 p-3 bg-slate-900 rounded-lg border border-slate-700">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-2">
+                                            <Activity size={12} /> Cylinder {cylIdx + 1} Telemetry
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">STROKE</span>
+                                                <span className={
+                                                    cyl.strokeName === 'POWER' ? 'text-rose-400 font-bold' :
+                                                        cyl.strokeName === 'COMPRESSION' ? 'text-amber-400' :
+                                                            cyl.strokeName === 'EXHAUST' ? 'text-slate-300' : 'text-sky-400'
+                                                }>{cyl.strokeName}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">POSITION</span>
+                                                <span className="text-emerald-400">{cyl.normalizedPos.toFixed(3)}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">GLOW INTENSITY</span>
+                                                <span className="text-rose-400">{(cyl.combustionGlow * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">ROD ANGLE</span>
+                                                <span className="text-indigo-400">{(cyl.rodAngle * 180 / Math.PI).toFixed(1)}°</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                        }
+                    }
+                    return null;
+                })()}
+
                 {selectedObject.is3D && (
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -1599,7 +1627,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                                         <label className="text-[9px] text-slate-500 pl-1 uppercase">{axis}</label>
                                         <input
                                             type="number"
-                                            value={Array.isArray(selectedObject.position) ? selectedObject.position[['x','y','z'].indexOf(axis)] : (selectedObject.position?.[axis] ?? 0)}
+                                            value={Array.isArray(selectedObject.position) ? selectedObject.position[['x', 'y', 'z'].indexOf(axis)] : (selectedObject.position?.[axis] ?? 0)}
                                             onChange={e => handleChange('position', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -1617,7 +1645,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={Array.isArray(selectedObject.rotation) ? selectedObject.rotation[['x','y','z'].indexOf(axis)] : (selectedObject.rotation?.[axis] ?? 0)}
+                                            value={Array.isArray(selectedObject.rotation) ? selectedObject.rotation[['x', 'y', 'z'].indexOf(axis)] : (selectedObject.rotation?.[axis] ?? 0)}
                                             onChange={e => handleChange('rotation', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -1635,7 +1663,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={Array.isArray(selectedObject.scale) ? selectedObject.scale[['x','y','z'].indexOf(axis)] : (selectedObject.scale?.[axis] ?? 1)}
+                                            value={Array.isArray(selectedObject.scale) ? selectedObject.scale[['x', 'y', 'z'].indexOf(axis)] : (selectedObject.scale?.[axis] ?? 1)}
                                             onChange={e => handleChange('scale', e.target.value, axis)}
                                             className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-1 text-[10px] font-mono"
                                         />
@@ -1646,7 +1674,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 )}
 
-                {}
+                { }
                 {!selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -1924,7 +1952,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 )}
 
-                {}
+                { }
                 {selectedObject.is3D && (
                     <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -1947,7 +1975,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 )}
 
-                {}
+                { }
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Palette size={12} /> Appearance
@@ -2019,7 +2047,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 </div>
 
-                {}
+                { }
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Activity size={12} /> Physics
@@ -2075,14 +2103,14 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 </div>
 
-                {}
+                { }
                 <div className="space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                         <Link size={12} /> Joints & Constraints
                     </h4>
 
                     <div className="space-y-2 pt-1 p-3 bg-slate-800/30 rounded-xl border border-slate-700/40">
-                        {}
+                        { }
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Constraint Type</label>
                             <select
@@ -2095,7 +2123,7 @@ const [selectedObject, setSelectedObject] = useState(null)
                             </select>
                         </div>
 
-                        {}
+                        { }
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Body A</label>
                             <select
