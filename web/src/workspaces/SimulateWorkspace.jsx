@@ -110,7 +110,6 @@ export default function SimulateWorkspace() {
     const setDebugPhysics = useStore(state => state.setDebugPhysics);
     const toggleDebugPhysics = useStore(state => state.toggleDebugPhysics);
     const exportSceneJSON = useStore(state => state.exportSceneJSON);
-    const importSceneJSON = useStore(state => state.importSceneJSON);
     const addShape3D = useStore(state => state.addShape3D);
     const addConstraint = useStore(state => state.addConstraint);
     const deleteObject = useStore(state => state.deleteObject);
@@ -528,11 +527,20 @@ export default function SimulateWorkspace() {
                                 className="hidden"
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
-                                    if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (evt) => importSceneJSON(evt.target.result);
-                                        reader.readAsText(file);
-                                    }
+                                    if (!file) return;
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                        // importSceneJSON now returns {ok, diagnostics} and
+                                        // applies nothing on failure. Surface the outcome in
+                                        // the validation panel instead of dropping it.
+                                        const result = useStore.getState().importSceneJSON(evt.target.result);
+                                        if (!result.ok) {
+                                            const st = useStore.getState();
+                                            st.setRightPanelView('diagnostics');
+                                            if (!st.isRightPanelOpen) st.toggleRightPanel();
+                                        }
+                                    };
+                                    reader.readAsText(file);
                                 }}
                             />
                         </label>

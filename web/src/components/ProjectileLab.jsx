@@ -4,16 +4,10 @@ import {
     Sparkles, ArrowDown, ChevronDown, Crosshair,
     Compass, TrendingUp, Layers
 } from 'lucide-react';
-import useStore from '../store/useStore';
 import ProjectilePhysicsSolver from '../utils/solvers/projectileSolver';
+import { useLabSimulation } from '../physics/useLabSimulation';
 
 export default function ProjectileLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // Initial laboratory configuration (Section 25 defaults)
     const [v0, setV0] = useState(20.0);          // initial velocity m/s
     const [angle, setAngle] = useState(45.0);    // launch angle degrees
@@ -29,31 +23,20 @@ export default function ProjectileLab() {
     const [showGravityVector, setShowGravityVector] = useState(true);
     const [cameraMode, setCameraMode] = useState('fit'); // 'fit' | 'follow'
 
-    // Physics solver instance (stable state holder, mutated externally by the loop)
-    const [solver] = useState(() => new ProjectilePhysicsSolver({
-        v0: 20.0, angle: 45.0, y0: 0.0, gravity: 9.81, timeScale: 1.0
-    }));
-
     // Always-on engineering measurements (height / range / max-height markers)
     const showHeightIndicator = true;
     const showRangeIndicator = true;
     const showMaxHeightMarker = true;
 
-    const [snapshot, setSnapshot] = useState(solver.getSnapshot());
-
-    // Push lab data to store for Properties panel
-    useEffect(() => {
-        setLabData({
-            type: 'projectile_motion',
-            title: 'Projectile Motion Laboratory',
-            snapshot: snapshot,
-            config: { v0, angle, y0, gravity, timeScale }
-        });
-        return () => clearLabData();
-    }, [snapshot, v0, angle, y0, gravity, timeScale]);
-
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
+    // Unified lab simulation hook
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward, solver } = useLabSimulation({
+        solver: new ProjectilePhysicsSolver({
+            v0: 20.0, angle: 45.0, y0: 0.0, gravity: 9.81, timeScale: 1.0
+        }),
+        labType: 'projectile_motion',
+        labTitle: 'Projectile Motion Laboratory',
+        config: { v0, angle, y0, gravity, timeScale }
+    });
 
     // Listen for config changes from Properties panel
     useEffect(() => {
@@ -70,42 +53,7 @@ export default function ProjectileLab() {
         return () => window.removeEventListener('lab-config-change', handleConfigChange)
     }, [])
 
-    // Update solver when configuration changes
-    useEffect(() => {
-        solver.updateConfig({ v0, angle, y0, gravity, timeScale });
-        setSnapshot(solver.getSnapshot());
-    }, [v0, angle, y0, gravity, timeScale, solver]);
 
-    // Handle Reset
-    const handleReset = () => {
-        resetPlayback();
-        solver.reset();
-        setSnapshot(solver.getSnapshot());
-    };
-
-    // Single step forward
-    const handleStepForward = () => {
-        if (!isPlaying) {
-            setSnapshot({ ...solver.step(0.016) });
-        }
-    };
-
-    // Main 60 FPS physics animation loop (frame-rate independent)
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-            setSnapshot({ ...solver.step(elapsed) });
-            reqRef.current = requestAnimationFrame(loop);
-        };
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, solver]);
 
     // Sync AI query window hook
     useEffect(() => {

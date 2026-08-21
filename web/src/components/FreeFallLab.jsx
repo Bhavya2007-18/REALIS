@@ -1,18 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     Play, Square, RefreshCw, SkipForward, Globe, Layers,
     Sparkles, ArrowDown, Activity
 } from 'lucide-react';
-import useStore from '../store/useStore';
 import FreeFallPhysicsSolver, { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
+import { useLabSimulation } from '../physics/useLabSimulation';
 
 export default function FreeFallLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // Initial laboratory configuration
     const [initialHeight, setInitialHeight] = useState(100.0); // meters
     const [selectedPlanet, setSelectedPlanet] = useState('earth');
@@ -26,33 +20,19 @@ export default function FreeFallLab() {
     const [showGravityVector, setShowGravityVector] = useState(true);
     const [showStrobeTrail, setShowStrobeTrail] = useState(true);
 
-    // Physics solver instance ref
-    const solverRef = useRef(new FreeFallPhysicsSolver({
-        initialHeight: 100.0,
-        gravity: PLANETARY_GRAVITY.earth.g,
-        restitution: 0.45,
-        mass: 10.0,
-        timeScale: 1.0
-    }));
-
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
-    
-    // Push lab data to store for Properties panel
-    useEffect(() => {
-        setLabData({
-            type: 'free_fall',
-            title: 'Free-Fall Physics Laboratory',
-            snapshot: snapshot,
-            config: {
-                initialHeight,
-                selectedPlanet,
-                restitution,
-                mass,
-                timeScale
-            }
-        });
-        return () => clearLabData();
-    }, [snapshot, initialHeight, selectedPlanet, restitution, mass, timeScale]);
+    // Unified lab simulation hook
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward, solver } = useLabSimulation({
+        solver: new FreeFallPhysicsSolver({
+            initialHeight: 100.0,
+            gravity: PLANETARY_GRAVITY.earth.g,
+            restitution: 0.45,
+            mass: 10.0,
+            timeScale: 1.0
+        }),
+        labType: 'free_fall',
+        labTitle: 'Free-Fall Physics Laboratory',
+        config: { initialHeight, selectedPlanet, restitution, mass, timeScale }
+    });
 
     // Listen for config changes from Properties panel
     useEffect(() => {
@@ -71,66 +51,15 @@ export default function FreeFallLab() {
 
     const [impactFlash, setImpactFlash] = useState(false);
     const prevBounceCount = useRef(0);
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
 
-    // Update solver when configuration changes
+    // Detect impact events
     useEffect(() => {
-        solverRef.current.updateConfig({
-            initialHeight,
-            gravity: PLANETARY_GRAVITY[selectedPlanet]?.g ?? 9.81,
-            restitution,
-            mass,
-            timeScale
-        });
-        setSnapshot(solverRef.current.getSnapshot());
-    }, [initialHeight, selectedPlanet, restitution, mass, timeScale]);
-
-    // Handle Reset
-    const handleReset = () => {
-        resetPlayback();
-        solverRef.current.reset();
-        prevBounceCount.current = 0;
-        setSnapshot(solverRef.current.getSnapshot());
-    };
-
-    // Single step forward
-    const handleStepForward = () => {
-        if (!isPlaying) {
-            const nextSnap = solverRef.current.step(0.016);
-            setSnapshot({ ...nextSnap });
+        if (snapshot.bounceCount > prevBounceCount.current) {
+            prevBounceCount.current = snapshot.bounceCount;
+            setImpactFlash(true);
+            setTimeout(() => setImpactFlash(false), 300);
         }
-    };
-
-    // Main 60 FPS physics animation loop
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-
-        lastTimeRef.current = performance.now();
-
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-
-            const nextSnap = solverRef.current.step(elapsed);
-            setSnapshot({ ...nextSnap });
-
-            // Detect impact event for ground shockwave animation
-            if (nextSnap.bounceCount > prevBounceCount.current) {
-                prevBounceCount.current = nextSnap.bounceCount;
-                setImpactFlash(true);
-                setTimeout(() => setImpactFlash(false), 300);
-            }
-
-            reqRef.current = requestAnimationFrame(loop);
-        };
-
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying]);
+    }, [snapshot.bounceCount]);
 
     // Sync AI query window hook
     useEffect(() => {
@@ -138,9 +67,7 @@ export default function FreeFallLab() {
             simulationType: 'FreeFallExperiment',
             ...snapshot
         });
-        return () => {
-            delete window.REALIS_AI_QUERY;
-        };
+        return () => { delete window.REALIS_AI_QUERY; };
     }, [snapshot]);
 
     // Viewport dimensions & dynamic metric coordinate transformation
@@ -605,7 +532,7 @@ export default function FreeFallLab() {
                     </button>
 
                     <button
-                        onClick={handleStepForward}
+                        onClick={() => handleStepForward(0.016)}
                         disabled={isPlaying}
                         className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30"
                         title="Step Forward (0.016s)"

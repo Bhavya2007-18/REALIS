@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, Suspense } from 'react';
+import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, TransformControls, GizmoHelper, GizmoViewport, useProgress, Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -84,9 +84,9 @@ const OBJModel = ({ objPath, mtlPath }) => {
 const Shape3DNode = React.memo(({ shape, renderBodies }) => {
     const groupRef = useRef();
     const selected3DIds = useStore(state => state.selected3DIds);
-    const setSelected3DIds = useStore(state => state.setSelected3DIds);
+    const selectEntities = useStore(state => state.selectEntities);
     const active3DTool = useStore(state => state.active3DTool);
-    const setShapes3D = useStore(state => state.setShapes3D);
+    const setShape3DTransform = useStore(state => state.setShape3DTransform);
     const beginHistoryGesture = useStore(state => state.beginHistoryGesture);
     const endHistoryGesture = useStore(state => state.endHistoryGesture);
     const profile = useStore(state => shape.type === 'extruded_solid' ? state.objects.find(o => o.id === (shape.params?.profileId || shape.profileId)) : null);
@@ -194,17 +194,13 @@ const Shape3DNode = React.memo(({ shape, renderBodies }) => {
     const onTransformEnd = () => {
         if (!groupRef.current) return;
         const o = groupRef.current;
-        setShapes3D(shapes => shapes.map(s => {
-            if (s.id === shape.id) {
-                return {
-                    ...s,
-                    position: [o.position.x, o.position.y, o.position.z],
-                    rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
-                    scale: [o.scale.x, o.scale.y, o.scale.z]
-                };
-            }
-            return s;
-        }));
+        // Extract plain numbers at the rendering boundary; the store action
+        // sanitizes and commits. THREE objects never cross into the store.
+        setShape3DTransform(shape.id, {
+            position: [o.position.x, o.position.y, o.position.z],
+            rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
+            scale: [o.scale.x, o.scale.y, o.scale.z]
+        });
         endHistoryGesture();
     };
 
@@ -217,13 +213,14 @@ const Shape3DNode = React.memo(({ shape, renderBodies }) => {
             onClick={(e) => {
                 e.stopPropagation();
                 if (!isTransforming) {
-                    const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
-                    if (isMulti) {
-                        setSelected3DIds(prev => prev.includes(shape.id) ? prev.filter(id => id !== shape.id) : [...prev, shape.id]);
-                    } else {
-                        setSelected3DIds([shape.id]);
-                        useStore.setState({ activeFileId: shape.id });
-                    }
+                    // One selection path (store selectEntities): it routes the id
+                    // to the right array and keeps activeFileId — the primary the
+                    // properties panel reads — in sync. Setting the arrays here
+                    // directly is what let the hierarchy and the panel disagree.
+                    selectEntities([shape.id], {
+                        additive: e.shiftKey || e.ctrlKey || e.metaKey,
+                        toggle: e.shiftKey || e.ctrlKey || e.metaKey
+                    });
                 }
             }}
         >
@@ -451,8 +448,9 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const extrudeOperation = useStore(state => state.extrudeOperation);
     const setExtrudeOperation = useStore(state => state.setExtrudeOperation);
     const setObjects = useStore(state => state.setObjects);
+    const setObject2DTransformFrom3D = useStore(state => state.setObject2DTransformFrom3D);
     const selectedIds = useStore(state => state.selectedIds);
-    const setSelectedIds = useStore(state => state.setSelectedIds);
+    const selectEntities = useStore(state => state.selectEntities);
     const beginHistoryGesture = useStore(state => state.beginHistoryGesture);
     const endHistoryGesture = useStore(state => state.endHistoryGesture);
     const isSelected = selectedIds.includes(obj.id);
@@ -463,29 +461,12 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
     const onTransformEnd = () => {
         if (!groupRef.current) return;
         const o = groupRef.current;
-        setObjects(objs => objs.map(item => {
-            if (item.id === obj.id) {
-                // In 2D map, x,y match x,z in 3D.
-                let update = { ...item };
-                
-                // Map the new 3D positions back to the 2D schema structure (since REALIS models use cx/cy or x/y)
-                if (item.cx !== undefined) {
-                    update.cx = o.position.x;
-                    update.cy = o.position.z;
-                } else if (item.x !== undefined) {
-                    update.x = o.position.x - (item.width || 0) / 2;
-                    update.y = o.position.z - (item.height || 0) / 2;
-                }
-
-                if (active3DTool === 'rotate') {
-                    // Approximate rotation back to 2D
-                    update.rotation = -(o.rotation.y * 180 / Math.PI);
-                }
-                
-                return update;
-            }
-            return item;
-        }));
+        // Plain-number extraction at the boundary; the store action maps the
+        // 3D gizmo transform back onto the 2D draft schema and sanitizes it.
+        setObject2DTransformFrom3D(obj.id, {
+            position: [o.position.x, o.position.y, o.position.z],
+            rotation: [o.rotation.x, o.rotation.y, o.rotation.z]
+        }, active3DTool);
         endHistoryGesture();
     };
 
@@ -503,19 +484,14 @@ const Extrudable2DShape = React.memo(({ obj, isPlaying, simulationFrames, curren
                 setStartDepth(extrudeOperation.distance);
             } else {
                 setStartDepth(depth);
-                setSelectedIds([obj.id]);
-                useStore.setState({ activeFileId: obj.id });
+                selectEntities([obj.id]);
                 setExtrudeOperation({ distance: depth, profileId: obj.id });
             }
             e.target.setPointerCapture(e.pointerId);
         } else if (active3DTool === 'select') {
+            // Same single selection path as the 3D bodies above.
             const isMulti = e.shiftKey || e.ctrlKey || e.metaKey;
-            if (isMulti) {
-                setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id]);
-            } else {
-                setSelectedIds([obj.id]);
-                useStore.setState({ activeFileId: obj.id });
-            }
+            selectEntities([obj.id], { additive: isMulti, toggle: isMulti });
         }
     };
 
@@ -695,6 +671,7 @@ const CameraRig = ({ objects, shapes3D, disabled }) => {
 
 export default function Viewport3D({ objects, renderBodies }) {
     const shapes3D = useStore(state => state.shapes3D);
+    const layers = useStore(state => state.layers);
     const active3DTool = useStore(state => state.active3DTool);
     const addShape3D = useStore(state => state.addShape3D);
     const showGrid = useStore(state => state.showGrid);
@@ -705,6 +682,28 @@ export default function Viewport3D({ objects, renderBodies }) {
     const currentFrameIndex = useStore(state => state.currentFrameIndex);
     const isPlaying = useStore(state => state.isPlaying);
     const constraints = useStore(state => state.constraints);
+
+    // Rendering derives what to draw from scene data: an entity is drawn unless
+    // its own `visible` flag is false or its layer is hidden. Hidden bodies still
+    // exist, still simulate, and stay selectable from the hierarchy — hiding is a
+    // view concern, not a delete.
+    //
+    // The 2D `objects` prop arrives already filtered by DesignWorkspace, but
+    // `shapes3D` is read straight from the store here, so the same rule has to be
+    // applied at this boundary or `visible: false` would be silently ignored for
+    // every native 3D body (§1.4 / §1.5: a toggle that does nothing is fake UI).
+    const hiddenLayerIds = useMemo(
+        () => new Set((layers || []).filter(l => l.visible === false).map(l => l.id)),
+        [layers]
+    );
+    const visibleShapes3D = useMemo(
+        () => shapes3D.filter(s => s.visible !== false && !(s.layerId && hiddenLayerIds.has(s.layerId))),
+        [shapes3D, hiddenLayerIds]
+    );
+    const visibleObjects = useMemo(
+        () => (objects || []).filter(o => o.visible !== false && !(o.layerId && hiddenLayerIds.has(o.layerId))),
+        [objects, hiddenLayerIds]
+    );
 
     return (
         <div className="w-full h-full relative group">
@@ -765,7 +764,6 @@ export default function Viewport3D({ objects, renderBodies }) {
                         e.stopPropagation();
                         if (e.intersections.length > 0) {
                             const point = e.intersections[0].point;
-                            const id = Math.random().toString(36).substring(2, 9);
                             let params = {};
                             if (active3DTool === 'cube') params = { width: 10, height: 10, depth: 10 };
                             else if (active3DTool === 'sphere') params = { radius: 5 };
@@ -773,8 +771,12 @@ export default function Viewport3D({ objects, renderBodies }) {
                             else if (active3DTool === 'plane') params = { width: 40, depth: 40 };
                             else if (active3DTool === 'capsule') params = { radius: 2, length: 10 };
 
+                            // No id here: identity (id, name, visibility, physics
+                            // defaults) is guaranteed once, in the store's
+                            // withEntityIdentity boundary. Minting a random id at
+                            // every call site is how ids drifted out of the
+                            // deterministic counter (§1.9).
                             addShape3D({
-                                id,
                                 type: active3DTool,
                                 isStatic: false,
                                 position: [point.x, point.y + (params.height ? params.height / 2 : 0), point.z],
@@ -793,19 +795,19 @@ export default function Viewport3D({ objects, renderBodies }) {
 
             <Suspense fallback={<Loader />}>
                 {/* Project Objects (Both Drafting Extrusions and Simulation Trajectories) */}
-                {objects.map((obj) => (
-                    <Extrudable2DShape 
-                        key={`ext-${obj.id}`} 
-                        obj={obj} 
-                        isPlaying={isPlaying} 
-                        simulationFrames={simulationFrames} 
-                        currentFrameIndex={currentFrameIndex} 
+                {visibleObjects.map((obj) => (
+                    <Extrudable2DShape
+                        key={`ext-${obj.id}`}
+                        obj={obj}
+                        isPlaying={isPlaying}
+                        simulationFrames={simulationFrames}
+                        currentFrameIndex={currentFrameIndex}
                         renderBodies={renderBodies}
                     />
                 ))}
 
                 {/* Native 3D Objects */}
-                {shapes3D.map(shape => (
+                {visibleShapes3D.map(shape => (
                     <Shape3DNode key={shape.id} shape={shape} renderBodies={renderBodies} />
                 ))}
 
@@ -833,7 +835,7 @@ export default function Viewport3D({ objects, renderBodies }) {
                 <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="white" />
             </GizmoHelper>
 
-            <CameraRig objects={objects} shapes3D={shapes3D} disabled={isPlaying} />
+            <CameraRig objects={visibleObjects} shapes3D={visibleShapes3D} disabled={isPlaying} />
         </Canvas>
         </div>
     );

@@ -4,7 +4,7 @@ import {
     Sliders, ZoomIn, ZoomOut, Maximize, Crosshair, RotateCcw,
     TrendingUp, BarChart3, Gauge, Zap, Move
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import { useLabSimulation } from '../physics/useLabSimulation';
 import InclinedRampSolver, { RAMP_PRESETS, GRAVITY_PRESETS, RAMP_STATES, clamp } from '../utils/solvers/inclinedRampSolver';
 
 // ── Collapsible Engineering Information Bar (Accordion Section) ───────────────
@@ -186,12 +186,6 @@ function FreeBodyDiagram({ forces, thetaDeg, state }) {
 
 // ── Inclined Friction Ramp Laboratory ────────────────────────────────────────
 export default function InclinedRampLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // ── Laboratory configuration (SI units — physics scale ≠ visual scale) ──
     const [mass, setMass] = useState(2.0);            // kg
     const [g, setG] = useState(9.81);                 // m/s²
@@ -236,7 +230,12 @@ export default function InclinedRampLab() {
         });
     }
 
-    const [snapshot, setSnapshot] = useState(() => solverRef.current ? solverRef.current.getSnapshot() : null);
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: hookReset, handleStepForward } = useLabSimulation({
+        solver: solverRef.current,
+        labType: 'inclined_friction_ramp',
+        labTitle: 'Inclined Friction Ramp Laboratory',
+        config: { mass, g, thetaDeg, muS, muK, rampLength, s0, v0, dt, timeScale }
+    });
 
     // ── Viewport dimensions ──────────────────────────────────────────────────
     const containerRef = useRef(null);
@@ -255,17 +254,6 @@ export default function InclinedRampLab() {
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
     }, []);
-
-    // ── Push lab data to store for Properties panel ──────────────────────────
-    useEffect(() => {
-        setLabData({
-            type: 'inclined_friction_ramp',
-            title: 'Inclined Friction Ramp Laboratory',
-            snapshot: snapshot,
-            config: { mass, g, thetaDeg, muS, muK, rampLength, s0, v0, dt, timeScale },
-        });
-        return () => clearLabData();
-    }, [snapshot, mass, g, thetaDeg, muS, muK, rampLength, s0, v0, dt, timeScale, setLabData, clearLabData]);
 
     // ── Listen for config changes from Properties panel ──────────────────────
     useEffect(() => {
@@ -286,19 +274,6 @@ export default function InclinedRampLab() {
         window.addEventListener('lab-config-change', handleConfigChange);
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
     }, []);
-
-    // ── Sync configuration into the solver (core changes reset) ──────────────
-    useEffect(() => {
-        if (solverRef.current) {
-            solverRef.current.updateConfig({
-                mass, g, thetaDeg, muS, muK, rampLength,
-                initialPosition: clamp(s0, 0, rampLength),
-                initialVelocity: v0,
-                dt, timeScale,
-            });
-            setSnapshot(solverRef.current.getSnapshot());
-        }
-    }, [mass, g, thetaDeg, muS, muK, rampLength, s0, v0, dt, timeScale]);
 
     // ── Camera helpers ───────────────────────────────────────────────────────
     const fitRamp = () => {
@@ -329,6 +304,29 @@ export default function InclinedRampLab() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [needsFit, viewSize]);
 
+    // ── Camera follow during playback ────────────────────────────────────────
+    useEffect(() => {
+        if (!isPlaying || cameraMode !== 'follow') return;
+        if (snapshot && snapshot.position) {
+            setCamera(c => ({ ...c, cx: snapshot.position.x, cy: snapshot.position.y }));
+        }
+    }, [isPlaying, cameraMode, snapshot]);
+
+    // ── AI query bridge ──────────────────────────────────────────────────────
+    useEffect(() => {
+        window.REALIS_AI_QUERY = () => ({
+            simulationType: 'InclinedFrictionRampExperiment',
+            ...snapshot,
+        });
+        return () => { delete window.REALIS_AI_QUERY; };
+    }, [snapshot]);
+
+    // ── Reset handler (also fit camera) ──────────────────────────────────────
+    const resetAll = () => {
+        hookReset();
+        setNeedsFit(true);
+    };
+
     // ── Presets ──────────────────────────────────────────────────────────────
     const applyPreset = (id) => {
         const p = RAMP_PRESETS.find(x => x.id === id);
@@ -350,58 +348,7 @@ export default function InclinedRampLab() {
         if (p) setG(p.g);
     };
 
-    // ── Playback ─────────────────────────────────────────────────────────────
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
-
-    const handleReset = () => {
-        resetPlayback();
-        if (solverRef.current) {
-            solverRef.current.reset();
-            setSnapshot(solverRef.current.getSnapshot());
-        }
-        setNeedsFit(true);
-    };
-
-    const handleStepForward = () => {
-        if (!isPlaying && solverRef.current) {
-            setSnapshot({ ...solverRef.current.step(1 / 60) });
-        }
-    };
-
-    // Main 60 FPS physics loop (frame-rate independent)
-    useEffect(() => {
-        if (!isPlaying || !solverRef.current) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-            if (solverRef.current) {
-                const next = solverRef.current.step(elapsed);
-                if (cameraMode === 'follow') {
-                    setCamera(c => ({ ...c, cx: next.position.x, cy: next.position.y }));
-                }
-                setSnapshot({ ...next });
-            }
-            reqRef.current = requestAnimationFrame(loop);
-        };
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, cameraMode]);
-
-    // ── AI query bridge ──────────────────────────────────────────────────────
-    useEffect(() => {
-        window.REALIS_AI_QUERY = () => ({
-            simulationType: 'InclinedFrictionRampExperiment',
-            ...snapshot,
-        });
-        return () => { delete window.REALIS_AI_QUERY; };
-    }, [snapshot]);
-
-    // ── World → Screen projection ────────────────────────────────────────────
+    // ── Presets ──────────────────────────────────────────────────────────────
     const w2s = (wx, wy) => ({
         x: viewSize.width / 2 + (wx - camera.cx) * camera.zoom,
         y: viewSize.height / 2 - (wy - camera.cy) * camera.zoom,
@@ -814,7 +761,7 @@ export default function InclinedRampLab() {
             {/* ── Bottom Playback & Timeline Bar ───────────────────────────────── */}
             <div className="h-16 bg-slate-950/95 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center justify-between z-30 shrink-0">
                 <div className="flex items-center gap-3">
-                    <button onClick={handleReset} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl" title="Reset Simulation (restore exact initial state)">
+                    <button onClick={resetAll} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl" title="Reset Simulation (restore exact initial state)">
                         <RefreshCw size={15} />
                     </button>
                     <button
@@ -823,7 +770,7 @@ export default function InclinedRampLab() {
                     >
                         {isPlaying ? <><Square size={13} fill="currentColor" className="mr-2" /> PAUSE</> : <><Play size={15} fill="currentColor" className="mr-2" /> RUN SIM</>}
                     </button>
-                    <button onClick={handleStepForward} disabled={isPlaying} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30" title="Step Forward (one physics step)">
+                    <button onClick={() => handleStepForward()} disabled={isPlaying} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30" title="Step Forward (one physics step)">
                         <SkipForward size={15} />
                     </button>
                 </div>

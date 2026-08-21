@@ -4,7 +4,7 @@ import {
     ZoomIn, ZoomOut, Maximize, Crosshair, RotateCcw,
     Satellite, Zap
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import { useLabSimulation } from '../physics/useLabSimulation';
 import OrbitalPhysicsSolver, { ORBITAL_PRESETS, clamp } from '../utils/solvers/orbitalSolver';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,12 +44,6 @@ const ORBIT_ACCENT = {
 };
 
 export default function OrbitalLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // ── Laboratory configuration ─────────────────────────────────────────────
     const [mu, setMu] = useState(3986.0);            // km³/s² gravitational parameter
     const [centralMass, setCentralMass] = useState(6.0e22); // kg
@@ -88,7 +82,12 @@ export default function OrbitalLab() {
         timeScale: 5.0,
     }));
 
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: hookReset, handleStepForward } = useLabSimulation({
+        solver: solverRef.current,
+        labType: 'orbital_mechanics',
+        labTitle: 'Orbital Mechanics Laboratory',
+        config: { mu, centralMass, satelliteMass, centralRadius, r0, theta0, v0, velAngle, dt, timeScale }
+    });
 
     // ── Viewport dimensions ──────────────────────────────────────────────────
     const containerRef = useRef(null);
@@ -107,17 +106,6 @@ export default function OrbitalLab() {
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
     }, []);
-
-    // ── Push lab data to store for Properties panel ──────────────────────────
-    useEffect(() => {
-        setLabData({
-            type: 'orbital_mechanics',
-            title: 'Orbital Mechanics Laboratory',
-            snapshot: snapshot,
-            config: { mu, centralMass, satelliteMass, centralRadius, r0, theta0, v0, velAngle, dt, timeScale },
-        });
-        return () => clearLabData();
-    }, [snapshot, mu, centralMass, satelliteMass, centralRadius, r0, theta0, v0, velAngle, dt, timeScale, setLabData, clearLabData]);
 
     // ── Listen for config changes from Properties panel ──────────────────────
     useEffect(() => {
@@ -139,23 +127,6 @@ export default function OrbitalLab() {
         window.addEventListener('lab-config-change', handleConfigChange);
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
     }, []);
-
-    // ── Sync configuration into the solver (resets on core-param change) ─────
-    useEffect(() => {
-        const th0 = theta0 * DEG;
-        const va = velAngle * DEG;
-        solverRef.current.updateConfig({
-            mu,
-            centralMass,
-            satelliteMass,
-            centralRadius,
-            initialPosition: { x: r0 * Math.cos(th0), y: r0 * Math.sin(th0) },
-            initialVelocity: { vx: v0 * Math.cos(va), vy: v0 * Math.sin(va) },
-            dt,
-            timeScale,
-        });
-        setSnapshot(solverRef.current.getSnapshot());
-    }, [mu, centralMass, satelliteMass, centralRadius, r0, theta0, v0, velAngle, dt, timeScale]);
 
     // ── Camera helpers ───────────────────────────────────────────────────────
     const estimateExtent = () => {
@@ -195,6 +166,42 @@ export default function OrbitalLab() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [needsFit, viewSize]);
 
+    // ── Impact detection & camera follow during playback ─────────────────────
+    const prevImpactRef = useRef(false);
+    const [impactFlash, setImpactFlash] = useState(false);
+
+    useEffect(() => {
+        if (!isPlaying || !snapshot) return;
+        if (snapshot.impacted && !prevImpactRef.current) {
+            prevImpactRef.current = true;
+            setImpactFlash(true);
+            setTimeout(() => setImpactFlash(false), 800);
+        }
+        // Auto-follow for unbound trajectories
+        if (cameraMode === 'fit' && snapshot.orbit && (snapshot.orbit.type === 'HYPERBOLIC' || snapshot.orbit.type === 'PARABOLIC')) {
+            setCameraMode('follow');
+        }
+        if (cameraMode === 'follow' && snapshot.position) {
+            setCamera(c => ({ ...c, cx: snapshot.position.x, cy: snapshot.position.y }));
+        }
+    }, [isPlaying, snapshot, cameraMode]);
+
+    // ── AI query bridge ──────────────────────────────────────────────────────
+    useEffect(() => {
+        window.REALIS_AI_QUERY = () => ({
+            simulationType: 'OrbitalMechanicsExperiment',
+            ...snapshot,
+        });
+        return () => { delete window.REALIS_AI_QUERY; };
+    }, [snapshot]);
+
+    // ── Reset handler ────────────────────────────────────────────────────────
+    const resetAll = () => {
+        hookReset();
+        prevImpactRef.current = false;
+        setNeedsFit(true);
+    };
+
     // ── Presets ──────────────────────────────────────────────────────────────
     const applyPreset = (id) => {
         const p = ORBITAL_PRESETS[id];
@@ -219,75 +226,7 @@ export default function OrbitalLab() {
         setNeedsFit(true);
     };
 
-    // ── Playback ─────────────────────────────────────────────────────────────
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
-    const prevImpactRef = useRef(false);
-    const [impactFlash, setImpactFlash] = useState(false);
-
-    const handleReset = () => {
-        resetPlayback();
-        solverRef.current.reset();
-        prevImpactRef.current = false;
-        setSnapshot(solverRef.current.getSnapshot());
-        setNeedsFit(true);
-    };
-
-    const handleStepForward = () => {
-        if (!isPlaying) {
-            const next = solverRef.current.step(0.016);
-            if (next.impacted && !prevImpactRef.current) {
-                prevImpactRef.current = true;
-                setImpactFlash(true);
-                setTimeout(() => setImpactFlash(false), 800);
-            }
-            setSnapshot({ ...next });
-        }
-    };
-
-    // Main 60 FPS physics loop (frame-rate independent)
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-            const next = solverRef.current.step(elapsed);
-
-            if (next.impacted && !prevImpactRef.current) {
-                prevImpactRef.current = true;
-                setImpactFlash(true);
-                setTimeout(() => setImpactFlash(false), 800);
-            }
-
-            // Auto-follow for unbound (escaping) trajectories.
-            if (cameraMode === 'fit' && (next.orbit.type === 'HYPERBOLIC' || next.orbit.type === 'PARABOLIC')) {
-                setCameraMode('follow');
-            }
-            if (cameraMode === 'follow') {
-                setCamera(c => ({ ...c, cx: next.position.x, cy: next.position.y }));
-            }
-
-            setSnapshot({ ...next });
-            reqRef.current = requestAnimationFrame(loop);
-        };
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, cameraMode]);
-
-    // ── AI query bridge ──────────────────────────────────────────────────────
-    useEffect(() => {
-        window.REALIS_AI_QUERY = () => ({
-            simulationType: 'OrbitalMechanicsExperiment',
-            ...snapshot,
-        });
-        return () => { delete window.REALIS_AI_QUERY; };
-    }, [snapshot]);
-
-    // ── World → Screen projection ────────────────────────────────────────────
+    // ── Presets ──────────────────────────────────────────────────────────────
     const w2s = (wx, wy) => ({
         x: viewSize.width / 2 + (wx - camera.cx) * camera.zoom,
         y: viewSize.height / 2 - (wy - camera.cy) * camera.zoom,
@@ -611,7 +550,7 @@ export default function OrbitalLab() {
             {/* ── Bottom Playback & Timeline Bar ───────────────────────────────── */}
             <div className="h-16 bg-slate-950/95 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center justify-between z-30 shrink-0">
                 <div className="flex items-center gap-3">
-                    <button onClick={handleReset} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl" title="Reset Simulation">
+                    <button onClick={resetAll} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl" title="Reset Simulation">
                         <RefreshCw size={15} />
                     </button>
                     <button
@@ -620,7 +559,7 @@ export default function OrbitalLab() {
                     >
                         {isPlaying ? <><Square size={13} fill="currentColor" className="mr-2" /> PAUSE</> : <><Play size={15} fill="currentColor" className="mr-2" /> RUN ORBIT</>}
                     </button>
-                    <button onClick={handleStepForward} disabled={isPlaying} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30" title="Step Forward">
+                    <button onClick={() => handleStepForward()} disabled={isPlaying} className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30" title="Step Forward">
                         <SkipForward size={15} />
                     </button>
                 </div>
