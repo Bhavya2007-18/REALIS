@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { Play, Trash2, Info, AlertTriangle } from 'lucide-react';
 import useStore from '../store/useStore';
+import { newEntityId, withEntityIdentity } from '../scene/entity';
 
 
 
@@ -231,7 +232,13 @@ export default function SketchPreviewOverlay() {
     const uuidMap  = {};
 
     nodes.forEach(n => {
-      const id      = Math.random().toString(36).substring(2, 9);
+      // Deterministic id from the shared counter (§1.9), not Math.random: an AI
+      // sketch injected twice from the same drawing used to produce a different
+      // scene each time, which made the result impossible to assert on or
+      // reproduce from a bug report. The 2D draft and its 3D body deliberately
+      // SHARE this id — they are two representations of one node, and the edge
+      // pass below resolves constraints through it.
+      const id      = newEntityId('ai_');
       uuidMap[n.id] = id;
 
       const isStatic = n.type === 'static';
@@ -241,12 +248,16 @@ export default function SketchPreviewOverlay() {
 
       if (n.shape === 'circle') {
         const r = toCanvas(n.dimensions[0] ?? 0.5);
-        newObjects.push({
+        // withEntityIdentity keeps the id we just minted and fills in the
+        // invariants every body needs — `visible` and a display `name`. Pushing
+        // raw literals here produced bodies the hierarchy could not label and
+        // the visibility toggle could not act on.
+        newObjects.push(withEntityIdentity({
           id, type: 'circle', cx: px, cy: py, r: Math.max(r, 5),
           mass: n.mass, restitution: n.properties?.restitution ?? 0.3,
           friction: n.properties?.friction ?? 0.4, isStatic, groupId: 'ai_sketch',
-        });
-        newShapes.push({
+        }, newObjects));
+        newShapes.push(withEntityIdentity({
           id, type: 'sphere', label: `AI_${n.id}`,
           position: { x: px / 100, y: -(py / 100), z: 0 },
           rotation: { x: 0, y: 0, z: 0 },
@@ -254,17 +265,17 @@ export default function SketchPreviewOverlay() {
           mass: n.mass, isStatic,
           friction: n.properties?.friction ?? 0.4,
           restitution: n.properties?.restitution ?? 0.3,
-        });
+        }, newShapes));
       } else {
         const w = toCanvas(n.dimensions[0] ?? 1);
         const h = toCanvas(n.dimensions[1] ?? 0.5);
-        newObjects.push({
+        newObjects.push(withEntityIdentity({
           id, type: 'rect',
           x: px - w / 2, y: py - h / 2, width: Math.max(w, 5), height: Math.max(h, 5),
           mass: n.mass, restitution: n.properties?.restitution ?? 0.2,
           friction: n.properties?.friction ?? 0.4, isStatic, groupId: 'ai_sketch',
-        });
-        newShapes.push({
+        }, newObjects));
+        newShapes.push(withEntityIdentity({
           id, type: 'box', label: `AI_${n.id}`,
           position: { x: px / 100, y: -(py / 100), z: 0 },
           rotation: { x: 0, y: 0, z: 0 },
@@ -272,7 +283,7 @@ export default function SketchPreviewOverlay() {
           mass: n.mass, isStatic,
           friction: n.properties?.friction ?? 0.4,
           restitution: n.properties?.restitution ?? 0.2,
-        });
+        }, newShapes));
       }
     });
 

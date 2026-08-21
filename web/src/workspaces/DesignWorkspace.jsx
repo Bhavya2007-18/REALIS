@@ -4,6 +4,7 @@ import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoMa
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
+import SceneFileActions from '../components/SceneFileActions'
 import { normalizeDraftToSimObject } from '../utils/draftEntityAdapter'
 import { newEntityId, withEntityIdentity } from '../scene/entity'
 import { exportScene } from '../services/exportManager'
@@ -1477,6 +1478,13 @@ export default function DesignWorkspace() {
 
     return (
         <div className={`w-full h-full relative flex flex-col overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
+            {/* Scene file actions live in their own bar, top-right, so they are not
+                confused with the drawing tools and do not shift position when the
+                2D/3D tool set changes. Save/Load/Validate belong in the workspace
+                where scenes are authored, not only in Simulate. */}
+            <div className="absolute top-4 right-4 z-30 flex gap-1 glass p-1.5 rounded-xl shadow-2xl">
+                <SceneFileActions />
+            </div>
             {}
             <div className="absolute top-4 left-4 z-30 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
                 {!is3DMode ? (

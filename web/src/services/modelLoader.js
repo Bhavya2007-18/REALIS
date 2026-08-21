@@ -1,5 +1,6 @@
 import useStore from '../store/useStore';
 import { validateModelSchema } from '../models/schema';
+import { newEntityId } from '../scene/entity';
 
 /**
  * Model Loader Service
@@ -31,7 +32,11 @@ const modelLoader = {
             if (model.shapes3D && model.shapes3D.length > 0) {
                 const shapes = model.shapes3D.map(shape => ({
                     ...shape,
-                    id: shape.id || `shape3d_${Math.random().toString(36).substring(2, 9)}`,
+                    // Deterministic id (§1.9): loading the same model twice used to
+                    // yield different ids, so a saved scene never matched the model
+                    // it came from. Models normally carry their own ids; this is the
+                    // fallback for ones that do not.
+                    id: shape.id || newEntityId('shape3d_'),
                     color: shape.color || '#3b82f6',
                     mass: shape.mass ?? 1.0,
                     restitution: shape.restitution || 0.5,

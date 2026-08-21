@@ -1,3 +1,5 @@
+import { newEntityId } from '../scene/entity';
+
 /**
  * Converts a SceneGraph from the Sketch AI pipeline (PipelineResponse)
  * into 3D shapes and physics constraints compatible with the REALIS Zustand store (useStore.js).
@@ -29,7 +31,10 @@ export function sceneGraphToShapes(sceneGraph) {
                     (node.type || '').toLowerCase().includes('support');
 
     return {
-      id: node.id || `sketch_${Math.random().toString(36).substr(2, 9)}`,
+      // Deterministic fallback id (§1.9). Math.random here meant the same sketch
+      // produced a different scene on every conversion, so nothing about the
+      // result could be asserted or reproduced.
+      id: node.id || newEntityId('sketch_'),
       name: `${node.type || 'Object'} (${node.id})`,
       type: type,
       position: [pos[0] ?? 0, pos[1] ?? 2, pos[2] ?? 0],
@@ -68,7 +73,7 @@ export function sceneGraphToConstraints(sceneGraph) {
     const anchor = edge.anchor || [0, 0, 0];
 
     return {
-      id: edge.id || `con_${Math.random().toString(36).substr(2, 9)}`,
+      id: edge.id || newEntityId('con_'),
       name: `${constraintType.toUpperCase()} (${edge.a} -> ${edge.b || 'anchor'})`,
       type: constraintType,
       targetA: edge.a,

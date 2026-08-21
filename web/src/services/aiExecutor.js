@@ -7,7 +7,11 @@ import useStore from '../store/useStore.js';
 import modelLoader from './modelLoader.js';
 import { bus, EVENTS } from './bus.js';
 
-const uid = () => Math.random().toString(36).substring(2, 9);
+// No local id generator. These executors used to mint `Math.random()` ids and
+// hand them to store actions that already guarantee identity, so the AI path was
+// the one place in the app that produced non-reproducible ids (§1.9) — and a
+// second answer to "who names an entity" (§1.3). The store's addCADObject /
+// addShape3D / addConstraint now own it, as they do for every other caller.
 
 function patchObjectOrShape(list, id, patch) {
     return list.map(o => (o.id === id ? { ...o, ...patch } : o));
@@ -25,7 +29,6 @@ const executors = {
     create_object(args) {
         const s = useStore.getState();
         s.addCADObject({
-            id: uid(),
             ...args,
             stroke: '#3b82f6',
             fill: 'rgba(59, 130, 246, 0.2)',
@@ -42,7 +45,6 @@ const executors = {
     create_shape3d({ type, position, params }) {
         const s = useStore.getState();
         s.addShape3D({
-            id: uid(),
             type,
             position,
             params,
@@ -59,7 +61,6 @@ const executors = {
     add_joint({ type, targetA, targetB, distance }) {
         const s = useStore.getState();
         s.addConstraint({
-            id: `joint_${uid()}`,
             type,
             targetA,
             targetB: targetB || null,

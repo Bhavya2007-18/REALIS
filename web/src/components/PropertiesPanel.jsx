@@ -1,19 +1,41 @@
-import { useState, useEffect } from 'react'
-import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers, ChevronDown, Activity as ActivityIcon, SlidersHorizontal as SlidersIcon, Wrench, BookOpen, Compass, Gauge, ArrowDown, Sparkles, TrendingUp } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Settings, Maximize, Palette, Trash2, SlidersHorizontal, Activity, Link, Plus, Layers, ChevronDown, Activity as ActivityIcon, SlidersHorizontal as SlidersIcon, Wrench, BookOpen, Compass, Gauge, ArrowDown, Sparkles, TrendingUp, Eye, EyeOff } from 'lucide-react'
 import useStore from '../store/useStore'
 import { isClosedProfile } from '../utils/ProfileValidator'
 import { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver'
+import { MATERIAL_KEYS, volumeOf } from '../scene/materials'
+import { geometryFromDraft, geometryFromShape3D } from '../scene/geometry'
 
-const MATERIALS = {
-    custom: { name: 'Custom' },
-    aluminum: { name: 'Aluminum', color: '#d1d5db', roughness: 0.3, metalness: 0.8, friction: 0.1, restitution: 0.2 },
-    steel: { name: 'Steel', color: '#9ca3af', roughness: 0.4, metalness: 0.9, friction: 0.3, restitution: 0.3 },
-    cast_iron: { name: 'Cast Iron', color: '#4b5563', roughness: 0.6, metalness: 0.6, friction: 0.2, restitution: 0.1 },
-    structural_steel: { name: 'Structural Steel', color: '#eab308', roughness: 0.7, metalness: 0.8, friction: 0.4, restitution: 0.1 },
-    plastic: { name: 'Generic Plastic', color: '#3b82f6', roughness: 0.8, metalness: 0.1, friction: 0.5, restitution: 0.6 },
-    rubber: { name: 'Rubber', color: '#1f2937', roughness: 0.9, metalness: 0.0, friction: 0.9, restitution: 0.8 },
-    titanium: { name: 'Titanium', color: '#e5e7eb', roughness: 0.2, metalness: 0.8, friction: 0.3, restitution: 0.4 }
+// Constraint types the validator recognises (scene/validateScene.js
+// KNOWN_CONSTRAINT_TYPES). Authoring anything outside this set produces a
+// CONSTRAINT_UNKNOWN_TYPE warning and a joint that will not be simulated, so the
+// picker is built from the contract rather than from a hand-kept subset — it
+// offered only 2 of the 7, leaving hinge/slider/spring/motor unauthorable.
+const CONSTRAINT_TYPES = [
+    { key: 'distance', label: 'Distance (Rod)', needsB: true, params: ['distance'] },
+    { key: 'fixed', label: 'Fixed Anchor (Pin)', needsB: false, params: [] },
+    { key: 'hinge', label: 'Hinge (Revolute)', needsB: true, params: ['axis'] },
+    { key: 'slider', label: 'Slider (Prismatic)', needsB: true, params: ['axis'] },
+    { key: 'spring', label: 'Spring', needsB: true, params: ['restLength', 'stiffness', 'damping'] },
+    { key: 'motor', label: 'Motor', needsB: false, params: ['targetVelocity', 'maxForce'] },
+    { key: 'contact', label: 'Contact', needsB: true, params: [] }
+]
+
+// Defaults per parameter, in SI units (§1.8): metres, N/m, N·s/m, rad/s, N.
+const PARAM_DEFAULTS = {
+    distance: 1, restLength: 1, stiffness: 100, damping: 1,
+    targetVelocity: 5, maxForce: 1000
 }
+const PARAM_LABELS = {
+    distance: 'Target Distance (m)', restLength: 'Rest Length (m)',
+    stiffness: 'Stiffness (N/m)', damping: 'Damping (N·s/m)',
+    targetVelocity: 'Target Velocity (rad/s)', maxForce: 'Max Force (N)'
+}
+
+// The local MATERIALS map that used to live here is gone. It was a second
+// material library that disagreed with the store's on restitution and friction
+// for the same named material, and it had no density at all, so mass could never
+// be derived from it. src/scene/materials.js is now the only one (§1.3).
 
 // Compact stat tile used inside expanded sections
 function Stat({ label, value, unit, color = 'text-white' }) {
@@ -1549,11 +1571,24 @@ export default function PropertiesPanel() {
     const setShapes3D = useStore(s => s.setShapes3D)
     const addShape3D = useStore(s => s.addShape3D)
 
+    // Entity lifecycle goes through the store's single actions, so this panel,
+    // the hierarchy and the viewport cannot disagree — and so deleting a body
+    // also prunes the constraints referencing it.
+    const deleteEntities = useStore(s => s.deleteEntities)
+    const toggleVisibility = useStore(s => s.toggleVisibility)
+    const selectEntities = useStore(s => s.selectEntities)
+    const materials = useStore(s => s.materials)
+    const applyMaterial = useStore(s => s.applyMaterial)
+    const recomputeMassFromMaterial = useStore(s => s.recomputeMassFromMaterial)
+    const upsertMaterial = useStore(s => s.upsertMaterial)
+    const addConstraint = useStore(s => s.addConstraint)
+    const removeConstraint = useStore(s => s.removeConstraint)
+
     const active3DTool = useStore(s => s.active3DTool)
     const extrudeOperation = useStore(s => s.extrudeOperation)
     const setExtrudeOperation = useStore(s => s.setExtrudeOperation)
 
-    const [selectedObject, setSelectedObject] = useState(null)
+    // `selectedObject` is derived below from the store, not held in state.
 
     // Lab data for simulation properties
     const labData = useStore(s => s.labData)
@@ -1575,25 +1610,31 @@ export default function PropertiesPanel() {
         }))
     }
 
+    const [editingMaterial, setEditingMaterial] = useState(false)
     const [jointType, setJointType] = useState('distance')
     const [jointTargetA, setJointTargetA] = useState('')
     const [jointTargetB, setJointTargetB] = useState('')
-    const [jointDistance, setJointDistance] = useState(100)
+    // One parameter bag rather than a state hook per field, so adding a
+    // constraint type does not mean adding another useState.
+    const [jointParams, setJointParams] = useState({ ...PARAM_DEFAULTS })
+    const [jointAxis, setJointAxis] = useState('y')
 
-    useEffect(() => {
-        if (activeFileId) {
-            let obj = objects.find(o => o.id === activeFileId)
-            let is3D = false;
-            if (!obj) {
-                obj = shapes3D.find(o => o.id === activeFileId);
-                is3D = !!obj;
-            }
-            setSelectedObject(obj ? { ...obj, is3D } : null)
-            if (obj) setJointTargetA(obj.id)
-        } else {
-            setSelectedObject(null)
-        }
+    // The selected body is DERIVED from the store, not mirrored into local state
+    // by an effect. Copying it into `useState` meant the panel rendered once with
+    // the previous body before the effect caught up, so editing a field could
+    // write to the entity that was selected a render ago.
+    const selectedObject = useMemo(() => {
+        if (!activeFileId) return null
+        const draft = objects.find(o => o.id === activeFileId)
+        if (draft) return { ...draft, is3D: false }
+        const shape = shapes3D.find(o => o.id === activeFileId)
+        return shape ? { ...shape, is3D: true } : null
     }, [activeFileId, objects, shapes3D])
+
+    // Body A defaults to the current selection and is derived, not synced by an
+    // effect: `jointTargetA` holds only an explicit user override, so selecting a
+    // different body immediately re-targets the picker with no extra render.
+    const effectiveTargetA = jointTargetA || activeFileId || ''
 
     const Layers = Maximize
 
@@ -1679,6 +1720,13 @@ export default function PropertiesPanel() {
         )
     }
 
+    // Fields that change a body's VOLUME, and therefore its mass whenever a
+    // material is assigned. Resizing a steel cube has to change what it weighs,
+    // or the material assignment quietly stops being true and the simulation
+    // diverges from what the panel claims (§1.5).
+    const GEOMETRY_FIELDS_3D = new Set(['params', 'scale'])
+    const GEOMETRY_FIELDS_2D = new Set(['width', 'height', 'r', 'radius'])
+
     const handleChange = (field, value, subfield = null) => {
         if (selectedObject.is3D) {
             setShapes3D(prev => prev.map(o => {
@@ -1725,30 +1773,65 @@ export default function PropertiesPanel() {
                         : parseFloat(value) || 0;
             setObjects(prev => prev.map(o => o.id === selectedObject.id ? { ...o, [field]: parsedValue } : o))
         }
+
+        // Re-derive mass after the geometry edit lands. Skipped for bodies with no
+        // material_id (nothing to derive from) and for geometries with no
+        // derivable volume — recomputeMassFromMaterial leaves both alone.
+        const isGeometryEdit = selectedObject.is3D
+            ? GEOMETRY_FIELDS_3D.has(field)
+            : GEOMETRY_FIELDS_2D.has(field)
+        if (isGeometryEdit && selectedObject.material_id) {
+            recomputeMassFromMaterial([selectedObject.id])
+        }
     }
 
     const handleDelete = () => {
-        if (selectedObject.is3D) {
-            setShapes3D(prev => prev.filter(o => o.id !== selectedObject.id))
-        } else {
-            setObjects(prev => prev.filter(o => o.id !== selectedObject.id))
-        }
-        useStore.setState({ activeFileId: null })
+        // deleteEntities also prunes constraints referencing the body and clears
+        // the selection pointers. Filtering the arrays here left every joint
+        // attached to the deleted body dangling, which surfaced later as a
+        // CONSTRAINT_DANGLING_REF from the validator with no obvious cause.
+        deleteEntities([selectedObject.id])
     }
 
     const handleAddJoint = () => {
-        if (!jointTargetA) return;
-        if (jointType === 'distance' && !jointTargetB) return;
+        const spec = CONSTRAINT_TYPES.find(t => t.key === jointType)
+        if (!spec || !effectiveTargetA) return
+        if (spec.needsB && !jointTargetB) return
 
-        const newConstraint = {
-            id: `joint_${Math.random().toString(36).substring(2, 7)}`,
+        // Only the parameters this constraint type actually uses are written, so
+        // a hinge does not carry a meaningless `stiffness` into the canonical
+        // scene. addConstraint mints the id (deterministic counter, §1.9).
+        const params = {}
+        for (const p of spec.params) {
+            if (p === 'axis') params.axis = jointAxis
+            else params[p] = parseFloat(jointParams[p]) || 0
+        }
+        addConstraint({
             type: jointType,
-            targetA: jointTargetA,
-            targetB: jointTargetB || null,
-            distance: parseFloat(jointDistance),
-        };
-        setConstraints([...(constraints || []), newConstraint]);
-    };
+            objectA: effectiveTargetA,
+            objectB: spec.needsB ? jointTargetB : null,
+            ...params
+        })
+    }
+
+    const jointSpec = CONSTRAINT_TYPES.find(t => t.key === jointType) || CONSTRAINT_TYPES[0]
+
+    // Constraints attached to the selected body, so the list answers "what is
+    // this body connected to" rather than dumping every joint in the scene.
+    const attachedConstraints = (constraints || []).filter(c => {
+        const a = c.objectA ?? c.targetA ?? c.bodyA ?? c.bodyAId
+        const b = c.objectB ?? c.targetB ?? c.bodyB ?? c.bodyBId
+        return a === selectedObject.id || b === selectedObject.id
+    })
+
+    // Derived mass preview. Shown next to the material picker so the user can see
+    // what ρV will produce — and, when it cannot be derived, why not, instead of
+    // silently getting the default 1 kg (§1.4).
+    const activeMaterial = materials[selectedObject.material_id] || null
+    const selectedGeometry = selectedObject.is3D
+        ? geometryFromShape3D(selectedObject)
+        : geometryFromDraft(selectedObject)
+    const selectedVolume = volumeOf(selectedGeometry)
 
     return (
         <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark flex flex-col shrink-0">
@@ -1772,10 +1855,20 @@ export default function PropertiesPanel() {
                             <Maximize size={14} />
                         </button>
                     )}
+                    <button
+                        onClick={() => toggleVisibility(selectedObject.id)}
+                        className={`p-1.5 rounded-md transition-colors ${selectedObject.visible === false ? 'text-amber-500 hover:bg-amber-500/10' : 'text-slate-400 hover:bg-slate-500/10'}`}
+                        title={selectedObject.visible === false ? 'Show in viewport' : 'Hide in viewport'}
+                    >
+                        {selectedObject.visible === false ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
                     <button onClick={handleDelete} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Delete Object">
                         <Trash2 size={14} />
                     </button>
                 </div>
+                {selectedObject.visible === false && (
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-amber-500/80">hidden</span>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -1826,9 +1919,13 @@ export default function PropertiesPanel() {
                         <button
                             className="w-full py-1.5 mt-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-md transition-colors"
                             onClick={() => {
-                                const solidId = `extsolid_${Math.random().toString(36).substring(2, 7)}`;
+                                // No id minted here: addShape3D guarantees
+                                // identity through withEntityIdentity, and the
+                                // new solid is read back from the store so the
+                                // selection points at the real body. Minting an
+                                // id at the call site is how ids drifted out of
+                                // the deterministic counter (§1.9).
                                 addShape3D({
-                                    id: solidId,
                                     type: 'extruded_solid',
                                     profileId: selectedObject.id,
                                     distance: extrudeOperation.distance,
@@ -1840,7 +1937,9 @@ export default function PropertiesPanel() {
                                     color: selectedObject.stroke || '#3b82f6',
                                     params: { ...extrudeOperation }
                                 });
-                                useStore.setState({ active3DTool: 'select', selectedIds: [], selected3DIds: [solidId], activeFileId: solidId });
+                                const created = useStore.getState().shapes3D.at(-1);
+                                useStore.setState({ active3DTool: 'select' });
+                                if (created) selectEntities([created.id]);
                             }}
                         >
                             Generate 3D Solid
@@ -2375,36 +2474,105 @@ export default function PropertiesPanel() {
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Material</label>
                             <select
-                                value={selectedObject.material || 'custom'}
+                                value={selectedObject.material_id || 'custom'}
                                 onChange={e => {
-                                    const mat = e.target.value;
-                                    handleChange('material', mat);
-                                    if (mat !== 'custom') {
-                                        const props = MATERIALS[mat];
-                                        if (selectedObject.is3D) {
-                                            handleChange('color', props.color);
-                                            handleChange('roughness', props.roughness);
-                                            handleChange('metalness', props.metalness);
-                                        } else {
-                                            handleChange('stroke', props.color);
-                                        }
-                                        handleChange('friction', props.friction);
-                                        handleChange('restitution', props.restitution);
-                                    }
+                                    // ONE call. applyMaterial writes physics,
+                                    // appearance and derived mass (m = ρV)
+                                    // together, so a material is a single fact
+                                    // about the body. The panel used to set six
+                                    // fields by hand from its own library, which
+                                    // is how "Steel" here and "Steel" in the
+                                    // store came to mean different physics.
+                                    applyMaterial(selectedObject.id, e.target.value)
                                 }}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer mb-2"
+                                className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                             >
-                                {Object.entries(MATERIALS).map(([key, m]) => (
-                                    <option key={key} value={key}>{m.name}</option>
+                                {MATERIAL_KEYS.filter(k => materials[k]).map(key => (
+                                    <option key={key} value={key}>{materials[key].name || key}</option>
                                 ))}
                             </select>
+                            {activeMaterial && (
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 pt-1.5 text-[9px] font-mono text-slate-500">
+                                    <span>ρ <span className="text-slate-300">{activeMaterial.density}</span> kg/m³</span>
+                                    <span>e <span className="text-slate-300">{activeMaterial.restitution.toFixed(2)}</span></span>
+                                    <span>μs <span className="text-slate-300">{activeMaterial.static_friction.toFixed(2)}</span></span>
+                                    <span>μk <span className="text-slate-300">{activeMaterial.dynamic_friction.toFixed(2)}</span></span>
+                                    <span className="col-span-2 pt-0.5">
+                                        {selectedVolume != null ? (
+                                            <>V <span className="text-slate-300">{selectedVolume.toExponential(2)}</span> m³ → m <span className="text-emerald-400">{(selectedVolume * activeMaterial.density).toFixed(3)}</span> kg</>
+                                        ) : (
+                                            <span className="text-amber-500/80">
+                                                {selectedGeometry.kind} geometry has no derivable volume — mass is set manually
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Editing the physical constants. The library values are
+                                reference data and are not editable in place — a user
+                                who needs different numbers is describing a different
+                                material, so the edit writes to `custom` rather than
+                                redefining what "Steel" means for every other body in
+                                the scene (§1.3). upsertMaterial clamps each value to a
+                                physically meaningful range. */}
+                            {activeMaterial && (
+                                <div className="pt-1">
+                                    <button
+                                        onClick={() => setEditingMaterial(v => !v)}
+                                        className="text-[9px] uppercase font-bold tracking-wider text-slate-500 hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
+                                    >
+                                        <SlidersIcon size={9} />
+                                        {editingMaterial ? 'Close' : selectedObject.material_id === 'custom' ? 'Edit Custom Material' : 'Override as Custom'}
+                                    </button>
+
+                                    {editingMaterial && (
+                                        <div className="mt-2 space-y-1.5 p-2 rounded-md bg-black/30 border border-slate-700/50">
+                                            {[
+                                                { k: 'density', label: 'ρ Density (kg/m³)', step: 10, min: 0.01, max: 25000 },
+                                                { k: 'restitution', label: 'e Restitution', step: 0.05, min: 0, max: 1 },
+                                                { k: 'static_friction', label: 'μs Static Friction', step: 0.05, min: 0, max: 2 },
+                                                { k: 'dynamic_friction', label: 'μk Dynamic Friction', step: 0.05, min: 0, max: 2 }
+                                            ].map(({ k, label, step, min, max }) => (
+                                                <div key={k} className="flex items-center justify-between gap-2">
+                                                    <label className="text-[9px] text-slate-400 font-mono">{label}</label>
+                                                    <input
+                                                        type="number"
+                                                        step={step} min={min} max={max}
+                                                        defaultValue={activeMaterial[k]}
+                                                        onBlur={e => {
+                                                            const v = parseFloat(e.target.value)
+                                                            if (!Number.isFinite(v)) return
+                                                            // Write into `custom`, seeded from whatever material is
+                                                            // currently on the body, then re-apply so physics AND
+                                                            // mass follow in one step.
+                                                            upsertMaterial('custom', { ...activeMaterial, name: 'Custom', [k]: v })
+                                                            applyMaterial(selectedObject.id, 'custom')
+                                                        }}
+                                                        className="w-20 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-slate-200 font-mono text-right"
+                                                    />
+                                                </div>
+                                            ))}
+                                            <p className="text-[9px] text-slate-500 pt-0.5 leading-snug">
+                                                Values are clamped to physical ranges — a restitution above 1 would
+                                                make the solver add energy on every bounce.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                             <input
                                 type="color"
                                 value={selectedObject.is3D ? (selectedObject.color || '#ffffff') : (selectedObject.stroke || '#ffffff')}
                                 onChange={e => {
-                                    handleChange('material', 'custom');
+                                    // Overriding the colour detaches the body
+                                    // from its library material: it is no longer
+                                    // "steel", so leaving material_id set would
+                                    // make the panel claim a material the body
+                                    // no longer matches.
+                                    handleChange('material_id', 'custom');
                                     handleChange(selectedObject.is3D ? 'color' : 'stroke', e.target.value);
                                 }}
                                 className="size-6 p-0 border-0 rounded overflow-hidden cursor-pointer"
@@ -2458,7 +2626,18 @@ export default function PropertiesPanel() {
                             <>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] text-slate-400 pl-1">Mass (kg)</label>
+                                        <label className="text-[10px] text-slate-400 pl-1 flex items-center justify-between">
+                                            <span>Mass (kg)</span>
+                                            {selectedObject.material_id && selectedVolume != null && (
+                                                <button
+                                                    onClick={() => recomputeMassFromMaterial([selectedObject.id])}
+                                                    className="text-[9px] text-primary hover:underline cursor-pointer"
+                                                    title="Recompute mass from the assigned material's density × current volume"
+                                                >
+                                                    ρV
+                                                </button>
+                                            )}
+                                        </label>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -2500,7 +2679,6 @@ export default function PropertiesPanel() {
                     </h4>
 
                     <div className="space-y-2 pt-1 p-3 bg-slate-800/30 rounded-xl border border-slate-700/40">
-                        { }
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Constraint Type</label>
                             <select
@@ -2508,27 +2686,27 @@ export default function PropertiesPanel() {
                                 onChange={e => setJointType(e.target.value)}
                                 className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                             >
-                                <option value="distance">Distance Joint (Rod)</option>
-                                <option value="fixed">Fixed Anchor (Pin to World)</option>
+                                {CONSTRAINT_TYPES.map(t => (
+                                    <option key={t.key} value={t.key}>{t.label}</option>
+                                ))}
                             </select>
                         </div>
 
-                        { }
                         <div className="space-y-1">
                             <label className="text-[10px] text-slate-400 pl-1">Body A</label>
                             <select
-                                value={jointTargetA}
+                                value={effectiveTargetA}
                                 onChange={e => setJointTargetA(e.target.value)}
                                 className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                             >
                                 <option value="">-- Select Object --</option>
                                 {[...objects, ...shapes3D].map(o => (
-                                    <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
+                                    <option key={o.id} value={o.id}>{o.name || o.type || 'object'}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {jointType === 'distance' && (
+                        {jointSpec.needsB && (
                             <div className="space-y-1">
                                 <label className="text-[10px] text-slate-400 pl-1">Body B</label>
                                 <select
@@ -2537,50 +2715,93 @@ export default function PropertiesPanel() {
                                     className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
                                 >
                                     <option value="">-- Select Object --</option>
-                                    {[...objects, ...shapes3D].filter(o => String(o.id) !== String(jointTargetA)).map(o => (
-                                        <option key={o.id} value={o.id}>{o.type || 'object'} ({String(o.id).substring(0, 6)}…)</option>
+                                    {/* Body A is excluded: a constraint connecting a
+                                        body to itself is a CONSTRAINT_SELF_REFERENCE
+                                        error, so it is made unselectable rather than
+                                        authorable-then-rejected. */}
+                                    {[...objects, ...shapes3D].filter(o => String(o.id) !== String(effectiveTargetA)).map(o => (
+                                        <option key={o.id} value={o.id}>{o.name || o.type || 'object'}</option>
                                     ))}
                                 </select>
                             </div>
                         )}
 
-                        {jointType === 'distance' && (
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-slate-400 pl-1">Target Distance</label>
+                        {!jointSpec.needsB && (
+                            <p className="text-[9px] text-slate-500 pl-1 leading-relaxed">
+                                A {jointSpec.label.split(' ')[0].toLowerCase()} constraint anchors one body to the world, so it takes no second body.
+                            </p>
+                        )}
+
+                        {/* Parameters are driven by the selected type's spec, so a
+                            hinge shows an axis and a spring shows stiffness — the
+                            panel used to show a distance field for everything. */}
+                        {jointSpec.params.map(p => p === 'axis' ? (
+                            <div key={p} className="space-y-1">
+                                <label className="text-[10px] text-slate-400 pl-1">Axis</label>
+                                <select
+                                    value={jointAxis}
+                                    onChange={e => setJointAxis(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-300 cursor-pointer"
+                                >
+                                    <option value="x">X</option>
+                                    <option value="y">Y (vertical)</option>
+                                    <option value="z">Z</option>
+                                </select>
+                            </div>
+                        ) : (
+                            <div key={p} className="space-y-1">
+                                <label className="text-[10px] text-slate-400 pl-1">{PARAM_LABELS[p] || p}</label>
                                 <input
                                     type="number"
-                                    value={jointDistance}
-                                    onChange={e => setJointDistance(e.target.value)}
+                                    step="0.1"
+                                    value={jointParams[p] ?? PARAM_DEFAULTS[p] ?? 0}
+                                    onChange={e => setJointParams(prev => ({ ...prev, [p]: e.target.value }))}
                                     className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs"
                                 />
                             </div>
-                        )}
+                        ))}
 
                         <button
                             onClick={handleAddJoint}
-                            disabled={!jointTargetA || (jointType === 'distance' && !jointTargetB)}
+                            disabled={!effectiveTargetA || (jointSpec.needsB && !jointTargetB)}
                             className="w-full flex items-center justify-center gap-2 bg-primary/20 hover:bg-primary/40 text-primary text-xs font-bold py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                         >
                             <Plus size={12} /> Add Constraint
                         </button>
                     </div>
 
-                    {constraints.length > 0 && (
+                    {attachedConstraints.length > 0 && (
                         <div className="space-y-1">
-                            {constraints.map(c => (
-                                <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700/30">
-                                    <div className="flex flex-col">
-                                        <span className="text-primary font-bold">{c.type}</span>
-                                        <span className="text-slate-400">{String(c.targetA || '').substring(0, 6)} ↔ {c.targetB ? String(c.targetB).substring(0, 6) : '⚓ world'}</span>
+                            <p className="text-[9px] font-mono uppercase tracking-wider text-slate-500 pl-1">
+                                On this body ({attachedConstraints.length})
+                            </p>
+                            {attachedConstraints.map(c => {
+                                // Constraints are read through the same field
+                                // aliases canonicalConstraint accepts, so a joint
+                                // written by an older path still renders instead
+                                // of showing a blank row.
+                                const a = c.objectA ?? c.targetA ?? c.bodyA ?? c.bodyAId
+                                const b = c.objectB ?? c.targetB ?? c.bodyB ?? c.bodyBId
+                                const nameOf = (id) => {
+                                    const e = [...objects, ...shapes3D].find(o => o.id === id)
+                                    return e ? (e.name || e.type) : String(id ?? '').substring(0, 6)
+                                }
+                                return (
+                                    <div key={c.id} className="flex items-center justify-between bg-slate-800/50 px-2 py-1.5 rounded-lg text-[10px] font-mono border border-slate-700/30">
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-primary font-bold">{c.type}</span>
+                                            <span className="text-slate-400 truncate">{nameOf(a)} ↔ {b ? nameOf(b) : '⚓ world'}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => removeConstraint(c.id)}
+                                            className="text-red-400 hover:text-red-300 transition-colors p-1 shrink-0 cursor-pointer"
+                                            title="Remove constraint"
+                                        >
+                                            <Trash2 size={10} />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => setConstraints((constraints || []).filter(x => x.id !== c.id))}
-                                        className="text-red-400 hover:text-red-300 transition-colors p-1"
-                                    >
-                                        <Trash2 size={10} />
-                                    </button>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>

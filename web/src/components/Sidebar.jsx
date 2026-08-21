@@ -123,10 +123,14 @@ export default function Sidebar() {
                                             key={comp.id}
                                             onClick={() => {
                                                 useStore.setState({ is3DView: true });
-                                                addShape3D({
-                                                    ...comp,
-                                                    id: `comp_${Math.random().toString(36).substring(2,7)}`
-                                                });
+                                                // The library entry's own id is a CATALOGUE key, not
+                                                // an instance id — reusing it would give every placed
+                                                // copy of "I-Beam" the same id, so selecting one would
+                                                // select them all. Dropping it lets addShape3D mint a
+                                                // fresh deterministic id (§1.9) through
+                                                // withEntityIdentity, the one place identity is made.
+                                                const { id: _catalogueId, ...template } = comp;
+                                                addShape3D(template);
                                             }}
                                             className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
                                         >

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Play, Square, SkipBack, SkipForward, Activity, Settings, Zap, Globe, Gauge, Trash2, Box, Flame, 
-    Droplets, ArrowRightCircle, Download, Upload, RotateCcw, RotateCw, PlusCircle, MousePointer, 
+    Droplets, ArrowRightCircle, RotateCcw, RotateCw, PlusCircle, MousePointer,
     Circle as CircleIcon, Eye, EyeOff, Link2, Sliders, Layers, RefreshCw
 } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -15,6 +15,7 @@ import OrbitalLab from '../components/OrbitalLab';
 import InclinedRampLab from '../components/InclinedRampLab';
 import CrankSliderLab from '../components/CrankSliderLab';
 import CollisionLab from '../components/CollisionLab';
+import SceneFileActions from '../components/SceneFileActions';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -109,7 +110,6 @@ export default function SimulateWorkspace() {
     const debugPhysics = useStore(state => state.debugPhysics);
     const setDebugPhysics = useStore(state => state.setDebugPhysics);
     const toggleDebugPhysics = useStore(state => state.toggleDebugPhysics);
-    const exportSceneJSON = useStore(state => state.exportSceneJSON);
     const addShape3D = useStore(state => state.addShape3D);
     const addConstraint = useStore(state => state.addConstraint);
     const deleteObject = useStore(state => state.deleteObject);
@@ -501,50 +501,9 @@ export default function SimulateWorkspace() {
                         </button>
                     </div>
 
-                    {/* Save / Load Scene JSON */}
-                    <div className="flex gap-1">
-                        <button
-                            onClick={() => {
-                                const json = exportSceneJSON();
-                                const blob = new Blob([json], { type: 'application/json' });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `realis_scene_${Date.now()}.json`;
-                                a.click();
-                            }}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-black/40 border border-white/10 text-slate-300 hover:text-white hover:border-primary/50 transition-all cursor-pointer"
-                            title="Export Scene JSON"
-                        >
-                            <Download size={12} /> Save JSON
-                        </button>
-
-                        <label className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-black/40 border border-white/10 text-slate-300 hover:text-white hover:border-primary/50 transition-all cursor-pointer">
-                            <Upload size={12} /> Load JSON
-                            <input
-                                type="file"
-                                accept=".json"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const reader = new FileReader();
-                                    reader.onload = (evt) => {
-                                        // importSceneJSON now returns {ok, diagnostics} and
-                                        // applies nothing on failure. Surface the outcome in
-                                        // the validation panel instead of dropping it.
-                                        const result = useStore.getState().importSceneJSON(evt.target.result);
-                                        if (!result.ok) {
-                                            const st = useStore.getState();
-                                            st.setRightPanelView('diagnostics');
-                                            if (!st.isRightPanelOpen) st.toggleRightPanel();
-                                        }
-                                    };
-                                    reader.readAsText(file);
-                                }}
-                            />
-                        </label>
-                    </div>
+                    {/* Save / Load / Validate — one implementation, shared with
+                        the Design workspace (src/components/SceneFileActions.jsx). */}
+                    <SceneFileActions />
 
                     <div className="h-6 w-px bg-white/10 mx-1"></div>
 

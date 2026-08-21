@@ -6,7 +6,12 @@ import { nextEntityName, cloneEntity, pruneConstraints, newEntityId, reserveEnti
 import { buildCanonicalScene } from '../scene/buildCanonicalScene'
 import { validateScene } from '../scene/validateScene'
 import { serializeScene, deserializeScene } from '../scene/serialization'
-import { formatDiagnostic } from '../scene/diagnostics'
+import { formatDiagnostic, diagnostic, Severity, Category } from '../scene/diagnostics'
+import { geometryFromDraft, geometryFromShape3D } from '../scene/geometry'
+import {
+    MATERIAL_LIBRARY, MATERIAL_KEYS, massFromDensity,
+    bodyPhysicsForMaterial, bodyAppearanceForMaterial
+} from '../scene/materials'
 import { gravityToLegacyStore } from '../scene/units'
 
 // Scene fields tracked by the undo/redo history.
@@ -190,27 +195,160 @@ const useStore = create(temporal((set) => ({
     ],
     activeLayerId: 'default',
 
-    
-    // Canonical Materials System (Section 3.2)
-    materials: {
-        steel:    { density: 7850, restitution: 0.20, static_friction: 0.4,  dynamic_friction: 0.3  },
-        rubber:   { density: 1100, restitution: 0.85, static_friction: 0.9,  dynamic_friction: 0.8  },
-        wood:     { density: 700,  restitution: 0.40, static_friction: 0.5,  dynamic_friction: 0.4  },
-        ice:      { density: 917,  restitution: 0.10, static_friction: 0.05, dynamic_friction: 0.02 },
-        concrete: { density: 2400, restitution: 0.15, static_friction: 0.7,  dynamic_friction: 0.6  },
-        plastic:  { density: 1000, restitution: 0.60, static_friction: 0.3,  dynamic_friction: 0.25 },
-        custom:   { density: 1000, restitution: 0.50, static_friction: 0.3,  dynamic_friction: 0.3  }
-    },
+
+    // ── Materials (§3.2) ────────────────────────────────────────────────
+    // Seeded from the ONE canonical library in src/scene/materials.js. The store
+    // used to define its own map while PropertiesPanel defined a second, and the
+    // two disagreed on restitution and friction for the same named material —
+    // "Steel" meant e=0.20 through one path and e=0.30 through the other. Held in
+    // state (not imported at each read site) because it is undoable and a custom
+    // material the user edits has to live somewhere mutable.
+    materials: { ...MATERIAL_LIBRARY },
+
+    /**
+     * Assign a material to one body: physics, appearance, and derived mass.
+     *
+     * Mass comes from m = ρV using the body's canonical geometry, so picking
+     * "Steel" on a 0.1 m cube yields 7.85 kg rather than leaving the default
+     * 1 kg — density that never reaches mass is a number with no effect (§1.5).
+     * When the volume is not derivable (imported mesh, extruded profile,
+     * zero-thickness plane) the user's own mass is kept and a WARNING is
+     * published rather than a fabricated figure being written (§1.4).
+     */
     applyMaterial: (objectId, materialKey) => set((state) => {
         const mat = state.materials[materialKey];
-        if (!mat) return state;
-        const updateShapeOrObject = (list) => list.map(o => {
+        if (!mat) {
+            const d = diagnostic({
+                severity: Severity.ERROR,
+                category: Category.SCENE,
+                code: 'MATERIAL_UNKNOWN',
+                message: `No material "${materialKey}" in the library; nothing was applied.`,
+                objectId,
+                metadata: { actual: materialKey, expected: MATERIAL_KEYS }
+            });
+            console.error(`[applyMaterial] ${formatDiagnostic(d)}`);
+            return { sceneDiagnostics: [...(state.sceneDiagnostics || []), d] };
+        }
+        state.saveHistorySnapshot();
+
+        const physics = bodyPhysicsForMaterial(materialKey);
+        const notes = [];
+
+        const apply = (list, is3D) => list.map(o => {
             if (o.id !== objectId) return o;
-            return { ...o, material_id: materialKey, restitution: mat.restitution, friction: mat.dynamic_friction ?? mat.friction ?? 0.3 };
+            const geometry = is3D
+                ? geometryFromShape3D(o)
+                : geometryFromDraft(o, state.simulationSettings?.pixelsPerMetre);
+            const derived = massFromDensity(geometry, mat.density);
+            if (derived == null && !o.isStatic) {
+                notes.push(diagnostic({
+                    severity: Severity.WARNING,
+                    category: Category.SCENE,
+                    code: 'MATERIAL_MASS_NOT_DERIVABLE',
+                    message: `Applied ${mat.name} to "${o.name || o.id}", but its ${geometry.kind} geometry has no derivable volume — mass was left at ${o.mass ?? 1} kg.`,
+                    objectId,
+                    metadata: { kind: geometry.kind, density: mat.density }
+                }));
+            }
+            return {
+                ...o,
+                ...physics,
+                ...bodyAppearanceForMaterial(materialKey, is3D),
+                // Static bodies have infinite inertia, so a derived mass would be
+                // meaningless; leave whatever is there untouched.
+                ...(derived != null && !o.isStatic ? { mass: derived } : {})
+            };
+        });
+
+        const next = {
+            objects: apply(state.objects, false),
+            shapes3D: apply(state.shapes3D, true)
+        };
+        for (const n of notes) console.warn(`[applyMaterial] ${formatDiagnostic(n)}`);
+        if (notes.length) next.sceneDiagnostics = [...(state.sceneDiagnostics || []), ...notes];
+        return next;
+    }),
+
+    /**
+     * Recompute mass from the assigned material's density. Called after geometry
+     * changes: resizing a steel cube has to change its mass, or the material
+     * assignment silently stops being true. Bodies with no material_id, or whose
+     * volume is not derivable, are left alone.
+     */
+    recomputeMassFromMaterial: (ids) => set((state) => {
+        const targets = new Set(Array.isArray(ids) ? ids : [ids]);
+        const apply = (list, is3D) => list.map(o => {
+            if (!targets.has(o.id) || !o.material_id || o.isStatic) return o;
+            const mat = state.materials[o.material_id];
+            if (!mat) return o;
+            const geometry = is3D
+                ? geometryFromShape3D(o)
+                : geometryFromDraft(o, state.simulationSettings?.pixelsPerMetre);
+            const derived = massFromDensity(geometry, mat.density);
+            return derived == null ? o : { ...o, mass: derived };
         });
         return {
-            objects: updateShapeOrObject(state.objects),
-            shapes3D: updateShapeOrObject(state.shapes3D)
+            objects: apply(state.objects, false),
+            shapes3D: apply(state.shapes3D, true)
+        };
+    }),
+
+    /**
+     * Create or update a custom material. Physics values are clamped to
+     * physically meaningful ranges — a negative density or a restitution above 1
+     * makes a solver inject energy, which reads as an engine bug much later and
+     * far from the panel where it was typed (§1.4).
+     */
+    upsertMaterial: (key, props) => set((state) => {
+        if (!key) return state;
+        const prev = state.materials[key] || MATERIAL_LIBRARY.custom;
+        const notes = [];
+
+        // A value OUTSIDE the physical range is clamped to the nearest valid
+        // bound; a value with the wrong SIGN is rejected back to the previous
+        // one. The difference matters: clamping a restitution of 5 to 1 is a
+        // magnitude correction the user will recognise, but clamping a density of
+        // -3 to 0.01 kg/m³ would produce an almost massless body — a plausible
+        // number standing in for a typo (§1.4). Either way a diagnostic says what
+        // happened, so the panel is never silently showing something else.
+        const bounded = (field, v, lo, hi) => {
+            if (!Number.isFinite(v)) return prev[field];
+            if (v < 0 && lo >= 0) {
+                notes.push(diagnostic({
+                    severity: Severity.WARNING,
+                    category: Category.SCENE,
+                    code: 'MATERIAL_VALUE_REJECTED',
+                    message: `${field} cannot be negative; kept ${prev[field]} for material "${key}".`,
+                    metadata: { field, actual: v, kept: prev[field] }
+                }));
+                return prev[field];
+            }
+            const c = Math.min(hi, Math.max(lo, v));
+            if (c !== v) {
+                notes.push(diagnostic({
+                    severity: Severity.WARNING,
+                    category: Category.SCENE,
+                    code: 'MATERIAL_VALUE_CLAMPED',
+                    message: `${field} ${v} is outside the physical range [${lo}, ${hi}]; clamped to ${c} for material "${key}".`,
+                    metadata: { field, actual: v, clamped: c }
+                }));
+            }
+            return c;
+        };
+
+        const next = {
+            ...prev,
+            ...props,
+            name: props.name || prev.name || key,
+            density: bounded('density', props.density, 0.01, 25000),
+            restitution: bounded('restitution', props.restitution, 0, 1),
+            static_friction: bounded('static_friction', props.static_friction, 0, 2),
+            dynamic_friction: bounded('dynamic_friction', props.dynamic_friction, 0, 2)
+        };
+        for (const n of notes) console.warn(`[upsertMaterial] ${formatDiagnostic(n)}`);
+        return {
+            materials: { ...state.materials, [key]: next },
+            ...(notes.length ? { sceneDiagnostics: [...(state.sceneDiagnostics || []), ...notes] } : {})
         };
     }),
 

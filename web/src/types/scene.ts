@@ -1,4 +1,5 @@
 import { Vec3 } from './simulation';
+import { newEntityId } from '../scene/entity';
 
 export interface Transform {
   position: Vec3;
@@ -103,7 +104,10 @@ export interface CanonicalScene {
 
 export function createDefaultScene(): CanonicalScene {
   const now = new Date().toISOString();
-  const id = Math.random().toString(36).substring(2, 9);
+  // Deterministic scene id (§1.9), from the same counter every other entity
+  // uses. A random one made two default scenes differ in their metadata even
+  // when their contents were identical.
+  const id = newEntityId('scene_');
   return {
     metadata: {
       id,
