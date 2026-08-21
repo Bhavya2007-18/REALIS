@@ -102,16 +102,21 @@ const PRESETS = {
     },
 
     orbital_mechanics: {
-        metadata: { id: 'orbital_mechanics', name: 'Orbital Mechanics', version: '1.0' },
-        world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.016, substeps: 8, pointGravity: { center: { x: 0, y: 0, z: 0 }, strength: 5000000 } },
+        metadata: { id: 'orbital_mechanics', name: 'Orbital Mechanics', version: '2.0' },
+        world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.1, substeps: 8, pointGravity: { center: { x: 0, y: 0, z: 0 }, strength: 0 } },
+        lab: {
+            type: 'orbital',
+            mu: 3986.0, centralRadius: 15, satelliteMass: 1000,
+            r0: 100, theta0: 0, v0: Math.sqrt(3986 / 100), velAngle: 90,
+            dt: 0.1, timeScale: 5.0
+        },
         bodies: [
-            { id: 'sun', type: 'sphere', position: [0, 0, 0], params: { radius: 18 }, color: '#fbbf24', mass: 1000, isStatic: true },
-            { id: 'planet1', type: 'sphere', position: [120, 0, 0], params: { radius: 5 }, color: '#3b82f6', mass: 1.0, initialVelocity: { x: 0, y: 65, z: 0 } },
-            { id: 'planet2', type: 'sphere', position: [200, 0, 0], params: { radius: 4 }, color: '#ef4444', mass: 0.5, initialVelocity: { x: 0, y: 48, z: 0 } }
+            { id: 'central_body', type: 'sphere', position: [0, 0, 0], params: { radius: 18 }, color: '#fbbf24', mass: 6e22, isStatic: true },
+            { id: 'satellite', type: 'sphere', position: [100, 0, 0], params: { radius: 5 }, color: '#38bdf6', mass: 1000, initialVelocity: { x: 0, y: Math.sqrt(3986 / 100), z: 0 } }
         ],
         materials: [], forces: [], constraints: [],
-        simulation: { time_scale: 1.0 },
-        overlay: { title: 'Orbital Mechanics', description: 'Inverse-square gravity\nKeplerian orbits' }
+        simulation: { time_scale: 5.0 },
+        overlay: { title: 'Orbital Mechanics', description: 'Newtonian two-body gravity · RK4 integration\nv = √(μ/r) circular orbit preset' }
     },
 
     pulley_system: {

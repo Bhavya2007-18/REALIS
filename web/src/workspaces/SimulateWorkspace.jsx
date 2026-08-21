@@ -9,6 +9,7 @@ import Viewport3D from '../components/Viewport3D';
 import FreeFallLab from '../components/FreeFallLab';
 import ProjectileLab from '../components/ProjectileLab';
 import PendulumLab from '../components/PendulumLab';
+import OrbitalLab from '../components/OrbitalLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -26,6 +27,7 @@ const LAB_SCREENS = {
     free_fall: FreeFallLab,
     projectile_motion: ProjectileLab,
     single_pendulum: PendulumLab,
+    orbital_mechanics: OrbitalLab,
 };
 
 export default function SimulateWorkspace() {
@@ -91,7 +93,8 @@ export default function SimulateWorkspace() {
     const isFreeFallActive = simulationPreset === 'free_fall';
     const isProjectileActive = simulationPreset === 'projectile_motion';
     const isPendulumActive = simulationPreset === 'single_pendulum';
-    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive;
+    const isOrbitalActive = simulationPreset === 'orbital_mechanics';
+    const isLabActive = isFreeFallActive || isProjectileActive || isPendulumActive || isOrbitalActive;
     const isMechanicalAssemblyPreset = simulationPreset === 'shaft_ring_assembly';
     const v6SolverRef = useRef(null);
     const v6RenderAdapterRef = useRef(new V6RenderAdapter());
