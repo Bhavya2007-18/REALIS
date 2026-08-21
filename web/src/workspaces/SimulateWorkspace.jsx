@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-    Play, Square, SkipBack, SkipForward, Activity, Settings, Zap, Globe, Gauge, Trash2, Box, Flame, 
+import {
+    Play, Square, SkipBack, SkipForward, Activity, Settings, Zap, Globe, Gauge, Trash2, Box, Flame,
     Droplets, ArrowRightCircle, RotateCcw, RotateCw, PlusCircle, MousePointer,
     Circle as CircleIcon, Eye, EyeOff, Link2, Sliders, Layers, RefreshCw
 } from 'lucide-react';
@@ -77,7 +77,7 @@ class LabErrorBoundary extends React.Component {
 }
 
 export default function SimulateWorkspace() {
-    
+
     const objects = useStore(state => state.objects);
     const shapes3D = useStore(state => state.shapes3D);
     const setShapes3D = useStore(state => state.setShapes3D);
@@ -101,7 +101,7 @@ export default function SimulateWorkspace() {
     const resetPlayback = useStore(state => state.resetPlayback);
 
     const activeLayerId = useStore(state => state.activeLayerId);
-    
+
     // Build Mode & Debug Physics & Persistence Hooks
     const activeBuildTool = useStore(state => state.activeBuildTool);
     const setActiveBuildTool = useStore(state => state.setActiveBuildTool);
@@ -128,8 +128,8 @@ export default function SimulateWorkspace() {
             delete window.REALIS_AI_QUERY;
         };
     }, []);
-    
-    
+
+
     const simulationPreset = useStore(state => state.simulationPreset);
     const ActiveLab = LAB_SCREENS[simulationPreset] || null;
     const isV6Active = simulationPreset === 'v6_engine_simulation';
@@ -149,7 +149,7 @@ export default function SimulateWorkspace() {
     const [v6EngineState, setV6EngineState] = useState(null);
     const [isMechanicalAssemblyActive, setIsMechanicalAssemblyActive] = useState(false);
 
-    
+
     useEffect(() => {
         if (isV6Active) {
             // Ensure scene is hydrated (Sidebar may have already called loadDemo, but guard for direct preset changes)
@@ -158,18 +158,18 @@ export default function SimulateWorkspace() {
                 SimulationDemoManager.loadDemo('v6_engine_simulation', store);
             }
             v6SolverRef.current = new V6PhysicsSolver({
-                bore:            86,
-                stroke:          86,
-                crankRadius:     43,
-                rodLength:       130,
-                pistonMass:      0.45,
-                crankInertia:    0.35,
-                initialRPM:      800,
+                bore: 86,
+                stroke: 86,
+                crankRadius: 43,
+                rodLength: 130,
+                pistonMass: 0.45,
+                crankInertia: 0.35,
+                initialRPM: 800,
                 combustionForce: 30000,
-                frictionTorque:  20,
-                loadTorque:      0,
-                throttle:        1.0,
-                vAngleDeg:       60,
+                frictionTorque: 20,
+                loadTorque: 0,
+                throttle: 1.0,
+                vAngleDeg: 60,
             });
             setV6EngineState(v6SolverRef.current.getSnapshot());
             useStore.getState().setSimulationFrames([]);
@@ -199,19 +199,19 @@ export default function SimulateWorkspace() {
         setIsMechanicalAssemblyActive(initialized);
     }, [isV6Active, isMechanicalAssemblyPreset, shapes3D]);
 
-    
+
     const reqRef = useRef(null);
     const mechSolver = useRef(new MechanicsSolver(simulationSettings));
     const thermSolver = useRef(new ThermalSolver(simulationSettings));
     const accumulatorRef = useRef(0);
     const prevRigidSnapshotRef = useRef(null);
 
-    
+
     const [renderBodies, setRenderBodies] = useState([...shapes3D, ...objects]);
     const [vectors, setVectors] = useState([]);
     const [colorMap, setColorMap] = useState({});
 
-    
+
     useEffect(() => {
         if (!isPlaying) {
             const allBodies = [...shapes3D, ...objects];
@@ -222,15 +222,15 @@ export default function SimulateWorkspace() {
         }
     }, [objects, shapes3D, constraints, isPlaying]);
 
-    
+
     useEffect(() => {
         const groundY = simulationSettings.groundY;
         mechSolver.current.updateSettings({ ...simulationSettings, groundY, mode: simulationMode, water: useStore.getState().water });
         thermSolver.current.updateSettings(simulationSettings);
     }, [simulationSettings, simulationMode]);
-    
-    
-    
+
+
+
     const prevCounts = useRef({ o: objects.length, s: shapes3D.length });
     useEffect(() => {
         const changed = prevCounts.current.o !== objects.length || prevCounts.current.s !== shapes3D.length;
@@ -242,8 +242,8 @@ export default function SimulateWorkspace() {
             setRenderBodies(allBodies);
         }
     }, [objects, shapes3D]);
-    
-    
+
+
     useEffect(() => {
         if (activeWorkspace === 'simulate') {
             const allBodies = [...shapes3D, ...objects];
@@ -254,7 +254,7 @@ export default function SimulateWorkspace() {
         }
     }, [activeWorkspace]);
 
-    
+
     const renderBodiesRef = useRef(renderBodies);
     useEffect(() => {
         renderBodiesRef.current = renderBodies;
@@ -397,7 +397,7 @@ export default function SimulateWorkspace() {
         return () => cancelAnimationFrame(reqRef.current);
     }, [isPlaying, simulationType, isV6Active, isMechanicalAssemblyActive, isLabActive, setShapes3D, setSimulationState, setRenderBodies]);
 
-    
+
     useEffect(() => {
         if (!isPlaying && simulationState.time === 0) {
             mechSolver.current.reset();
@@ -412,26 +412,26 @@ export default function SimulateWorkspace() {
         }
     }, [isPlaying, simulationState.time, shapes3D, objects, isV6Active]);
 
-    
+
     const updateSetting = (key, val) => setSimulationSettings({ [key]: val });
     const updateGravity = (axis, val) => setSimulationSettings({ gravity: { ...simulationSettings.gravity, [axis]: parseFloat(val) } });
 
-    
+
     const finalViewportObjects = renderBodies.map((b, index) => {
         let matArgs = {};
         if (simulationType === 'thermal' && analysisSettings.showHeatmap && colorMap[b.id]) {
             matArgs = { fill: colorMap[b.id], color: colorMap[b.id] };
         }
-        
-        
+
+
         let renderState = { ...b };
         if (analysisSettings.isExplodedView) {
-            
-            
+
+
             const offsetMultiplier = 20;
-            const dirX = (index % 3) - 1; 
+            const dirX = (index % 3) - 1;
             const dirY = Math.floor(index / 3) % 2 === 0 ? 1 : -1;
-            
+
             if (renderState.x !== undefined) renderState.x += dirX * offsetMultiplier;
             if (renderState.cx !== undefined) renderState.cx += dirX * offsetMultiplier;
             if (renderState.y !== undefined) renderState.y += dirY * offsetMultiplier;
@@ -443,16 +443,16 @@ export default function SimulateWorkspace() {
 
     return (
         <div className="flex flex-col h-full bg-[#0a0f1a] relative overflow-hidden font-sans">
-            
-            {}
+
+            { }
             <div className="absolute top-0 left-0 right-0 h-14 bg-slate-950/80 backdrop-blur-md border-b border-white/10 z-30 flex items-center justify-between px-6">
-                
-                {}
+
+                { }
                 {/* Presets & Controls Header Toolbar */}
                 <div className="flex bg-black/40 p-1 rounded-xl shadow-inner border border-white/5 items-center gap-1">
-                    {[{ id: 'rigid', icon: <Box size={14}/>, label: 'Mechanical' },
-                      { id: 'thermal', icon: <Flame size={14}/>, label: 'Thermal' },
-                      { id: 'fluid', icon: <Droplets size={14}/>, label: 'Fluid (Beta)' }].map(type => (
+                    {[{ id: 'rigid', icon: <Box size={14} />, label: 'Mechanical' },
+                    { id: 'thermal', icon: <Flame size={14} />, label: 'Thermal' },
+                    { id: 'fluid', icon: <Droplets size={14} />, label: 'Fluid (Beta)' }].map(type => (
                         <button
                             key={type.id}
                             onClick={() => useStore.setState({ simulationType: type.id })}
@@ -485,14 +485,14 @@ export default function SimulateWorkspace() {
                 <div className="flex items-center gap-3">
                     {/* Undo / Redo */}
                     <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
-                        <button 
+                        <button
                             onClick={() => useStore.temporal?.getState()?.undo()}
                             className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/10"
                             title="Undo (Ctrl+Z)"
                         >
                             <RotateCcw size={12} />
                         </button>
-                        <button 
+                        <button
                             onClick={() => useStore.temporal?.getState()?.redo()}
                             className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/10"
                             title="Redo (Ctrl+Shift+Z)"
@@ -510,11 +510,10 @@ export default function SimulateWorkspace() {
                     {/* Debug Physics Toggle */}
                     <button
                         onClick={toggleDebugPhysics}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${
-                            debugPhysics.enabled
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all cursor-pointer ${debugPhysics.enabled
                                 ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                                 : 'border-white/10 text-slate-400 hover:bg-white/5'
-                        }`}
+                            }`}
                     >
                         {debugPhysics.enabled ? <Eye size={12} /> : <EyeOff size={12} />} Debug Physics
                     </button>
@@ -529,7 +528,7 @@ export default function SimulateWorkspace() {
                 </div>
             </div>
 
-            {}
+            { }
             <div className="flex-1 relative pt-14">
                 {ActiveLab ? (
                     <LabErrorBoundary key={simulationPreset}>
@@ -668,9 +667,8 @@ export default function SimulateWorkspace() {
 
                     <button
                         onClick={() => { setActiveBuildTool('select'); setJointWireSource(null); }}
-                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
-                            activeBuildTool === 'select' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'
-                        }`}
+                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${activeBuildTool === 'select' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
                         title="Select Tool"
                     >
                         <MousePointer size={14} />
@@ -735,11 +733,10 @@ export default function SimulateWorkspace() {
                             setActiveBuildTool(activeBuildTool === 'wire_joint' ? 'select' : 'wire_joint');
                             setJointWireSource(null);
                         }}
-                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
-                            activeBuildTool === 'wire_joint'
+                        className={`p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${activeBuildTool === 'wire_joint'
                                 ? 'bg-purple-600 text-white shadow-lg animate-pulse'
                                 : 'text-slate-400 hover:text-white hover:bg-white/10'
-                        }`}
+                            }`}
                         title="Wire Joint (Click Body 1 then Body 2)"
                     >
                         <Link2 size={14} className="text-purple-400" />
@@ -762,7 +759,7 @@ export default function SimulateWorkspace() {
                                 <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
                             </marker>
                         </defs>
-                        
+
                         {/* Constraints Overlay */}
                         {constraints.map((c, i) => {
                             const allBodies = [...(renderBodies || []), ...(objects || []), ...(shapes3D || [])];
@@ -817,13 +814,13 @@ export default function SimulateWorkspace() {
                             return (
                                 <g key={`debug_body_${b.id}`}>
                                     {/* Bounding Box */}
-                                    <rect x={px - w/2} y={py - h/2} width={w} height={h} fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" opacity="0.7" />
+                                    <rect x={px - w / 2} y={py - h / 2} width={w} height={h} fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" opacity="0.7" />
                                     {/* Center of Mass Crosshair */}
                                     <line x1={px - 6} y1={py} x2={px + 6} y2={py} stroke="#ef4444" strokeWidth="1.5" />
                                     <line x1={px} y1={py - 6} x2={px} y2={py + 6} stroke="#ef4444" strokeWidth="1.5" />
                                     {/* Sleeping Badge */}
                                     {b.sleeping && (
-                                        <text x={px} y={py - h/2 - 4} fill="#94a3b8" fontSize="9" textAnchor="middle" fontWeight="bold">zzz</text>
+                                        <text x={px} y={py - h / 2 - 4} fill="#94a3b8" fontSize="9" textAnchor="middle" fontWeight="bold">zzz</text>
                                     )}
                                 </g>
                             );
@@ -836,14 +833,14 @@ export default function SimulateWorkspace() {
                             const length = Math.min(100, v.magnitude * (analysisSettings.vectorScale || 1));
                             const dirX = v.velocity.x || v.gravityForce.x || 0;
                             const dirY = v.velocity.y || v.gravityForce.y || 0;
-                            const lenOrig = Math.sqrt(dirX*dirX + dirY*dirY) || 1;
+                            const lenOrig = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
 
                             return length > 1 ? (
                                 <line
                                     key={`vector-${i}`}
                                     x1={originX} y1={originY}
-                                    x2={originX + (dirX/lenOrig)*length}
-                                    y2={originY + (dirY/lenOrig)*length}
+                                    x2={originX + (dirX / lenOrig) * length}
+                                    y2={originY + (dirY / lenOrig) * length}
                                     stroke="#fbbf24" strokeWidth="2"
                                     markerEnd="url(#arrowhead)"
                                     opacity="0.8"
@@ -868,7 +865,7 @@ export default function SimulateWorkspace() {
                                         <span className="text-emerald-400">{simulationState.energy.kinetic.toFixed(1)} J</span>
                                     </div>
                                     <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-400 transition-all duration-300" style={{ width: `${Math.min(100, simulationState.energy.kinetic / 100)}%` }}/>
+                                        <div className="h-full bg-emerald-400 transition-all duration-300" style={{ width: `${Math.min(100, simulationState.energy.kinetic / 100)}%` }} />
                                     </div>
                                 </div>
                                 <div>
@@ -877,7 +874,7 @@ export default function SimulateWorkspace() {
                                         <span className="text-blue-400">{simulationState.energy.potential.toFixed(1)} J</span>
                                     </div>
                                     <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-400 transition-all duration-300" style={{ width: `${Math.min(100, simulationState.energy.potential / 100)}%` }}/>
+                                        <div className="h-full bg-blue-400 transition-all duration-300" style={{ width: `${Math.min(100, simulationState.energy.potential / 100)}%` }} />
                                     </div>
                                 </div>
                                 <div className="pt-1.5 border-t border-white/10 flex justify-between text-[10px] font-mono font-bold">
@@ -893,68 +890,68 @@ export default function SimulateWorkspace() {
             {/* ── Timeline & Engine Inspector Control Bar ────────────────────────────────────────── */}
             {/* Hidden inside dedicated labs so the physics canvas gets their full viewport height. */}
             {!isLabActive && (
-            <div className="h-16 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center gap-8 z-30 shrink-0">
-                {/* Playback Controls */}
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => { resetPlayback(); useStore.setState({ simulationState: { ...simulationState, time: 0 }}) }} 
-                        className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
-                        title="Reset Simulation"
-                    >
-                        <RefreshCw size={14} />
-                    </button>
+                <div className="h-16 bg-slate-950/90 border-t border-white/10 backdrop-blur-3xl px-6 flex items-center gap-8 z-30 shrink-0">
+                    {/* Playback Controls */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => { resetPlayback(); useStore.setState({ simulationState: { ...simulationState, time: 0 } }) }}
+                            className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
+                            title="Reset Simulation"
+                        >
+                            <RefreshCw size={14} />
+                        </button>
 
-                    <button 
-                        onClick={togglePlayback} 
-                        className="h-9 px-5 bg-primary hover:bg-blue-500 text-white rounded-xl shadow-[0_0_15px_rgba(37,106,244,0.4)] flex items-center justify-center transition-all cursor-pointer font-bold tracking-wider uppercase text-[10px]"
-                    >
-                        {isPlaying ? <><Square size={12} fill="currentColor" className="mr-1.5"/> PAUSE</> : <><Play size={14} fill="currentColor" className="mr-1.5"/> RUN</>}
-                    </button>
+                        <button
+                            onClick={togglePlayback}
+                            className="h-9 px-5 bg-primary hover:bg-blue-500 text-white rounded-xl shadow-[0_0_15px_rgba(37,106,244,0.4)] flex items-center justify-center transition-all cursor-pointer font-bold tracking-wider uppercase text-[10px]"
+                        >
+                            {isPlaying ? <><Square size={12} fill="currentColor" className="mr-1.5" /> PAUSE</> : <><Play size={14} fill="currentColor" className="mr-1.5" /> RUN</>}
+                        </button>
 
-                    <button 
-                        onClick={() => {
-                            if (!isPlaying && mechSolver.current) {
-                                mechSolver.current.step();
-                                setSimulationState({ time: mechSolver.current.time, energy: mechSolver.current.getSnapshot().energy });
-                            }
-                        }}
-                        className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
-                        title="Single Step Forward"
-                    >
-                        <SkipForward size={14} />
-                    </button>
-                </div>
+                        <button
+                            onClick={() => {
+                                if (!isPlaying && mechSolver.current) {
+                                    mechSolver.current.step();
+                                    setSimulationState({ time: mechSolver.current.time, energy: mechSolver.current.getSnapshot().energy });
+                                }
+                            }}
+                            className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg"
+                            title="Single Step Forward"
+                        >
+                            <SkipForward size={14} />
+                        </button>
+                    </div>
 
-                {/* Time-Scale Speed Slider */}
-                <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
-                    <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">Speed</span>
-                    <input
-                        type="range" min="0.1" max="5.0" step="0.1"
-                        value={simulationSettings.timeScale || 1.0}
-                        onChange={(e) => updateSetting('timeScale', parseFloat(e.target.value))}
-                        className="w-20 h-1 bg-white/10 rounded-full accent-primary outline-none cursor-pointer"
-                    />
-                    <span className="text-[10px] font-mono text-primary font-bold">{simulationSettings.timeScale || 1.0}x</span>
-                </div>
+                    {/* Time-Scale Speed Slider */}
+                    <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">Speed</span>
+                        <input
+                            type="range" min="0.1" max="5.0" step="0.1"
+                            value={simulationSettings.timeScale || 1.0}
+                            onChange={(e) => updateSetting('timeScale', parseFloat(e.target.value))}
+                            className="w-20 h-1 bg-white/10 rounded-full accent-primary outline-none cursor-pointer"
+                        />
+                        <span className="text-[10px] font-mono text-primary font-bold">{simulationSettings.timeScale || 1.0}x</span>
+                    </div>
 
-                {/* Progress Bar & Telemetry */}
-                <div className="flex-1 flex flex-col gap-1">
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
-                            Elapsed Time: {simulationState.time.toFixed(3)} s
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <div className={`size-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
-                            <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">
-                                {isPlaying ? 'SIMULATING' : 'PAUSED'}
+                    {/* Progress Bar & Telemetry */}
+                    <div className="flex-1 flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                                Elapsed Time: {simulationState.time.toFixed(3)} s
                             </span>
+                            <div className="flex items-center gap-2">
+                                <div className={`size-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}></div>
+                                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase">
+                                    {isPlaying ? 'SIMULATING' : 'PAUSED'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="relative w-full h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
+                            <div className="absolute top-0 left-0 h-full bg-primary transition-all duration-75" style={{ width: `${(simulationState.time % 10) / 10 * 100}%` }}></div>
                         </div>
                     </div>
-                    <div className="relative w-full h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
-                        <div className="absolute top-0 left-0 h-full bg-primary transition-all duration-75" style={{ width: `${(simulationState.time % 10) / 10 * 100}%` }}></div>
-                    </div>
                 </div>
-            </div>
             )}
         </div>
     );

@@ -147,11 +147,10 @@ export default function FreeFallLab() {
                             <button
                                 key={pKey}
                                 onClick={() => setSelectedPlanet(pKey)}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${
-                                    selectedPlanet === pKey
-                                        ? 'bg-sky-500 text-white shadow-md'
-                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                }`}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${selectedPlanet === pKey
+                                    ? 'bg-sky-500 text-white shadow-md'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
                                 title={`${pData.name} (g = ${pData.g} m/s²)`}
                             >
                                 {pData.name}
@@ -164,36 +163,32 @@ export default function FreeFallLab() {
                 <div className="flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-white/10 pointer-events-auto">
                     <button
                         onClick={() => setShowRuler(!showRuler)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showRuler ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showRuler ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Metric Height Ruler"
                     >
                         <Layers size={11} /> Ruler
                     </button>
                     <button
                         onClick={() => setShowVelocityVector(!showVelocityVector)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showVelocityVector ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showVelocityVector ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Velocity Vector"
                     >
                         <ArrowDown size={11} /> Vel Vector
                     </button>
                     <button
                         onClick={() => setShowGravityVector(!showGravityVector)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showGravityVector ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showGravityVector ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Gravity Vector"
                     >
                         <Globe size={11} /> Gravity Vector
                     </button>
                     <button
                         onClick={() => setShowStrobeTrail(!showStrobeTrail)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showStrobeTrail ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showStrobeTrail ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Stroboscopic Acceleration Markers"
                     >
                         <Sparkles size={11} /> Strobe Trail
@@ -518,11 +513,10 @@ export default function FreeFallLab() {
 
                     <button
                         onClick={togglePlayback}
-                        className={`h-10 px-6 rounded-xl flex items-center justify-center font-bold tracking-wider uppercase text-xs transition-all cursor-pointer shadow-lg ${
-                            isPlaying
-                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
-                                : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/30'
-                        }`}
+                        className={`h-10 px-6 rounded-xl flex items-center justify-center font-bold tracking-wider uppercase text-xs transition-all cursor-pointer shadow-lg ${isPlaying
+                            ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                            : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/30'
+                            }`}
                     >
                         {isPlaying ? (
                             <><Square size={13} fill="currentColor" className="mr-2" /> PAUSE</>
@@ -548,9 +542,8 @@ export default function FreeFallLab() {
                         <button
                             key={speed}
                             onClick={() => setTimeScale(speed)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                                timeScale === speed ? 'bg-sky-500 text-white' : 'text-slate-500 hover:text-white'
-                            }`}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${timeScale === speed ? 'bg-sky-500 text-white' : 'text-slate-500 hover:text-white'
+                                }`}
                         >
                             {speed}x
                         </button>

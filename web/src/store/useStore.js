@@ -42,28 +42,28 @@ const useStore = create(temporal((set) => ({
     activeWorkspace: 'design',
     setActiveWorkspace: (workspace) => set({ activeWorkspace: workspace }),
 
-    activeTool: 'select', 
+    activeTool: 'select',
     setActiveTool: (tool) => set({ activeTool: tool }),
 
-    
+
     is3DView: false,
     setIs3DView: (val) => set({ is3DView: typeof val === 'boolean' ? val : !useStore.getState().is3DView }),
 
-    
-    sidebarView: 'explorer', 
+
+    sidebarView: 'explorer',
     setSidebarView: (view) => set({ sidebarView: view }),
 
     isSidebarOpen: true,
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-    
+
     typedCoordinates: null,
     setTypedCoordinates: (coords) => set({ typedCoordinates: coords }),
 
-    
+
     objects: [],
 
-    
+
     shapes3D: [],
     setShapes3D: (shapes) => set({ shapes3D: typeof shapes === 'function' ? shapes(useStore.getState().shapes3D) : shapes }),
     addShape3D: (shape) => set((state) => {
@@ -98,7 +98,7 @@ const useStore = create(temporal((set) => ({
     setConstraints: (constraints) => set({ constraints }),
     addConstraints: (newConstraints) => set((state) => ({ constraints: [...(state.constraints || []), ...newConstraints] })),
 
-    active3DTool: 'select', 
+    active3DTool: 'select',
     setActive3DTool: (tool) => set({ active3DTool: tool }),
 
     water: {
@@ -112,24 +112,24 @@ const useStore = create(temporal((set) => ({
     },
     setWater: (cfg) => set(state => ({ water: { ...state.water, ...cfg } })),
 
-    
+
     extrudeOperation: {
         profileId: null,
         distance: 20,
-        direction: 'positive', 
-        type: 'new' 
+        direction: 'positive',
+        type: 'new'
     },
     setExtrudeOperation: (op) => set(state => ({ extrudeOperation: { ...state.extrudeOperation, ...op } })),
-    
-    
+
+
     demoOverlay: null,
     setDemoOverlay: (overlay) => set({ demoOverlay: overlay }),
 
-    
+
     showGrid: true,
     toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 
-    
+
     history: [],
     historyIndex: -1,
 
@@ -180,14 +180,14 @@ const useStore = create(temporal((set) => ({
         });
     },
 
-    
+
     setObjects: (objs) => set({ objects: typeof objs === 'function' ? objs(useStore.getState().objects) : objs }),
     addCADObject: (obj) => set((state) => {
         state.saveHistorySnapshot();
         return { objects: [...state.objects, withEntityIdentity(obj, state.objects)] };
     }),
 
-    
+
     layers: [
         { id: 'default', name: 'Layer 0', color: '#3b82f6', visible: true, locked: false },
         { id: 'layer1', name: 'Layer 1', color: '#10b981', visible: true, locked: false },
@@ -396,7 +396,7 @@ const useStore = create(temporal((set) => ({
     })),
     setActiveLayerId: (id) => set({ activeLayerId: id }),
 
-    
+
     // ── Object lifecycle (Phase 4) ──────────────────────────────────────
     // Single delete path for BOTH 2D drafts and 3D shapes. Also prunes any
     // constraint that referenced a removed entity (no dangling refs) and drops
@@ -575,7 +575,7 @@ const useStore = create(temporal((set) => ({
         shapes3D: state.shapes3D.map(s => s.id === id ? { ...s, name } : s)
     })),
 
-    
+
     mirrorObjects: (axis) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -603,7 +603,7 @@ const useStore = create(temporal((set) => ({
         return { objects: [...objects, ...clones] };
     }),
 
-    
+
     offsetObject: (amount) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -622,7 +622,7 @@ const useStore = create(temporal((set) => ({
         };
     }),
 
-    
+
     arrayObjects: (rows, cols, spacingX, spacingY) => set((state) => {
         const { selectedIds, objects } = state;
         if (selectedIds.length === 0) return state;
@@ -666,8 +666,8 @@ const useStore = create(temporal((set) => ({
         state.saveHistorySnapshot();
         return { constraints: state.constraints.filter(c => c.id !== id) };
     }),
-    
-    rightPanelView: 'properties', 
+
+    rightPanelView: 'properties',
     setRightPanelView: (view) => set({ rightPanelView: view }),
 
     isRightPanelOpen: true,
@@ -692,7 +692,7 @@ const useStore = create(temporal((set) => ({
     selectedJointId: null,
     setSelectedJointId: (id) => set({ selectedJointId: id }),
 
-    activeFileId: null, 
+    activeFileId: null,
     setActiveFileId: (id) => set({ activeFileId: id }),
 
     groupObjects: () => set((state) => {
@@ -749,9 +749,9 @@ const useStore = create(temporal((set) => ({
     simTime: 0,
     setSimTime: (time) => set({ simTime: time }),
 
-    
-    simulationMode: 'preview', 
-    simulationType: 'rigid', 
+
+    simulationMode: 'preview',
+    simulationType: 'rigid',
     simulationPreset: null,
     setSimulationPreset: (preset) => set({ simulationPreset: preset }),
 
@@ -802,30 +802,30 @@ const useStore = create(temporal((set) => ({
         simulationSettings: { ...state.simulationSettings, ...settings }
     })),
 
-    
+
     activeModelControls: [],
     setActiveModelControls: (controls) => set({ activeModelControls: controls }),
     updateModelControl: (controlId, value) => set((state) => {
-        
-        const newControls = state.activeModelControls.map(c => 
+
+        const newControls = state.activeModelControls.map(c =>
             c.id === controlId ? { ...c, current: value } : c
         );
-        
-        
+
+
         const { objects, constraints } = state;
         const [targetId, property] = controlId.split('.');
 
         const newObjects = objects.map(o => o.id === targetId ? { ...o, [property]: value } : o);
         const newConstraints = constraints.map(c => c.id === targetId ? { ...c, [property]: value } : c);
 
-        return { 
+        return {
             activeModelControls: newControls,
             objects: newObjects,
             constraints: newConstraints
         };
     }),
 
-    
+
     simulationState: {
         time: 0,
         energy: { kinetic: 0, potential: 0, total: 0 },
@@ -835,11 +835,13 @@ const useStore = create(temporal((set) => ({
         simulationState: { ...state.simulationState, ...stateUpdate }
     })),
 
-    
-    simulationFrames: [], 
+
+    simulationFrames: [],
     setSimulationFrames: (frames) => set({ simulationFrames: frames }),
     isPlaying: false,
     setIsPlaying: (playing) => {
+        // Pause undo tracking DURING playback so per-frame physics mutations don't flood the
+        // 50-entry history ring; resume when stopped so design edits stay undoable.
         if (playing) useStore.temporal.getState().pause();
         else useStore.temporal.getState().resume();
         set({ isPlaying: playing });
@@ -847,16 +849,17 @@ const useStore = create(temporal((set) => ({
     currentFrameIndex: 0,
     setCurrentFrameIndex: (index) => set({ currentFrameIndex: index }),
 
-    
+
     togglePlayback: () => set((state) => {
         const nextPlaying = !state.isPlaying;
+        // See setIsPlaying: pause undo tracking during playback, resume when stopped.
         if (nextPlaying) useStore.temporal.getState().pause();
         else useStore.temporal.getState().resume();
         return { isPlaying: nextPlaying };
     }),
     resetPlayback: () => set({ currentFrameIndex: 0, isPlaying: false, simTime: 0 }),
 
-    
+
     analysisSettings: {
         showVectors: false,
         showForces: false,
@@ -871,7 +874,7 @@ const useStore = create(temporal((set) => ({
         analysisSettings: { ...state.analysisSettings, ...settings }
     })),
 
-    energyHistory: [], 
+    energyHistory: [],
     addEnergySnapshot: (snapshot) => set((state) => {
         const nextHistory = [...state.energyHistory, snapshot];
         if (nextHistory.length > 200) nextHistory.shift();
@@ -879,19 +882,19 @@ const useStore = create(temporal((set) => ({
     }),
     clearEnergyHistory: () => set({ energyHistory: [] }),
 
-    
-    aiMemory: [], 
+
+    aiMemory: [],
     addAIMemory: (action) => set(state => {
         const memory = [...state.aiMemory, action];
         if (memory.length > 10) memory.shift();
         return { aiMemory: memory };
     }),
 
-    
+
     isSketchImportOpen: false,
     toggleSketchImport: () => set(state => ({ isSketchImportOpen: !state.isSketchImportOpen })),
     setSketchImportOpen: (val) => set({ isSketchImportOpen: val }),
-    sketchDraft: null, 
+    sketchDraft: null,
     setSketchDraft: (draft) => set({ sketchDraft: draft }),
 
     // ── Save/Load Persistence (Section 3.2 JSON round-trip) ──────────────
