@@ -92,6 +92,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `t ${labData.snapshot.time.toFixed(2)}s · r ${labData.snapshot.position.r.toFixed(1)}km · v ${labData.snapshot.velocity.v.toFixed(2)}km/s · ${labData.snapshot.orbit.type.toLowerCase()}`
                         : labData.type === 'inclined_friction_ramp'
                         ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
+                        : labData.type === 'v6_engine'
+                        ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutput.toFixed(1)}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
                         : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
                     }
                 >
@@ -136,6 +138,14 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 <Stat label="Critical θ_c" value={labData.snapshot.thetaCDeg ? labData.snapshot.thetaCDeg.toFixed(1) : '—'} unit="°" color="text-amber-400" />
                             </div>
                         )}
+                        {labData.type === 'v6_engine' && (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <Stat label="Engine RPM" value={Math.round(labData.snapshot.RPM)} unit="rpm" color="text-sky-400" />
+                                <Stat label="Total Torque" value={Math.round(labData.snapshot.totalTorque)} unit="N·m" color="text-amber-400" />
+                                <Stat label="Power Output" value={labData.snapshot.powerOutput.toFixed(1)} unit="kW" color="text-emerald-400" />
+                                <Stat label="Crank Angle" value={labData.snapshot.crankAngleDeg.toFixed(1)} unit="°" />
+                            </div>
+                        )}
                         
                         {labData.snapshot.energy && (
                             <div className="bg-slate-950/60 px-3 py-2 rounded-lg flex justify-between items-center text-xs font-mono border border-white/5">
@@ -153,7 +163,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                     sectionKey="params"
                     openSections={openSections}
                     toggleSection={toggleSection}
-                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : 'INITIAL CONDITIONS'}
+                    title={labData.type === 'projectile_motion' ? 'LAUNCH PARAMETERS' : labData.type === 'orbital_mechanics' ? 'ORBIT SETUP' : labData.type === 'inclined_friction_ramp' ? 'RAMP PARAMETERS' : labData.type === 'v6_engine' ? 'ENGINE PARAMETERS' : 'INITIAL CONDITIONS'}
                     icon={<SlidersHorizontal size={13} />}
                     accent="text-amber-400"
                     summary={labData.type === 'free_fall' 
@@ -168,6 +178,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         ? `r₀ ${labData.config.r0}km · v₀ ${labData.config.v0}km/s · θ₀ ${labData.config.theta0}° · μ ${labData.config.mu}`
                         : labData.type === 'inclined_friction_ramp'
                         ? `m ${labData.config.mass}kg · θ ${labData.config.thetaDeg}° · μ_s ${labData.config.muS} · μ_k ${labData.config.muK}`
+                        : labData.type === 'v6_engine'
+                        ? `Target RPM ${labData.config.targetRPM || labData.config.initialRPM} · Crank R ${labData.config.crankRadius}mm · Rod L ${labData.config.rodLength}mm`
                         : `v₀ ${labData.config.v0}m/s · θ ${labData.config.angle}° · y₀ ${labData.config.y0}m · g ${labData.config.gravity}m/s²`
                     }
                 >
@@ -708,6 +720,55 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <input type="range" min="-6" max="6" step="0.1" value={labData.config.v0}
                                         onChange={(e) => handleLabConfigChange('v0', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                                </div>
+                            </>
+                        )}
+                        {labData.type === 'v6_engine' && (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">TARGET RPM</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.targetRPM || labData.config.initialRPM}</span>
+                                    </div>
+                                    <input type="range" min="200" max="8000" step="100" value={labData.config.targetRPM || labData.config.initialRPM}
+                                        onChange={(e) => handleLabConfigChange('targetRPM', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">CRANK RADIUS</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.crankRadius} mm</span>
+                                    </div>
+                                    <input type="range" min="20" max="80" step="1" value={labData.config.crankRadius}
+                                        onChange={(e) => handleLabConfigChange('crankRadius', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">ROD LENGTH</span>
+                                        <span className="text-emerald-400 font-bold">{labData.config.rodLength} mm</span>
+                                    </div>
+                                    <input type="range" min="100" max="250" step="1" value={labData.config.rodLength}
+                                        onChange={(e) => handleLabConfigChange('rodLength', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">COMBUSTION FORCE</span>
+                                        <span className="text-rose-400 font-bold">{labData.config.combustionForce} N</span>
+                                    </div>
+                                    <input type="range" min="10000" max="80000" step="1000" value={labData.config.combustionForce}
+                                        onChange={(e) => handleLabConfigChange('combustionForce', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">FRICTION TORQUE</span>
+                                        <span className="text-fuchsia-400 font-bold">{labData.config.frictionTorque} N·m</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" step="5" value={labData.config.frictionTorque}
+                                        onChange={(e) => handleLabConfigChange('frictionTorque', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
                                 </div>
                             </>
                         )}
@@ -1478,7 +1539,48 @@ const [selectedObject, setSelectedObject] = useState(null)
                     </div>
                 </div>
 
-                {}
+                {(() => {
+                    if (labData?.type === 'v6_engine' && selectedObject) {
+                        const match = selectedObject.id.match(/v6_(?:piston|con_rod|crank_throw)_(\d+)/);
+                        if (match && labData.snapshot?.cylinders) {
+                            const cylIdx = parseInt(match[1]);
+                            const cyl = labData.snapshot.cylinders[cylIdx];
+                            if (cyl) {
+                                return (
+                                    <div className="space-y-2 mb-4 p-3 bg-slate-900 rounded-lg border border-slate-700">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-2">
+                                            <Activity size={12} /> Cylinder {cylIdx + 1} Telemetry
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">STROKE</span>
+                                                <span className={
+                                                    cyl.strokeName === 'POWER' ? 'text-rose-400 font-bold' :
+                                                    cyl.strokeName === 'COMPRESSION' ? 'text-amber-400' :
+                                                    cyl.strokeName === 'EXHAUST' ? 'text-slate-300' : 'text-sky-400'
+                                                }>{cyl.strokeName}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">POSITION</span>
+                                                <span className="text-emerald-400">{cyl.normalizedPos.toFixed(3)}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">GLOW INTENSITY</span>
+                                                <span className="text-rose-400">{(cyl.combustionGlow * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">ROD ANGLE</span>
+                                                <span className="text-indigo-400">{(cyl.rodAngle * 180 / Math.PI).toFixed(1)}°</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                        }
+                    }
+                    return null;
+                })()}
+
                 {selectedObject.is3D && (
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">

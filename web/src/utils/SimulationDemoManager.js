@@ -162,27 +162,38 @@ const PRESETS = {
     },
 
     v6_engine_simulation: {
-        metadata: { id: 'v6_engine_simulation', name: 'V6 Engine Demonstrator', version: '1.0' },
+        metadata: { id: 'v6_engine_simulation', name: 'V6 Engine Demonstrator', version: '2.0' },
         world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.016, substeps: 8 },
         bodies: [
-            { id: 'crank_center', type: 'sphere', position: [0, 150, 0], params: { radius: 6 }, color: '#fbbf24', isStatic: true },
-            ...Array.from({ length: 6 }, (_, i) => {
-                const angle = (i * 60) * Math.PI / 180;
-                const crankR = 35;
-                return {
-                    id: `piston_${i}`, type: 'sphere',
-                    position: [Math.cos(angle) * crankR * 2.5, 150 + Math.sin(angle) * crankR * 2.5, 0],
-                    params: { radius: 6 }, color: i < 3 ? '#3b82f6' : '#ef4444',
-                    mass: 0.45, restitution: 0.1, friction: 0.2
-                };
-            })
+            // Central crank pivot (static, rendered at origin)
+            { id: 'v6_crank_center', type: 'sphere', position: [0, 0, 0], params: { radius: 4, segments: 32 }, color: '#fbbf24', isStatic: true },
+            // Crankshaft spine (cylinder along Z axis, rotated by adapter)
+            { id: 'v6_crankshaft', type: 'cylinder', position: [0, 0, 0], params: { radiusTop: 2, radiusBottom: 2, height: 30, segments: 16 }, color: '#94a3b8', isStatic: true },
+            // Flywheel disc
+            { id: 'v6_flywheel', type: 'cylinder', position: [0, 0, -15], params: { radiusTop: 8, radiusBottom: 8, height: 3, segments: 32 }, color: '#475569', isStatic: true },
+            // 6 cylinders: crank_throw, con_rod, piston
+            ...Array.from({ length: 6 }, (_, i) => [
+                {
+                    id: `v6_crank_throw_${i}`, type: 'cube',
+                    position: [0, 0, 0], params: { width: 3, height: 8, depth: 3 },
+                    color: '#64748b'
+                },
+                {
+                    id: `v6_con_rod_${i}`, type: 'cube',
+                    position: [0, 0, 0], params: { width: 1.5, height: 26, depth: 1.5 },
+                    color: i < 3 ? '#3b82f6' : '#8b5cf6'
+                },
+                {
+                    id: `v6_piston_${i}`, type: 'cube',
+                    position: [0, 0, 0], params: { width: 7, height: 5, depth: 7 },
+                    color: '#e2e8f0', mass: 0.45, restitution: 0.1, friction: 0.2
+                }
+            ]).flat()
         ],
         materials: [], forces: [],
-        constraints: Array.from({ length: 6 }, (_, i) => ({
-            type: 'distance', targetA: 'crank_center', targetB: `piston_${i}`, distance: 87.5
-        })),
+        constraints: [],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'V6 Engine Demonstrator', description: '6-cylinder radial assembly\nCrankshaft constraint dynamics' }
+        overlay: { title: 'V6 Engine', description: 'Mathematical simulation of a 6-cylinder internal combustion engine.' }
     },
 
     revolute_crank_slider: {
@@ -249,11 +260,12 @@ export class SimulationDemoManager {
         const preset = PRESETS[presetId];
         if (!preset) return;
 
-        const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings, setDemoOverlay, resetPlayback, setIsPlaying, setSimulationState, setSimulationPreset } = store;
+        const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings, setDemoOverlay, resetPlayback, setIsPlaying, setSimulationState, setSimulationPreset, setIs3DView } = store;
         clearDesign();
         if (resetPlayback) resetPlayback();
         if (setSimulationState) setSimulationState({ time: 0, energy: { kinetic: 0, potential: 0, total: 0 } });
         if (setSimulationPreset) setSimulationPreset(presetId);
+        if (setIs3DView && presetId === 'v6_engine_simulation') setIs3DView(true);
 
         // Load world settings
         const world = preset.world;
