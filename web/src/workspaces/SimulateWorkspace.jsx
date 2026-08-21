@@ -13,6 +13,7 @@ import DoublePendulumLab from '../components/DoublePendulumLab';
 import SpringOscillatorLab from '../components/SpringOscillatorLab';
 import OrbitalLab from '../components/OrbitalLab';
 import InclinedRampLab from '../components/InclinedRampLab';
+import CrankSliderLab from '../components/CrankSliderLab';
 import MechanicsSolver from '../utils/solvers/mechanicsSolver';
 import ThermalSolver from '../utils/solvers/thermalSolver';
 import V6PhysicsSolver, { V6_CONFIG } from '../utils/solvers/v6PhysicsSolver';
@@ -34,6 +35,8 @@ const LAB_SCREENS = {
     spring_oscillator: SpringOscillatorLab,
     orbital_mechanics: OrbitalLab,
     inclined_friction_ramp: InclinedRampLab,
+    revolute_crank_slider: CrankSliderLab,
+    crank_slider: CrankSliderLab,
 };
 
 class LabErrorBoundary extends React.Component {

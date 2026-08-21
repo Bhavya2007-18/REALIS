@@ -242,11 +242,13 @@ export const PRESET_CATALOG = Object.entries(PRESETS).map(([key, preset]) => ({
 // ─── Demo Manager ────────────────────────────────────────────────────────────
 export class SimulationDemoManager {
     static getPresetData(presetId) {
-        return PRESETS[presetId] || null;
+        const id = presetId === 'crank_slider' ? 'revolute_crank_slider' : presetId;
+        return PRESETS[id] || null;
     }
 
     static loadDemo(presetId, store) {
-        const preset = PRESETS[presetId];
+        const id = presetId === 'crank_slider' ? 'revolute_crank_slider' : presetId;
+        const preset = PRESETS[id];
         if (!preset) return;
 
         const { clearDesign, addCADObject, addShape3D, addConstraint, setSimulationSettings, setDemoOverlay, resetPlayback, setIsPlaying, setSimulationState, setSimulationPreset } = store;
@@ -265,12 +267,21 @@ export class SimulationDemoManager {
         if (world.pointGravity) settings.pointGravity = world.pointGravity;
         setSimulationSettings(settings);
 
-        // Load bodies
+        // Load bodies safely
         preset.bodies.forEach(body => {
-            if (body.position || body.type === 'sphere' || body.params) {
-                addShape3D({ ...body });
-            } else {
-                addCADObject({ ...body });
+            const posX = body.position ? (Array.isArray(body.position) ? body.position[0] : (body.position.x ?? 0)) : (body.x ?? 0);
+            const posY = body.position ? (Array.isArray(body.position) ? body.position[1] : (body.position.y ?? 0)) : (body.y ?? 0);
+            const posZ = body.position ? (Array.isArray(body.position) ? body.position[2] : (body.position.z ?? 0)) : (body.z ?? 0);
+
+            const formattedBody = {
+                ...body,
+                position: [posX, posY, posZ]
+            };
+
+            if (typeof addCADObject === 'function') {
+                addCADObject(formattedBody);
+            } else if (typeof addShape3D === 'function') {
+                addShape3D(formattedBody);
             }
         });
 
