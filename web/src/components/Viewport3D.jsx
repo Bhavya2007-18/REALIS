@@ -125,9 +125,9 @@ const Shape3DNode = React.memo(({ shape, renderBodies }) => {
     const currentScale = formatVec(shape.scale, [1, 1, 1]);
     const trailRef = useRef([]);
     const [trailPositions, setTrailPositions] = useState([]);
-    const hasTrail = shape.id?.startsWith('v6_');
-
+    const hasTrail = shape.id?.startsWith('v6_piston_');
     const lastTrailUpdateRef = useRef(0);
+
     useFrame(({ clock }) => {
         if (!hasTrail) return;
         if (!Array.isArray(currentPos) || currentPos.length < 3) return;
@@ -235,7 +235,7 @@ const Shape3DNode = React.memo(({ shape, renderBodies }) => {
                         color={shape.color || '#3b82f6'}
                         roughness={shape.roughness !== undefined ? shape.roughness : 0.2}
                         metalness={shape.metalness !== undefined ? shape.metalness : 0.8}
-                        transparent
+                        transparent={shape.transparent ?? (shape.opacity !== undefined && shape.opacity < 1.0)}
                         opacity={shape.opacity !== undefined ? shape.opacity : 1.0}
                     />
                 </mesh>

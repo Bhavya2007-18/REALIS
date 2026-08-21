@@ -166,34 +166,63 @@ const PRESETS = {
         world: { gravity: { x: 0, y: 0, z: 0 }, timestep: 0.016, substeps: 8 },
         bodies: [
             // Central crank pivot (static, rendered at origin)
-            { id: 'v6_crank_center', type: 'sphere', position: [0, 0, 0], params: { radius: 4, segments: 32 }, color: '#fbbf24', isStatic: true },
+            { id: 'v6_crank_center', type: 'sphere', position: [0, 0, 0], params: { radius: 3, segments: 32 }, color: '#fbbf24', isStatic: true },
             // Crankshaft spine (cylinder along Z axis, rotated by adapter)
-            { id: 'v6_crankshaft', type: 'cylinder', position: [0, 0, 0], params: { radiusTop: 2, radiusBottom: 2, height: 30, segments: 16 }, color: '#94a3b8', isStatic: true },
+            { id: 'v6_crankshaft', type: 'cylinder', position: [0, 0, 0], params: { radiusTop: 2, radiusBottom: 2, height: 35, segments: 16 }, color: '#94a3b8', isStatic: true },
             // Flywheel disc
-            { id: 'v6_flywheel', type: 'cylinder', position: [0, 0, -15], params: { radiusTop: 8, radiusBottom: 8, height: 3, segments: 32 }, color: '#475569', isStatic: true },
-            // 6 cylinders: crank_throw, con_rod, piston
-            ...Array.from({ length: 6 }, (_, i) => [
-                {
-                    id: `v6_crank_throw_${i}`, type: 'cube',
-                    position: [0, 0, 0], params: { width: 3, height: 8, depth: 3 },
-                    color: '#64748b'
-                },
-                {
-                    id: `v6_con_rod_${i}`, type: 'cube',
-                    position: [0, 0, 0], params: { width: 1.5, height: 26, depth: 1.5 },
-                    color: i < 3 ? '#3b82f6' : '#8b5cf6'
-                },
-                {
-                    id: `v6_piston_${i}`, type: 'cube',
-                    position: [0, 0, 0], params: { width: 7, height: 5, depth: 7 },
-                    color: '#e2e8f0', mass: 0.45, restitution: 0.1, friction: 0.2
-                }
-            ]).flat()
+            { id: 'v6_flywheel', type: 'cylinder', position: [0, 0, -16], params: { radiusTop: 9, radiusBottom: 9, height: 3, segments: 32 }, color: '#475569', isStatic: true },
+            // 6 Cylinder Bore Sleeves (transparent visual guides for engine block)
+            ...Array.from({ length: 6 }, (_, i) => {
+                const zPos = -12.5 + i * 5;
+                const bankRad = i < 3 ? -0.5236 : 0.5236; // 60-degree V-engine (±30° banks)
+                const midDist = 26; // approx mid-stroke distance
+                const bx = Math.sin(bankRad) * midDist;
+                const by = -Math.cos(bankRad) * midDist;
+                return {
+                    id: `v6_bore_${i}`, type: 'cylinder',
+                    position: [bx, by, zPos],
+                    rotation: [0, 0, bankRad],
+                    params: { radiusTop: 4.5, radiusBottom: 4.5, height: 18, segments: 16 },
+                    color: '#38bdf8', opacity: 0.15, transparent: true, isStatic: true
+                };
+            }),
+            // 6 cylinder assemblies: crank_throw, con_rod, piston, intake_valve, exhaust_valve
+            ...Array.from({ length: 6 }, (_, i) => {
+                const zPos = -12.5 + i * 5;
+                const bankRad = i < 3 ? -0.5236 : 0.5236;
+                return [
+                    {
+                        id: `v6_crank_throw_${i}`, type: 'cube',
+                        position: [0, 0, zPos], params: { width: 2.5, height: 9, depth: 2.5 },
+                        color: '#64748b'
+                    },
+                    {
+                        id: `v6_con_rod_${i}`, type: 'cube',
+                        position: [0, 0, zPos], params: { width: 1.8, height: 26, depth: 1.8 },
+                        color: i < 3 ? '#3b82f6' : '#8b5cf6'
+                    },
+                    {
+                        id: `v6_piston_${i}`, type: 'cube',
+                        position: [0, 0, zPos], params: { width: 8, height: 6, depth: 8 },
+                        color: '#e2e8f0', mass: 0.45, restitution: 0.1, friction: 0.2
+                    },
+                    {
+                        id: `v6_intake_valve_${i}`, type: 'cylinder',
+                        position: [0, 0, zPos], params: { radiusTop: 0.8, radiusBottom: 0.8, height: 6, segments: 12 },
+                        color: '#38bdf8'
+                    },
+                    {
+                        id: `v6_exhaust_valve_${i}`, type: 'cylinder',
+                        position: [0, 0, zPos], params: { radiusTop: 0.8, radiusBottom: 0.8, height: 6, segments: 12 },
+                        color: '#f43f5e'
+                    }
+                ];
+            }).flat()
         ],
         materials: [], forces: [],
         constraints: [],
         simulation: { time_scale: 1.0 },
-        overlay: { title: 'V6 Engine', description: 'Mathematical simulation of a 6-cylinder internal combustion engine.' }
+        overlay: { title: 'V6 Engine', description: '60° V6 internal combustion engine simulation.\n6 cylinders, dual banks, thermodynamic torque & rotational kinematics.' }
     },
 
     revolute_crank_slider: {
@@ -279,7 +308,9 @@ export class SimulationDemoManager {
         if (world.pointGravity) settings.pointGravity = world.pointGravity;
         setSimulationSettings(settings);
 
-        // Load bodies safely
+        // For 3D presets (v6_engine_simulation etc.), bodies must go into shapes3D
+        // so Viewport3D can render them. Detect 3D bodies by array position or 3D-only types.
+        const is3DPreset = presetId === 'v6_engine_simulation' || presetId === 'revolute_crank_slider';
         preset.bodies.forEach(body => {
             const posX = body.position ? (Array.isArray(body.position) ? body.position[0] : (body.position.x ?? 0)) : (body.x ?? 0);
             const posY = body.position ? (Array.isArray(body.position) ? body.position[1] : (body.position.y ?? 0)) : (body.y ?? 0);
@@ -290,7 +321,10 @@ export class SimulationDemoManager {
                 position: [posX, posY, posZ]
             };
 
-            if (typeof addCADObject === 'function') {
+            // 3D presets must use addShape3D so bodies appear in Viewport3D
+            if (is3DPreset && typeof addShape3D === 'function') {
+                addShape3D(formattedBody);
+            } else if (typeof addCADObject === 'function') {
                 addCADObject(formattedBody);
             } else if (typeof addShape3D === 'function') {
                 addShape3D(formattedBody);

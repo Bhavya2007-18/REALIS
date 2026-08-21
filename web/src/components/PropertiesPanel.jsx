@@ -93,7 +93,7 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                         : labData.type === 'inclined_friction_ramp'
                                             ? `t ${labData.snapshot.time.toFixed(2)}s · s ${labData.snapshot.rampState?.s.toFixed(2) ?? 0}m · v ${labData.snapshot.rampState?.v.toFixed(2) ?? 0}m/s · ${labData.snapshot.state}`
                                             : labData.type === 'v6_engine'
-                                                ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutput.toFixed(1)}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
+                                                ? `RPM ${Math.round(labData.snapshot.RPM)} · Torq ${Math.round(labData.snapshot.totalTorque)}N·m · Pwr ${labData.snapshot.powerOutputkW?.toFixed(1) || 0}kW · θ ${(labData.snapshot.crankAngleDeg).toFixed(0)}°`
                                                 : `t ${(labData.snapshot.time ?? 0).toFixed(2)}s · x ${(labData.snapshot.x ?? 0).toFixed(1)}m · y ${(labData.snapshot.y ?? 0).toFixed(1)}m · v ${(labData.snapshot.speed ?? 0).toFixed(1)}m/s`
                     }
                 >
@@ -142,8 +142,8 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Stat label="Engine RPM" value={Math.round(labData.snapshot.RPM)} unit="rpm" color="text-sky-400" />
                                 <Stat label="Total Torque" value={Math.round(labData.snapshot.totalTorque)} unit="N·m" color="text-amber-400" />
-                                <Stat label="Power Output" value={labData.snapshot.powerOutput.toFixed(1)} unit="kW" color="text-emerald-400" />
-                                <Stat label="Crank Angle" value={labData.snapshot.crankAngleDeg.toFixed(1)} unit="°" />
+                                <Stat label="Power Output" value={(labData.snapshot.powerOutputkW ?? 0).toFixed(1)} unit="kW" color="text-emerald-400" />
+                                <Stat label="Crank Angle" value={(labData.snapshot.crankAngleDeg ?? 0).toFixed(1)} unit="°" />
                             </div>
                         )}
 
@@ -725,10 +725,21 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                         )}
                         {labData.type === 'v6_engine' && (
                             <>
+                                <div className="p-2.5 bg-slate-900/80 rounded-lg border border-purple-500/20 mb-3 space-y-1 font-mono text-[10px]">
+                                    <div className="flex justify-between text-purple-300 font-bold">
+                                        <span>ENGINE DISPLACEMENT</span>
+                                        <span>{labData.snapshot.displacement?.totalCc || 2997} cc ({labData.snapshot.displacement?.totalLiters || 3.0} L)</span>
+                                    </div>
+                                    <div className="flex justify-between text-slate-400 text-[9px]">
+                                        <span>Single Cyl: {labData.snapshot.displacement?.singleCylCc || 499.6} cc</span>
+                                        <span>Config: 60° V6 4-Stroke</span>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
                                         <span className="text-slate-400">TARGET RPM</span>
-                                        <span className="text-sky-400 font-bold">{labData.config.targetRPM || labData.config.initialRPM}</span>
+                                        <span className="text-sky-400 font-bold">{labData.config.targetRPM || labData.config.initialRPM} RPM</span>
                                     </div>
                                     <input type="range" min="200" max="8000" step="100" value={labData.config.targetRPM || labData.config.initialRPM}
                                         onChange={(e) => handleLabConfigChange('targetRPM', parseFloat(e.target.value))}
@@ -736,11 +747,20 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
-                                        <span className="text-slate-400">CRANK RADIUS</span>
-                                        <span className="text-amber-400 font-bold">{labData.config.crankRadius} mm</span>
+                                        <span className="text-slate-400">BORE</span>
+                                        <span className="text-cyan-400 font-bold">{labData.config.bore || 86} mm</span>
                                     </div>
-                                    <input type="range" min="20" max="80" step="1" value={labData.config.crankRadius}
-                                        onChange={(e) => handleLabConfigChange('crankRadius', parseFloat(e.target.value))}
+                                    <input type="range" min="60" max="120" step="1" value={labData.config.bore || 86}
+                                        onChange={(e) => handleLabConfigChange('bore', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">STROKE</span>
+                                        <span className="text-amber-400 font-bold">{labData.config.stroke || 86} mm</span>
+                                    </div>
+                                    <input type="range" min="60" max="120" step="1" value={labData.config.stroke || 86}
+                                        onChange={(e) => handleLabConfigChange('stroke', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                 </div>
                                 <div className="space-y-1">
@@ -751,6 +771,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <input type="range" min="100" max="250" step="1" value={labData.config.rodLength}
                                         onChange={(e) => handleLabConfigChange('rodLength', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">THROTTLE</span>
+                                        <span className="text-indigo-400 font-bold">{Math.round((labData.config.throttle ?? 1) * 100)} %</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.05" value={labData.config.throttle ?? 1}
+                                        onChange={(e) => handleLabConfigChange('throttle', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-[10px] font-mono">
@@ -769,6 +798,15 @@ function LabProperties({ labData, openSections, toggleSection, handleLabConfigCh
                                     <input type="range" min="0" max="100" step="5" value={labData.config.frictionTorque}
                                         onChange={(e) => handleLabConfigChange('frictionTorque', parseFloat(e.target.value))}
                                         className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-fuchsia-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-slate-400">LOAD TORQUE</span>
+                                        <span className="text-orange-400 font-bold">{labData.config.loadTorque || 0} N·m</span>
+                                    </div>
+                                    <input type="range" min="0" max="200" step="5" value={labData.config.loadTorque || 0}
+                                        onChange={(e) => handleLabConfigChange('loadTorque', parseFloat(e.target.value))}
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500" />
                                 </div>
                             </>
                         )}
@@ -1572,8 +1610,64 @@ export default function PropertiesPanel() {
                 </div>
 
                 {(() => {
-                    if (labData?.type === 'v6_engine' && selectedObject) {
-                        const match = selectedObject.id.match(/v6_(?:piston|con_rod|crank_throw)_(\d+)/);
+                    if (labData?.type === 'v6_engine' && selectedObject && labData.snapshot) {
+                        if (selectedObject.id === 'v6_crankshaft') {
+                            return (
+                                <div className="space-y-2 mb-4 p-3 bg-slate-900 rounded-lg border border-purple-500/30">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-2">
+                                        <Activity size={12} /> Crankshaft Telemetry
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">SPEED</span>
+                                            <span className="text-sky-400 font-bold">{Math.round(labData.snapshot.RPM)} RPM</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">CRANK ANGLE</span>
+                                            <span className="text-amber-400">{labData.snapshot.crankAngleDeg?.toFixed(1)}°</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">ANGULAR VELOCITY</span>
+                                            <span className="text-indigo-400">{labData.snapshot.angularVelocity?.toFixed(2)} rad/s</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">NET TORQUE</span>
+                                            <span className="text-emerald-400">{labData.snapshot.totalTorque?.toFixed(1)} N·m</span>
+                                        </div>
+                                        <div className="flex flex-col col-span-2">
+                                            <span className="text-slate-500">POWER OUTPUT</span>
+                                            <span className="text-rose-400 font-bold">{labData.snapshot.powerOutputkW?.toFixed(1)} kW ({(labData.snapshot.powerOutputHP || 0).toFixed(1)} HP)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        if (selectedObject.id === 'v6_flywheel') {
+                            return (
+                                <div className="space-y-2 mb-4 p-3 bg-slate-900 rounded-lg border border-indigo-500/30">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2 mb-2">
+                                        <Activity size={12} /> Flywheel Dynamics
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">ROTATIONAL INERTIA</span>
+                                            <span className="text-indigo-300">{labData.snapshot.config?.crankInertia || 0.35} kg·m²</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-slate-500">KINETIC ENERGY</span>
+                                            <span className="text-amber-400 font-bold">{(labData.snapshot.flywheelKineticEnergy || 0).toFixed(1)} J</span>
+                                        </div>
+                                        <div className="flex flex-col col-span-2">
+                                            <span className="text-slate-500">ANGULAR MOMENTUM</span>
+                                            <span className="text-emerald-400 font-bold">{((labData.snapshot.config?.crankInertia || 0.35) * (labData.snapshot.angularVelocity || 0)).toFixed(2)} kg·m²/s</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        const match = selectedObject.id.match(/v6_(?:piston|con_rod|crank_throw|bore|intake_valve|exhaust_valve)_(\d+)/);
                         if (match && labData.snapshot?.cylinders) {
                             const cylIdx = parseInt(match[1]);
                             const cyl = labData.snapshot.cylinders[cylIdx];
@@ -1581,7 +1675,7 @@ export default function PropertiesPanel() {
                                 return (
                                     <div className="space-y-2 mb-4 p-3 bg-slate-900 rounded-lg border border-slate-700">
                                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-2">
-                                            <Activity size={12} /> Cylinder {cylIdx + 1} Telemetry
+                                            <Activity size={12} /> Cylinder {cylIdx + 1} ({cyl.bank?.toUpperCase()} BANK)
                                         </h4>
                                         <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                                             <div className="flex flex-col">
@@ -1593,16 +1687,32 @@ export default function PropertiesPanel() {
                                                 }>{cyl.strokeName}</span>
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-slate-500">POSITION</span>
+                                                <span className="text-slate-500">NORMALIZED POS</span>
                                                 <span className="text-emerald-400">{cyl.normalizedPos.toFixed(3)}</span>
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-slate-500">GLOW INTENSITY</span>
-                                                <span className="text-rose-400">{(cyl.combustionGlow * 100).toFixed(0)}%</span>
+                                                <span className="text-slate-500">PISTON VELOCITY</span>
+                                                <span className="text-sky-400">{(cyl.velocity || 0).toFixed(2)} m/s</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">PISTON ACCEL</span>
+                                                <span className="text-amber-400">{(cyl.acceleration || 0).toFixed(1)} m/s²</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-slate-500">ROD ANGLE</span>
                                                 <span className="text-indigo-400">{(cyl.rodAngle * 180 / Math.PI).toFixed(1)}°</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">COMBUSTION GLOW</span>
+                                                <span className="text-rose-400">{(cyl.combustionGlow * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">INTAKE VALVE LIFT</span>
+                                                <span className="text-sky-300">{((cyl.intakeValveLift || 0) * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-500">EXHAUST VALVE LIFT</span>
+                                                <span className="text-rose-300">{((cyl.exhaustValveLift || 0) * 100).toFixed(0)}%</span>
                                             </div>
                                         </div>
                                     </div>

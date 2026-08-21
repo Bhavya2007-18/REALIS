@@ -151,14 +151,23 @@ export default function SimulateWorkspace() {
     
     useEffect(() => {
         if (isV6Active) {
+            // Ensure scene is hydrated (Sidebar may have already called loadDemo, but guard for direct preset changes)
+            const store = useStore.getState();
+            if (!store.shapes3D || store.shapes3D.length === 0) {
+                SimulationDemoManager.loadDemo('v6_engine_simulation', store);
+            }
             v6SolverRef.current = new V6PhysicsSolver({
-                crankRadius:     45,
+                bore:            86,
+                stroke:          86,
+                crankRadius:     43,
                 rodLength:       130,
                 pistonMass:      0.45,
                 crankInertia:    0.35,
                 initialRPM:      800,
                 combustionForce: 30000,
                 frictionTorque:  20,
+                loadTorque:      0,
+                throttle:        1.0,
                 vAngleDeg:       60,
             });
             setV6EngineState(v6SolverRef.current.getSnapshot());
@@ -283,7 +292,7 @@ export default function SimulateWorkspace() {
                 if (shouldUpdateTelemetry) {
                     lastTelemetryTimeRef.current = time;
                     setV6EngineState(snap);
-                    setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutput, potential: 0, total: snap.powerOutput } });
+                    setSimulationState({ time: snap.time, energy: { kinetic: snap.powerOutputkW || 0, potential: 0, total: snap.powerOutputkW || 0 } });
                     useStore.getState().setLabData({
                         title: 'V6 Engine',
                         type: 'v6_engine',
