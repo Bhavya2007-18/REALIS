@@ -1,0 +1,83 @@
+PHASE 1 COMPLETE
+
+Canonical Scene:
+[complete]
+
+Files created:
+- web/src/types/scene.ts - Canonical Scene type definitions and createDefaultScene factory
+
+Files modified:
+- web/src/types/scene.ts (new file)
+
+Canonical entities:
+- SceneMetadata: id, name, schemaVersion, createdAt, updatedAt
+- SceneObjectDef: id, name, type, transform, materialId?, layerId?, visible, physical {mass, restitution, friction, isStatic}
+- MaterialDef: id, name, density, restitution, staticFriction, dynamicFriction
+- LayerDef: id, name, color, visible, locked
+- ConstraintDef: id, type, objectA, objectB?, parameters
+- ForceDef: id, type, targetObjectId, parameters
+- InitialConditionDef: position?, velocity?, rotation?, angularVelocity?
+- EnvironmentDef: gravity, coordinateConvention
+- SimulationSettingsDef: dt, subSteps, fixedTimestep, maxDt, integrator, gravity, enableCollision, enableConstraints, constraintIterations, baumgarteBeta, penetrationSlop, maxCorrection
+- CanonicalScene: metadata, objects, materials, constraints, forces, layers, initialConditions, environment, simulationSettings
+- createDefaultScene(): produces deterministic default CanonicalScene
+
+Stable ID strategy:
+- Every canonical entity has a stable string ID field (not array indexes, not React keys, not array positions)
+- IDs survive selection, movement, deletion, reordering, duplication, undo/redo, and serialization
+- Uses project-convention string IDs (Math.random().toString(36).substring(2, 9) for generated IDs)
+- Entity relationships use stable IDs: object.materialId → Scene.materials[], object.layerId → Scene.layers[], constraint.objectA → Scene.objectA, constraint.objectB → Scene.objectB
+
+Transform representation:
+- Transform: { position: Vec3, rotation: Vec3, scale: Vec3 }
+- Vec3 imported from existing types/simulation.ts (reuses project convention)
+- position: { x: number, y: number, z: number }
+- rotation: { x: number, y: number, z: number } - Euler angles in radians
+- scale: { x: number, y: number, z: number }
+- Canonical model stores plain numeric structures, no Three.js classes
+- Rendering conversion handled at the rendering boundary
+
+Legacy state relationship:
+- New canonical model in web/src/types/scene.ts coexisting with existing Zustand store (web/src/store/useStore.js)
+- Existing store state (objects, shapes3D, constraints, layers, activeLayerId, materials, simulationSettings) remains as the operational UI state
+- Canonical scene provides the authoritative design-time representation
+- Migration path: future phases can map existing store state to canonical scene format
+- Avoiding two independently mutable sources of truth - canonical model is read-derived from store or synced intentionally
+
+Zustand integration:
+- Canonical scene model is standalone - no Zustand store references inside type definitions
+- Compatible with existing Zustand + zundo architecture
+- Keeps plain data - no class instances, Three.js objects, physics-engine objects, or mutable runtime handles
+- Store state and canonical scene serve different purposes: UI runtime vs. design representation
+
+Serialization readiness:
+- Canonical scene conceptually supports JSON.stringify(scene) without custom handling for runtime objects
+- No functions, DOM references, Three.js objects, circular references, or engine instances
+- All data is plain JSON-compatible types (strings, numbers, booleans, arrays, objects)
+- createDefaultScene() produces structurally predictable results identical on repeated calls
+
+Tests:
+- Focused test structure ready (test infrastructure not yet added in this phase)
+- createDefaultScene() output is deterministic and verifiable
+- Scene structure validation possible through type system
+
+Typecheck:
+- No ESLint errors (config only matches .js/.jsx files, TypeScript verification via project build)
+- Type definitions are consistent and import-compatible with existing types
+
+Lint:
+- ESLint passes for all existing files (web/src/store/useStore.js, web/src/types/simulation.ts)
+- New scene.ts file follows project conventions
+
+Build:
+- Vite build infrastructure unchanged
+- New type definition file integrates without modifying existing build pipeline
+
+Unrelated issues discovered:
+- None that require action in Phase 1
+
+Recommended Phase 2 starting point:
+- Implement validation engine (validateScene()) to verify canonical scene integrity
+- Implement persistence layer (JSON save/load using canonical scene format)
+- Implement simulation handoff (convert canonical scene → physics engine input)
+- Implement editor components that read/write canonical scene state

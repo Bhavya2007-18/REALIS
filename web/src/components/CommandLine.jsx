@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Terminal, ChevronRight } from 'lucide-react'
 import useStore from '../store/useStore'
+import { newEntityId, nextEntityName } from '../scene/entity'
 
 const COMMANDS = [
     'CIRCLE', 'RECT', 'LINE', 'POLYGON', 'ARC', 'MOVE', 'ROTATE', 'SCALE', 'MIRROR', 'MIRRORX', 'MIRRORY',
@@ -124,35 +125,35 @@ export default function CommandLine() {
 
             case 'CIRCLE': {
                 const cx = parseNum(0, 400), cy = parseNum(1, 300), r = parseNum(2, 50)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'circle', cx, cy, r, stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
+                addCADObject({ type: 'circle', cx, cy, r, stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created circle at (${cx}, ${cy}) r=${r}`, 'success')
                 break
             }
 
             case 'RECT': {
                 const w = parseNum(0, 100), h = parseNum(1, w)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'rect', x: 300, y: 200, width: w, height: h, stroke: '#3b82f6', fill: 'rgba(59,130,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
+                addCADObject({ type: 'rect', x: 300, y: 200, width: w, height: h, stroke: '#3b82f6', fill: 'rgba(59,130,246,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created rect ${w}×${h}`, 'success')
                 break
             }
 
             case 'LINE': {
                 const x1 = parseNum(0, 0), y1 = parseNum(1, 0), x2 = parseNum(2, 100), y2 = parseNum(3, 100)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1, y1, x2, y2, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
+                addCADObject({ type: 'ruler', x1, y1, x2, y2, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created line from (${x1},${y1}) to (${x2},${y2})`, 'success')
                 break
             }
 
             case 'POLYGON': {
                 const sides = parseInt(args[0] ?? 6), cx = parseNum(1, 400), cy = parseNum(2, 300), r = parseNum(3, 60)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides, cx, cy, r, stroke: '#ec4899', fill: 'rgba(236,72,153,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
+                addCADObject({ type: 'polygon', sides, cx, cy, r, stroke: '#ec4899', fill: 'rgba(236,72,153,0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created ${sides}-sided polygon at (${cx}, ${cy}) r=${r}`, 'success')
                 break
             }
 
             case 'ARC': {
                 const cx = parseNum(0, 400), cy = parseNum(1, 300), r = parseNum(2, 80), startA = parseNum(3, 0), endA = parseNum(4, 90)
-                addCADObject({ id: Math.random().toString(36).substring(2, 9), type: 'arc', cx, cy, r, startAngle: startA, endAngle: endA, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
+                addCADObject({ type: 'arc', cx, cy, r, startAngle: startA, endAngle: endA, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId })
                 log(`Created arc at (${cx}, ${cy}) r=${r} from ${startA}° to ${endA}°`, 'success')
                 break
             }
@@ -232,7 +233,7 @@ export default function CommandLine() {
                     const dx = Math.cos(angle) * radius
                     const dy = Math.sin(angle) * radius
                     selected.forEach(obj => {
-                        const clone = { ...obj, id: Math.random().toString(36).substring(2, 9) }
+                        const clone = { ...obj, id: newEntityId(obj.type ? `${obj.type}_` : ''), name: nextEntityName(clones.concat(objects), obj.type) }
                         if (clone.type === 'rect') { clone.x += dx; clone.y += dy }
                         else if (clone.type === 'circle') { clone.cx += dx; clone.cy += dy }
                         clones.push(clone)
@@ -258,8 +259,9 @@ export default function CommandLine() {
                     layers.forEach(l => log(`  [${l.id}] ${l.name} — ${l.color} ${l.visible ? '●' : '○'} ${l.locked ? '🔒' : ''}`, 'dim'))
                 } else if (sub === 'NEW') {
                     const name = args.slice(1).join(' ') || `Layer ${layers.length}`
-                    const newLayer = { id: Math.random().toString(36).substring(2, 7), name, color: '#a78bfa', visible: true, locked: false }
-                    addLayer(newLayer)
+                    // addLayer mints the id (and rejects duplicates); minting one
+                    // here as well is what let two layers share an id.
+                    addLayer({ name, color: '#a78bfa', visible: true, locked: false })
                     log(`Created layer "${name}"`, 'success')
                 } else if (sub === 'SET') {
                     const name = args.slice(1).join(' ')

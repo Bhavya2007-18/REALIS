@@ -4,8 +4,9 @@ import {
     Maximize2, ZoomIn, ZoomOut, BookOpen, Magnet, LineChart, Gauge,
     Layers
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import { useLabSimulation } from '../physics/useLabSimulation';
 import SpringOscillatorPhysicsSolver from '../utils/solvers/springOscillatorSolver';
+import useStore from '../store/useStore';
 
 const PLANETARY_GRAVITY = {
     earth: { name: 'Earth', g: 9.81 },
@@ -72,8 +73,6 @@ function vectorLen(value, reference, maxPx) {
 }
 
 export default function SpringOscillatorLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
     const setLabData = useStore(state => state.setLabData);
     const clearLabData = useStore(state => state.clearLabData);
 
@@ -116,7 +115,13 @@ export default function SpringOscillatorLab() {
         mass, springConstant, naturalLength, gravity, damping,
         x0, v0, forced, forceAmplitude, drivingFrequency, timeScale: 1.0
     }));
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward } = useLabSimulation({
+        solver: solverRef.current,
+        labType: 'spring_oscillator',
+        labTitle: 'Spring Oscillator (SHM) Laboratory',
+        config: { mass, springConstant, naturalLength, gravity, damping, timeScale, forced, forceAmplitude, drivingFrequency }
+    });
 
     // ─── Derived physical constants (recomputed every render from LIVE params) ──
     const omega0 = Math.sqrt(springConstant / mass);             // ω₀ = √(k/m)
@@ -181,53 +186,9 @@ export default function SpringOscillatorLab() {
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
     }, []);
 
-    // ─── Parameters → solver (reset updates initial conditions precisely) ───
-    useEffect(() => {
-        solverRef.current.updateConfig({
-            mass, springConstant, naturalLength, gravity, damping, x0, v0,
-            forced, forceAmplitude, drivingFrequency,
-            timeScale: 1.0
-        });
-        setSnapshot({ ...solverRef.current.getSnapshot() });
-    }, [mass, springConstant, naturalLength, gravity, damping, x0, v0, forced, forceAmplitude, drivingFrequency]);
-
-    // ─── Fixed-timestep physics loop (accumulator, frame-rate independent) ───
-    const accRef = useRef(0);
-    const lastTimeRef = useRef(0);
-    const rafRef = useRef(null);
-    useEffect(() => {
-        if (!isPlaying) {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            return;
-        }
-        accRef.current = 0;
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.1);
-            lastTimeRef.current = now;
-            accRef.current += elapsed * timeScale;
-            let steps = 0;
-            while (accRef.current >= FIXED_DT && steps < MAX_SIM_STEPS_PER_FRAME) {
-                solverRef.current.step(FIXED_DT);
-                accRef.current -= FIXED_DT;
-                steps++;
-            }
-            if (steps === MAX_SIM_STEPS_PER_FRAME) accRef.current = 0;
-            setSnapshot({ ...solverRef.current.getSnapshot() });
-            rafRef.current = requestAnimationFrame(loop);
-        };
-        rafRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(rafRef.current);
-    }, [isPlaying, timeScale]);
-
-    const handleStep = () => {
-        solverRef.current.step(FIXED_DT);
-        setSnapshot({ ...solverRef.current.getSnapshot() });
-    };
-
-    const handleReset = () => {
-        solverRef.current.reset();
-        setSnapshot({ ...solverRef.current.getSnapshot() });
+    // ─── Reset: also reset camera ────────────────────────────────────────────
+    const resetAll = () => {
+        handleReset();
         setZoom(1.0);
         setCameraMode('fit');
     };
@@ -239,7 +200,7 @@ export default function SpringOscillatorLab() {
         setNaturalLength(p.naturalLength); setX0(p.x0); setV0(p.v0);
         setGravity(p.gravity); setDamping(p.damping);
         setForced(false);
-        handleReset();
+        resetAll();
     };
 
     const applyDampingPreset = (zeta) => {
@@ -390,10 +351,10 @@ export default function SpringOscillatorLab() {
                 <button onClick={togglePlayback} className={isPlaying ? btnOn : btnIdle} title="Play / Pause">
                     {isPlaying ? <Square size={13} /> : <Play size={13} />} {isPlaying ? 'Pause' : 'Play'}
                 </button>
-                <button onClick={handleStep} className={btnIdle} title="Step one fixed timestep (5 ms)">
+                <button onClick={handleStepForward} className={btnIdle} title="Step one fixed timestep (5 ms)">
                     <SkipForward size={13} /> Step
                 </button>
-                <button onClick={handleReset} className={btnIdle} title="Reset to initial conditions">
+                <button onClick={resetAll} className={btnIdle} title="Reset to initial conditions">
                     <RefreshCw size={13} /> Reset
                 </button>
                 <select value={timeScale} onChange={e => setTimeScale(Number(e.target.value))}

@@ -8,7 +8,7 @@ import {
 } from './simulationSafety'
 
 const parseV6Part = (shapeId) => {
-    const m = shapeId.match(/v6_(crank_throw|con_rod|piston)_(\d+)/)
+    const m = shapeId.match(/v6_(crank_throw|con_rod|piston|intake_valve|exhaust_valve)_(\d+)/)
     if (!m) return null
     return { partType: m[1], index: parseInt(m[2], 10) }
 }
@@ -46,19 +46,7 @@ export default class V6RenderAdapter {
     }
 
     getCylinderAngle(snap, cyl) {
-        return (snap.crankAngle || 0) + (cyl.phaseOffset ?? 0)
-    }
-
-    getLaggedPistonPosition(cylinderIndex, computedPos) {
-        const prev = this.lastPistonPosByCylinder.get(cylinderIndex) || computedPos
-        const lag = 0.85
-        const next = {
-            x: prev.x + (computedPos.x - prev.x) * lag,
-            y: prev.y + (computedPos.y - prev.y) * lag,
-            z: prev.z + (computedPos.z - prev.z) * lag
-        }
-        this.lastPistonPosByCylinder.set(cylinderIndex, next)
-        return next
+        return (snap.crankAngle || 0) + (cyl.phaseOffset ?? 0) - (cyl.bankRad ?? 0)
     }
 
     validateTransform(transform) {
@@ -87,47 +75,59 @@ export default class V6RenderAdapter {
         shapes.forEach((shape) => {
             let next = null
             if (shape.id === 'v6_crankshaft' || shape.id === 'v6_flywheel') {
-                const angle = (snap.crankAngle || 0) + Math.sin((snap.time || 0) * 2) * 0.01
+                const angle = snap.crankAngle || 0
+                const z = shape.id === 'v6_flywheel' ? -16 : 0
                 if (isFiniteNumber(angle)) {
                     next = {
-                        position: Array.isArray(shape.position) ? [...shape.position] : [0, 0, 0],
-                        rotation: [Math.PI / 2, angle, 0],
+                        position: [0, 0, z],
+                        rotation: [Math.PI / 2, 0, angle],
                         scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1]
                     }
+                }
+            } else if (shape.id?.startsWith('v6_bore_') || shape.id === 'v6_crank_center' || shape.isStatic) {
+                next = {
+                    position: Array.isArray(shape.position) ? [...shape.position] : [0, 0, 0],
+                    rotation: Array.isArray(shape.rotation) ? [...shape.rotation] : [0, 0, 0],
+                    scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1]
                 }
             } else {
                 const parsed = parseV6Part(shape.id)
                 if (parsed && parsed.index < 6) {
                     const cyl = snap.cylinders[parsed.index]
                     if (cyl) {
-                        const zPos = Array.isArray(shape.position) ? shape.position[2] : 0
+                        const zPos = Array.isArray(shape.position) ? shape.position[2] : (-12.5 + parsed.index * 5)
+                        const bankRad = cyl.bankRad ?? 0
+                        const bankAxis = { x: Math.sin(bankRad), y: -Math.cos(bankRad) }
+                        const perpAxis = { x: Math.cos(bankRad), y: Math.sin(bankRad) }
+
                         if (parsed.partType === 'crank_throw') {
                             if (isFiniteVec2(cyl.crankPinPos)) {
+                                const pinX = cyl.crankPinPos.x * this.unitsPerMm
+                                const pinY = cyl.crankPinPos.y * this.unitsPerMm
                                 next = {
-                                    position: [cyl.crankPinPos.x * this.unitsPerMm, cyl.crankPinPos.y * this.unitsPerMm, zPos],
-                                    rotation: Array.isArray(shape.rotation) ? [...shape.rotation] : [Math.PI / 2, 0, 0],
+                                    position: [pinX * 0.5, pinY * 0.5, zPos],
+                                    rotation: [0, 0, Math.atan2(pinY, pinX) - Math.PI / 2],
                                     scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1]
                                 }
                             }
                         } else if (parsed.partType === 'piston') {
                             const derived = this.computePistonFromSliderCrank(
                                 this.getCylinderAngle(snap, cyl),
-                                cyl.bankRad ?? 0,
+                                bankRad,
                                 zPos,
                                 config
                             )
                             if (derived && isFiniteVec2(derived.pistonPos)) {
-                                const laggedPiston = this.getLaggedPistonPosition(parsed.index, derived.pistonPos)
                                 next = {
-                                    position: [laggedPiston.x, laggedPiston.y, zPos],
-                                    rotation: Array.isArray(shape.rotation) ? [...shape.rotation] : [0, 0, 0],
+                                    position: [derived.pistonPos.x, derived.pistonPos.y, zPos],
+                                    rotation: [0, 0, bankRad],
                                     scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1]
                                 }
                             }
                         } else if (parsed.partType === 'con_rod') {
                             const derived = this.computePistonFromSliderCrank(
                                 this.getCylinderAngle(snap, cyl),
-                                cyl.bankRad ?? 0,
+                                bankRad,
                                 zPos,
                                 config
                             )
@@ -136,48 +136,32 @@ export default class V6RenderAdapter {
                                     x: cyl.crankPinPos.x * this.unitsPerMm,
                                     y: cyl.crankPinPos.y * this.unitsPerMm
                                 }
-                                const laggedPiston = this.getLaggedPistonPosition(parsed.index, derived.pistonPos)
-                                const piston = { x: laggedPiston.x, y: laggedPiston.y }
+                                const piston = { x: derived.pistonPos.x, y: derived.pistonPos.y }
                                 const mx = (crankPin.x + piston.x) * 0.5
                                 const my = (crankPin.y + piston.y) * 0.5
                                 const dx = piston.x - crankPin.x
                                 const dy = piston.y - crankPin.y
                                 const rawLen = Math.sqrt(dx * dx + dy * dy)
-                                const clampedLen = clamp(rawLen, this.rodMin, this.rodMax)
-                                if (isFiniteNumber(clampedLen)) {
+                                if (isFiniteNumber(rawLen)) {
                                     next = {
                                         position: [mx, my, zPos],
-                                        rotation: [0, 0, Math.atan2(dy, dx) + Math.PI / 2],
+                                        rotation: [0, 0, Math.atan2(dy, dx) - Math.PI / 2],
                                         scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1],
-                                        rodHeight: clampedLen
+                                        rodHeight: rawLen
                                     }
-                                    if (rawLen !== clampedLen) {
-                                        this.logger.log(this.frame, 'rod_length_clamped', {
-                                            dt,
-                                            shapeId: shape.id,
-                                            rawLen,
-                                            clampedLen
-                                        })
-                                    }
-                                    const expectedLen = derived.l
-                                    if (Math.abs(rawLen - expectedLen) > 2.5) {
-                                        this.logger.log(this.frame, 'rod_linkage_deviation', {
-                                            dt,
-                                            shapeId: shape.id,
-                                            expectedLen,
-                                            actualLen: rawLen,
-                                            crankPin,
-                                            piston
-                                        })
-                                    }
-                                    this.logger.log(this.frame, 'linkage_state', {
-                                        dt,
-                                        shapeId: shape.id,
-                                        rodLength: rawLen,
-                                        pistonPos: piston,
-                                        crankPos: crankPin
-                                    }, 'info')
                                 }
+                            }
+                        } else if (parsed.partType === 'intake_valve' || parsed.partType === 'exhaust_valve') {
+                            const lift = parsed.partType === 'intake_valve' ? (cyl.intakeValveLift || 0) : (cyl.exhaustValveLift || 0)
+                            const isIntake = parsed.partType === 'intake_valve'
+                            const perpOffset = isIntake ? -1.8 : 1.8
+                            const headDist = 34 - (lift * 2.2) // valve opens downwards into cylinder
+                            const vx = bankAxis.x * headDist + perpAxis.x * perpOffset
+                            const vy = bankAxis.y * headDist + perpAxis.y * perpOffset
+                            next = {
+                                position: [vx, vy, zPos],
+                                rotation: [0, 0, bankRad],
+                                scale: Array.isArray(shape.scale) ? [...shape.scale] : [1, 1, 1]
                             }
                         }
                     }

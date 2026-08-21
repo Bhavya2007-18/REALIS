@@ -3,7 +3,7 @@ import {
     Play, Square, RefreshCw, SkipForward, ZoomIn, ZoomOut, Maximize,
     RotateCcw, Sliders, Activity, Gauge, TrendingUp, BarChart3, Move
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import { useLabSimulation } from '../physics/useLabSimulation';
 import CrankSliderPhysicsSolver from '../utils/solvers/crankSliderSolver';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -33,12 +33,6 @@ const CRANK_PRESETS = [
 ];
 
 export default function CrankSliderLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // ── Physical Configuration (SI units) ───────────────────────────────────
     const [crankRadius, setCrankRadius] = useState(0.1);     // r (m)
     const [rodLength, setRodLength] = useState(0.3);         // L (m)
@@ -69,7 +63,12 @@ export default function CrankSliderLab() {
         });
     }
 
-    const [snapshot, setSnapshot] = useState(() => solverRef.current.getSnapshot());
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: hookReset, handleStepForward } = useLabSimulation({
+        solver: solverRef.current,
+        labType: 'crank_slider',
+        labTitle: 'Crank-Slider Mechanism Laboratory',
+        config: { crankRadius, rodLength, theta0, omega, alpha, guideOffset, dt, timeScale }
+    });
 
     // ── Window Resize Listener ──────────────────────────────────────────────
     useEffect(() => {
@@ -85,17 +84,6 @@ export default function CrankSliderLab() {
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
     }, []);
-
-    // ── Push Telemetry to Store for Properties Panel ─────────────────────────
-    useEffect(() => {
-        setLabData({
-            type: 'crank_slider',
-            title: 'Crank-Slider Mechanism Laboratory',
-            snapshot: snapshot,
-            config: { crankRadius, rodLength, theta0, omega, alpha, guideOffset, dt, timeScale },
-        });
-        return () => clearLabData();
-    }, [snapshot, crankRadius, rodLength, theta0, omega, alpha, guideOffset, dt, timeScale, setLabData, clearLabData]);
 
     // ── Listen to Properties Panel Config Events ────────────────────────────
     useEffect(() => {
@@ -115,53 +103,6 @@ export default function CrankSliderLab() {
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
     }, []);
 
-    // ── Sync Solver Config ───────────────────────────────────────────────────
-    useEffect(() => {
-        if (solverRef.current) {
-            solverRef.current.updateConfig({
-                crankRadius, rodLength, theta0, omega, alpha, guideOffset, dt, timeScale
-            });
-            setSnapshot(solverRef.current.getSnapshot());
-        }
-    }, [crankRadius, rodLength, theta0, omega, alpha, guideOffset, dt, timeScale]);
-
-    // ── 60 FPS Physics Simulation Step ───────────────────────────────────────
-    useEffect(() => {
-        let animId;
-        let lastTime = performance.now();
-
-        const loop = (now) => {
-            const deltaSec = (now - lastTime) / 1000;
-            lastTime = now;
-
-            if (isPlaying && solverRef.current) {
-                solverRef.current.step(deltaSec);
-                setSnapshot(solverRef.current.getSnapshot());
-            }
-            animId = requestAnimationFrame(loop);
-        };
-
-        animId = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(animId);
-    }, [isPlaying]);
-
-    // ── Reset Handler ───────────────────────────────────────────────────────
-    const handleReset = () => {
-        if (solverRef.current) {
-            solverRef.current.reset();
-            setSnapshot(solverRef.current.getSnapshot());
-        }
-        if (resetPlayback) resetPlayback();
-    };
-
-    // ── Step Single Frame ───────────────────────────────────────────────────
-    const handleStepForward = () => {
-        if (solverRef.current) {
-            solverRef.current.step(dt);
-            setSnapshot(solverRef.current.getSnapshot());
-        }
-    };
-
     // ── Apply Preset ────────────────────────────────────────────────────────
     const applyPreset = (preset) => {
         setCrankRadius(preset.config.crankRadius);
@@ -169,11 +110,7 @@ export default function CrankSliderLab() {
         setOmega(preset.config.omega);
         setAlpha(preset.config.alpha);
         setGuideOffset(preset.config.guideOffset);
-        if (solverRef.current) {
-            solverRef.current.updateConfig(preset.config);
-            solverRef.current.reset();
-            setSnapshot(solverRef.current.getSnapshot());
-        }
+        hookReset();
     };
 
     // ── World to Screen Transformation ───────────────────────────────────────
@@ -450,14 +387,14 @@ export default function CrankSliderLab() {
                         {isPlaying ? 'PAUSE' : 'PLAY'}
                     </button>
                     <button
-                        onClick={handleReset}
+                        onClick={hookReset}
                         className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white border border-white/10 hover:bg-white/5 transition-all text-xs font-mono cursor-pointer"
                         title="Reset simulation to initial state"
                     >
                         <RefreshCw size={13} /> RESET
                     </button>
                     <button
-                        onClick={handleStepForward}
+                        onClick={() => handleStepForward()}
                         disabled={isPlaying}
                         className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all border ${isPlaying ? 'opacity-40 cursor-not-allowed border-white/5 text-slate-600' : 'text-slate-300 border-white/10 hover:bg-white/5 cursor-pointer'}`}
                     >

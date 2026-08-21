@@ -4,7 +4,10 @@ import { SimulationDemoManager, PRESET_CATALOG } from '../utils/SimulationDemoMa
 import useStore from '../store/useStore'
 import Viewport3D from '../components/Viewport3D'
 import CommandLine from '../components/CommandLine'
+import SceneFileActions from '../components/SceneFileActions'
 import { normalizeDraftToSimObject } from '../utils/draftEntityAdapter'
+import { newEntityId, withEntityIdentity } from '../scene/entity'
+import { exportScene } from '../services/exportManager'
 
 export default function DesignWorkspace() {
     const activeTool = useStore((s) => s.activeTool)
@@ -23,21 +26,31 @@ export default function DesignWorkspace() {
     const objects = useStore((s) => s.objects)
     const setObjects = useStore((s) => s.setObjects)
     const selectedIds = useStore((s) => s.selectedIds)
-    const setSelectedIds = useStore((s) => s.setSelectedIds)
-    const setActiveFileId = useStore((s) => s.setActiveFileId)
+    const selectEntities = useStore((s) => s.selectEntities)
     const layers = useStore(s => s.layers)
     const activeLayerId = useStore(s => s.activeLayerId)
     const duplicateObjects = useStore(s => s.duplicateObjects)
     const deleteObjects = useStore(s => s.deleteObjects)
     const mirrorObjects = useStore(s => s.mirrorObjects)
-    const undo = useStore(s => s.undo)
-    const redo = useStore(s => s.redo)
-    const saveHistorySnapshot = useStore(s => s.saveHistorySnapshot)
     const beginHistoryGesture = useStore(s => s.beginHistoryGesture)
     const endHistoryGesture = useStore(s => s.endHistoryGesture)
     const [isDrawing, setIsDrawing] = useState(false)
     const [currentAction, setCurrentAction] = useState(null)
     const [isSimulating, setIsSimulating] = useState(false)
+
+    /**
+     * Click-to-select on the canvas. Every shape renderer below calls this, and
+     * it delegates to the store's single selection path so the canvas, the 3D
+     * viewport and the hierarchy always agree — including on `activeFileId`, the
+     * primary selection the properties panel reads. Six shape renderers each
+     * carried their own copy of this before, which is exactly how one of them
+     * came to forget to update the primary.
+     */
+    const pickObject = (id, e) => {
+        if (activeTool !== 'select') return
+        const isMulti = e.shiftKey || e.ctrlKey || e.metaKey
+        selectEntities([id], { additive: isMulti, toggle: isMulti })
+    }
 
     
     const simulationFrames = useStore(s => s.simulationFrames)
@@ -179,7 +192,9 @@ export default function DesignWorkspace() {
     const allObjects = isPlaying || (simulationFrames.length > 0 && currentFrameIndex > 0)
         ? getRenderObjects()
         : objects
-    const renderedObjects = allObjects.filter(o => !o.layerId || visibleLayerIds.has(o.layerId))
+    // Rendering derives visibility from layer visibility AND the per-object
+    // `visible` flag (default true). Selection/transform still target hidden ids.
+    const renderedObjects = allObjects.filter(o => (!o.layerId || visibleLayerIds.has(o.layerId)) && o.visible !== false)
 
 
     
@@ -433,7 +448,10 @@ export default function DesignWorkspace() {
             }
 
             
-            if (!e.shiftKey) setSelectedIds([])
+            // Clicking empty canvas clears the whole selection, including the 3D
+            // bodies and the primary — leaving those set would keep the
+            // properties panel showing a body the user just clicked away from.
+            if (!e.shiftKey) useStore.getState().deselectAll()
             setCurrentAction({ type: 'select_window', startX: x, startY: y, currentX: x, currentY: y })
 
             return
@@ -482,32 +500,32 @@ export default function DesignWorkspace() {
 
         if (activeTool === 'rect') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'rect', x, y, width: 0, height: 0, stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_rect', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'circle') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'circle', cx: x, cy: y, r: 0, stroke: '#8b5cf6', fill: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_circle', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'polygon') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'polygon', sides: 6, cx: x, cy: y, r: 0, stroke: '#ec4899', fill: 'rgba(236, 72, 153, 0.2)', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_polygon', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'arc') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'arc', cx: x, cy: y, r: 0, startAngle: 0, endAngle: 90, stroke: '#14b8a6', fill: 'none', strokeWidth: 2, rotation: 0, layerId: activeLayerId, ...defaultPhysics }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_arc', id: newObj.id, startX: x, startY: y })
             return
         }
@@ -515,7 +533,7 @@ export default function DesignWorkspace() {
         if (activeTool === 'bezier') {
             beginHistoryGesture()
             const newObj = {
-                id: Math.random().toString(36).substring(2, 9),
+                id: newEntityId(),
                 type: 'bezier',
                 p0: { x, y },
                 p1: { x: x + 40, y },
@@ -527,15 +545,15 @@ export default function DesignWorkspace() {
                 layerId: activeLayerId,
                 ...defaultPhysics
             }
-            setObjects(prev => [...prev, newObj])
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_bezier', id: newObj.id, startX: x, startY: y })
             return
         }
 
         if (activeTool === 'ruler') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'ruler', x1: x, y1: y, x2: x, y2: y, stroke: '#ef4444', strokeWidth: 2, rotation: 0, layerId: activeLayerId }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_ruler', id: newObj.id, startX: x, startY: y })
             return
         }
@@ -543,7 +561,7 @@ export default function DesignWorkspace() {
         if (activeTool === 'pencil') {
             beginHistoryGesture()
             const newObj = {
-                id: Math.random().toString(36).substring(2, 9),
+                id: newEntityId(),
                 type: 'path',
                 points: [{ x, y }], 
                 stroke: '#10b981',
@@ -551,15 +569,15 @@ export default function DesignWorkspace() {
                 strokeWidth: 3,
                 layerId: activeLayerId
             }
-            setObjects(prev => [...prev, newObj])
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_polyline', id: newObj.id })
             return
         }
 
         if (activeTool === 'dimension') {
             beginHistoryGesture()
-            const newObj = { id: Math.random().toString(36).substring(2, 9), type: 'dimension', x1: x, y1: y, x2: x, y2: y, layerId: activeLayerId }
-            setObjects(prev => [...prev, newObj])
+            const newObj = { id: newEntityId(), type: 'dimension', x1: x, y1: y, x2: x, y2: y, layerId: activeLayerId }
+            setObjects(prev => [...prev, withEntityIdentity(newObj, prev)])
             setCurrentAction({ type: 'create_dimension', id: newObj.id, startX: x, startY: y })
             return
         }
@@ -822,21 +840,13 @@ export default function DesignWorkspace() {
                 }
             }).map(o => o.id)
 
-            if (e.shiftKey) {
-                
-                setSelectedIds(prev => {
-                    const next = [...prev]
-                    newlySelected.forEach(id => {
-                        if (next.includes(id)) {
-                            next.splice(next.indexOf(id), 1)
-                        } else {
-                            next.push(id)
-                        }
-                    })
-                    return next
-                })
+            // Rubber-band result goes through the same single selection path, so
+            // a window-select also updates the primary and clears any stale 3D
+            // selection instead of leaving two pointers disagreeing.
+            if (newlySelected.length === 0 && !e.shiftKey) {
+                useStore.getState().deselectAll()
             } else {
-                setSelectedIds(newlySelected)
+                selectEntities(newlySelected, { additive: e.shiftKey, toggle: e.shiftKey })
             }
 
             setCurrentAction(null)
@@ -851,13 +861,8 @@ export default function DesignWorkspace() {
     
     useEffect(() => {
         const handleKeyDown = (e) => {
-            
-            if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault()
-                if (e.shiftKey) redo()
-                else undo()
-                return
-            }
+            // Undo/redo is owned globally by AppLayout's listener; handling it
+            // here too would fire it twice while the Design workspace is open.
 
             if (e.key === 'Escape' || e.key === 'Enter') {
                 if (activeTool === 'pencil' && currentAction?.type === 'create_polyline') {
@@ -869,18 +874,23 @@ export default function DesignWorkspace() {
                 }
             }
 
-            
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
-                
-                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-                saveHistorySnapshot();
-                setObjects(prev => prev.filter(o => !selectedIds.includes(o.id)));
-                setSelectedIds([]);
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const el = document.activeElement;
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+                const st = useStore.getState();
+                if (st.selectedIds.length > 0 || st.selected3DIds.length > 0) {
+                    e.preventDefault();
+                    // Unified delete: handles 2D drafts + 3D shapes, prunes any
+                    // dangling constraint refs, clears selection, and records its
+                    // own history step (see store deleteEntities).
+                    st.deleteObjects();
+                }
             }
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [activeTool, currentAction, setActiveTool, undo, redo, saveHistorySnapshot, selectedIds, setObjects, setSelectedIds])
+    }, [activeTool, currentAction, setActiveTool])
     const constraints = useStore((s) => s.constraints)
     const handleSimulate = async () => {
         if (objects.length === 0 && shapes3D.length === 0) return;
@@ -1122,10 +1132,7 @@ export default function DesignWorkspace() {
             const handleClick = (e) => {
                 e.stopPropagation()
                 if (activeTool === 'select') {
-                    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                    if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                    else setSelectedIds([obj.id])
-                    setActiveFileId(obj.id)
+                    pickObject(obj.id, e)
                 }
             }
             return (
@@ -1149,10 +1156,7 @@ export default function DesignWorkspace() {
                 }
 
                 if (activeTool === 'select') {
-                    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                    if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                    else setSelectedIds([obj.id])
-                    setActiveFileId(obj.id)
+                    pickObject(obj.id, e)
                 }
             }
             return (
@@ -1195,10 +1199,7 @@ export default function DesignWorkspace() {
                             }
 
                             if (activeTool === 'select') {
-                                const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                                if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                                else setSelectedIds([obj.id])
-                                setActiveFileId(obj.id)
+                                pickObject(obj.id, e)
                             }
                         }}
                     />
@@ -1255,10 +1256,7 @@ export default function DesignWorkspace() {
                         }
 
                         if (activeTool === 'select') {
-                            const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                            if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                            else setSelectedIds([obj.id])
-                            setActiveFileId(obj.id)
+                            pickObject(obj.id, e)
                         }
                     }}
                     style={{ cursor: activeTool === 'select' ? 'pointer' : 'default' }}
@@ -1297,10 +1295,7 @@ export default function DesignWorkspace() {
                     }
 
                     if (activeTool === 'select') {
-                        const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                        if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                        else setSelectedIds([obj.id])
-                        setActiveFileId(obj.id)
+                        pickObject(obj.id, e)
                     }
                 }}>
                     {d && <path d={d} fill={obj.fill} stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} strokeLinejoin="round" />}
@@ -1334,10 +1329,7 @@ export default function DesignWorkspace() {
                     }
 
                     if (activeTool === 'select') {
-                        const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-                        if (isMultiSelect) setSelectedIds(prev => prev.includes(obj.id) ? prev.filter(id => id !== obj.id) : [...prev, obj.id])
-                        else setSelectedIds([obj.id])
-                        setActiveFileId(obj.id)
+                        pickObject(obj.id, e)
                     }
                 }}>
                     {d && <path d={d} fill={obj.fill} stroke={isSelected ? '#ffffff' : obj.stroke} strokeWidth={isSelected ? obj.strokeWidth + 1 : obj.strokeWidth} strokeLinecap="round" />}
@@ -1486,6 +1478,13 @@ export default function DesignWorkspace() {
 
     return (
         <div className={`w-full h-full relative flex flex-col overflow-hidden transition-colors ${showGrid ? 'grid-bg' : 'bg-[#0a0f1a]'}`}>
+            {/* Scene file actions live in their own bar, top-right, so they are not
+                confused with the drawing tools and do not shift position when the
+                2D/3D tool set changes. Save/Load/Validate belong in the workspace
+                where scenes are authored, not only in Simulate. */}
+            <div className="absolute top-4 right-4 z-30 flex gap-1 glass p-1.5 rounded-xl shadow-2xl">
+                <SceneFileActions />
+            </div>
             {}
             <div className="absolute top-4 left-4 z-30 flex gap-2 glass p-1.5 rounded-xl shadow-2xl">
                 {!is3DMode ? (

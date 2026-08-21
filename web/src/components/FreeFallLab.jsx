@@ -1,19 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     Play, Square, RefreshCw, SkipForward, Globe, Layers,
     Sparkles, ArrowDown, Activity
 } from 'lucide-react';
-import useStore from '../store/useStore';
 import FreeFallPhysicsSolver, { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
-import { createSolverHandle, SOLVER_FAMILY } from '../utils/solverInterface';
+import { useLabSimulation } from '../physics/useLabSimulation';
 
 export default function FreeFallLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // Initial laboratory configuration
     const [initialHeight, setInitialHeight] = useState(100.0); // meters
     const [selectedPlanet, setSelectedPlanet] = useState('earth');
@@ -27,40 +20,19 @@ export default function FreeFallLab() {
     const [showGravityVector, setShowGravityVector] = useState(true);
     const [showStrobeTrail, setShowStrobeTrail] = useState(true);
 
-    // Physics solver instance ref
-    const solverRef = useRef(new FreeFallPhysicsSolver({
-        initialHeight: 100.0,
-        gravity: PLANETARY_GRAVITY.earth.g,
-        restitution: 0.45,
-        mass: 10.0,
-        timeScale: 1.0
-    }));
-
-    // Canonical solver handle (Phase 2). Routes every solver call through the one contract in
-    // utils/solverInterface.js, adding the single clock + pause/resume + dt guards. This is the
-    // first pilot adoption: FreeFall is a LAB-family solver whose step() returns getSnapshot(), so
-    // the handle is behavior-identical here (the dt>0 guard and 0.5s clamp never trigger — the loop
-    // already feeds a positive, ≤0.05s dt). Other loops should migrate onto createSolverHandle next.
-    const handleRef = useRef(createSolverHandle(solverRef.current, { family: SOLVER_FAMILY.LAB }));
-
-    const [snapshot, setSnapshot] = useState(handleRef.current.getSnapshot());
-    
-    // Push lab data to store for Properties panel
-    useEffect(() => {
-        setLabData({
-            type: 'free_fall',
-            title: 'Free-Fall Physics Laboratory',
-            snapshot: snapshot,
-            config: {
-                initialHeight,
-                selectedPlanet,
-                restitution,
-                mass,
-                timeScale
-            }
-        });
-        return () => clearLabData();
-    }, [snapshot, initialHeight, selectedPlanet, restitution, mass, timeScale]);
+    // Unified lab simulation hook
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward, solver } = useLabSimulation({
+        solver: new FreeFallPhysicsSolver({
+            initialHeight: 100.0,
+            gravity: PLANETARY_GRAVITY.earth.g,
+            restitution: 0.45,
+            mass: 10.0,
+            timeScale: 1.0
+        }),
+        labType: 'free_fall',
+        labTitle: 'Free-Fall Physics Laboratory',
+        config: { initialHeight, selectedPlanet, restitution, mass, timeScale }
+    });
 
     // Listen for config changes from Properties panel
     useEffect(() => {
@@ -79,66 +51,15 @@ export default function FreeFallLab() {
 
     const [impactFlash, setImpactFlash] = useState(false);
     const prevBounceCount = useRef(0);
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
 
-    // Update solver when configuration changes
+    // Detect impact events
     useEffect(() => {
-        handleRef.current.updateConfig({
-            initialHeight,
-            gravity: PLANETARY_GRAVITY[selectedPlanet]?.g ?? 9.81,
-            restitution,
-            mass,
-            timeScale
-        });
-        setSnapshot(handleRef.current.getSnapshot());
-    }, [initialHeight, selectedPlanet, restitution, mass, timeScale]);
-
-    // Handle Reset
-    const handleReset = () => {
-        resetPlayback();
-        handleRef.current.reset();
-        prevBounceCount.current = 0;
-        setSnapshot(handleRef.current.getSnapshot());
-    };
-
-    // Single step forward
-    const handleStepForward = () => {
-        if (!isPlaying) {
-            const nextSnap = handleRef.current.step(0.016);
-            setSnapshot({ ...nextSnap });
+        if (snapshot.bounceCount > prevBounceCount.current) {
+            prevBounceCount.current = snapshot.bounceCount;
+            setImpactFlash(true);
+            setTimeout(() => setImpactFlash(false), 300);
         }
-    };
-
-    // Main 60 FPS physics animation loop
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-
-        lastTimeRef.current = performance.now();
-
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-
-            const nextSnap = handleRef.current.step(elapsed);
-            setSnapshot({ ...nextSnap });
-
-            // Detect impact event for ground shockwave animation
-            if (nextSnap.bounceCount > prevBounceCount.current) {
-                prevBounceCount.current = nextSnap.bounceCount;
-                setImpactFlash(true);
-                setTimeout(() => setImpactFlash(false), 300);
-            }
-
-            reqRef.current = requestAnimationFrame(loop);
-        };
-
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying]);
+    }, [snapshot.bounceCount]);
 
     // Sync AI query window hook
     useEffect(() => {
@@ -146,9 +67,7 @@ export default function FreeFallLab() {
             simulationType: 'FreeFallExperiment',
             ...snapshot
         });
-        return () => {
-            delete window.REALIS_AI_QUERY;
-        };
+        return () => { delete window.REALIS_AI_QUERY; };
     }, [snapshot]);
 
     // Viewport dimensions & dynamic metric coordinate transformation
@@ -228,11 +147,10 @@ export default function FreeFallLab() {
                             <button
                                 key={pKey}
                                 onClick={() => setSelectedPlanet(pKey)}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${
-                                    selectedPlanet === pKey
-                                        ? 'bg-sky-500 text-white shadow-md'
-                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                }`}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${selectedPlanet === pKey
+                                    ? 'bg-sky-500 text-white shadow-md'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
                                 title={`${pData.name} (g = ${pData.g} m/s²)`}
                             >
                                 {pData.name}
@@ -245,36 +163,32 @@ export default function FreeFallLab() {
                 <div className="flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-white/10 pointer-events-auto">
                     <button
                         onClick={() => setShowRuler(!showRuler)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showRuler ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showRuler ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Metric Height Ruler"
                     >
                         <Layers size={11} /> Ruler
                     </button>
                     <button
                         onClick={() => setShowVelocityVector(!showVelocityVector)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showVelocityVector ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showVelocityVector ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Velocity Vector"
                     >
                         <ArrowDown size={11} /> Vel Vector
                     </button>
                     <button
                         onClick={() => setShowGravityVector(!showGravityVector)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showGravityVector ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showGravityVector ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Gravity Vector"
                     >
                         <Globe size={11} /> Gravity Vector
                     </button>
                     <button
                         onClick={() => setShowStrobeTrail(!showStrobeTrail)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            showStrobeTrail ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-500 hover:text-slate-300'
-                        }`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${showStrobeTrail ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-500 hover:text-slate-300'
+                            }`}
                         title="Toggle Stroboscopic Acceleration Markers"
                     >
                         <Sparkles size={11} /> Strobe Trail
@@ -599,11 +513,10 @@ export default function FreeFallLab() {
 
                     <button
                         onClick={togglePlayback}
-                        className={`h-10 px-6 rounded-xl flex items-center justify-center font-bold tracking-wider uppercase text-xs transition-all cursor-pointer shadow-lg ${
-                            isPlaying
-                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
-                                : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/30'
-                        }`}
+                        className={`h-10 px-6 rounded-xl flex items-center justify-center font-bold tracking-wider uppercase text-xs transition-all cursor-pointer shadow-lg ${isPlaying
+                            ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                            : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/30'
+                            }`}
                     >
                         {isPlaying ? (
                             <><Square size={13} fill="currentColor" className="mr-2" /> PAUSE</>
@@ -613,7 +526,7 @@ export default function FreeFallLab() {
                     </button>
 
                     <button
-                        onClick={handleStepForward}
+                        onClick={() => handleStepForward(0.016)}
                         disabled={isPlaying}
                         className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-xl disabled:opacity-30"
                         title="Step Forward (0.016s)"
@@ -629,9 +542,8 @@ export default function FreeFallLab() {
                         <button
                             key={speed}
                             onClick={() => setTimeScale(speed)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                                timeScale === speed ? 'bg-sky-500 text-white' : 'text-slate-500 hover:text-white'
-                            }`}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${timeScale === speed ? 'bg-sky-500 text-white' : 'text-slate-500 hover:text-white'
+                                }`}
                         >
                             {speed}x
                         </button>

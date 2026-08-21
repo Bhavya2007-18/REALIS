@@ -3,7 +3,7 @@ import {
     Play, Square, RefreshCw, SkipForward, Layers,
     Sparkles, Activity, Crosshair, Maximize2, ZoomIn, ZoomOut, BookOpen, Magnet
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import { useLabSimulation } from '../physics/useLabSimulation';
 import DoublePendulumPhysicsSolver from '../utils/solvers/doublePendulumSolver';
 
 const PLANETARY_GRAVITY = {
@@ -38,11 +38,6 @@ const MAX_SIM_STEPS_PER_FRAME = 200;     // anti-meltdown cap per render frame
 const CHAOS_PERTURBATION = 0.01;         // tiny IC perturbation driving chaotic divergence (rad)
 
 export default function DoublePendulumLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // ── System Parameters (default per V2 spec) ─────────────────────────────
     const [mass1, setMass1] = useState(1.0);
     const [mass2, setMass2] = useState(1.0);
@@ -76,7 +71,13 @@ export default function DoublePendulumLab() {
         theta1_0: theta1, theta2_0: theta2, omega1_0: omega1, omega2_0: omega2,
         timeScale: 1.0
     }));
-    const [snapshot, setSnapshot] = useState(solverRef.current.getSnapshot());
+
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: hookReset, handleStepForward } = useLabSimulation({
+        solver: solverRef.current,
+        labType: 'double_pendulum',
+        labTitle: 'Double Pendulum (Chaos) Laboratory',
+        config: { mass1, mass2, length1, length2, gravity, damping, theta1, theta2, omega1, omega2, timeScale }
+    });
 
     // ── Derived energy quantities (solver reports nested energy + drift %) ──
     const ke1 = 0.5 * mass1 * Math.pow(length1 * snapshot.omega1, 2);
@@ -86,47 +87,6 @@ export default function DoublePendulumLab() {
     const driftPct = snapshot.energy.driftPercent;
     const energyError = Math.abs(driftPct) / 100;      // fractional drift
     const energyOk = energyError < 0.001;
-
-    // ─── Lab ⇄ Store bridge: publish measurements for global timeline/metadata ─
-    useEffect(() => {
-        setLabData({
-            title: 'Double Pendulum (Chaos Lab) — V2',
-            type: 'double_pendulum',
-            snapshot: {
-                time: snapshot.time,
-                angle1: snapshot.angle1, angle2: snapshot.angle2,
-                omega1: snapshot.omega1, omega2: snapshot.omega2,
-                alpha1: snapshot.alpha1, alpha2: snapshot.alpha2,
-                tension1: snapshot.tension1, tension2: snapshot.tension2,
-                energy: { total: totE, potential: pe, kinetic: ke1 + ke2 },
-                isResting: !isPlaying,
-                config: {
-                    dt: FIXED_DT,
-                    mass1, mass2, length1, length2, gravity, damping,
-                    theta1: Math.round(theta1), theta2: Math.round(theta2),
-                    omega1, omega2
-                }
-            },
-            config: {
-                mass1, mass2, length1, length2, gravity, damping,
-                theta1: Math.round(theta1), theta2: Math.round(theta2),
-                omega1, omega2, timeScale
-            },
-            // flat fields (contract with older consumers)
-            time: snapshot.time,
-            mass1, mass2, length1, length2, gravity, damping,
-            omega1: snapshot.omega1, omega2: snapshot.omega2,
-            theta1: snapshot.theta1, theta2: snapshot.theta2,
-            ke1, ke2, energy: totE,
-            energyError,
-            phase1: snapshot.phaseSpace1, phase2: snapshot.phaseSpace2,
-            vx1: snapshot.vx1, vy1: snapshot.vy1, vx2: snapshot.vx2, vy2: snapshot.vy2,
-            x1: snapshot.x1, y1: snapshot.y1, x2: snapshot.x2, y2: snapshot.y2,
-            tension1: snapshot.tension1, tension2: snapshot.tension2
-        });
-        return () => clearLabData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [snapshot, mass1, mass2, length1, length2, gravity, damping]);
 
     // ─── Listen for external lab-config changes (Inspector → update) ────
     useEffect(() => {
@@ -152,16 +112,6 @@ export default function DoublePendulumLab() {
         return () => window.removeEventListener('lab-config-change', handleConfigChange);
     }, []);
 
-    // ─── Parameters → solver (also refreshes snapshot + labels) ─────────────
-    useEffect(() => {
-        solverRef.current.updateConfig({
-            mass1, mass2, length1, length2, gravity, damping,
-            theta1_0: theta1, theta2_0: theta2, omega1_0: omega1, omega2_0: omega2,
-            timeScale: 1.0          // speed is driven by the fixed-step loop, not the solver
-        });
-        setSnapshot({ ...solverRef.current.getSnapshot() });
-    }, [mass1, mass2, length1, length2, gravity, damping, theta1, theta2, omega1, omega2]);
-
     // ─── Chaos mode: duplicate solver with perturbed ICs ────────────────────
     useEffect(() => {
         if (chaosMode) {
@@ -169,48 +119,11 @@ export default function DoublePendulumLab() {
         } else {
             solverRef.current.disableChaosMode();
         }
-        setSnapshot({ ...solverRef.current.getSnapshot() });
     }, [chaosMode]);
 
-    // ─── Fixed-timestep physics loop (accumulator, frame-rate independent) ──
-    const accRef = useRef(0);
-    const lastTimeRef = useRef(0);
-    const rafRef = useRef(null);
-    useEffect(() => {
-        if (!isPlaying) {
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            return;
-        }
-        accRef.current = 0;
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.1);
-            lastTimeRef.current = now;
-            accRef.current += elapsed * timeScale;
-            let steps = 0;
-            while (accRef.current >= FIXED_DT && steps < MAX_SIM_STEPS_PER_FRAME) {
-                solverRef.current.step(FIXED_DT);
-                accRef.current -= FIXED_DT;
-                steps++;
-            }
-            if (steps === MAX_SIM_STEPS_PER_FRAME) accRef.current = 0;
-            setSnapshot({ ...solverRef.current.getSnapshot() });
-            rafRef.current = requestAnimationFrame(loop);
-        };
-        rafRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(rafRef.current);
-    }, [isPlaying, timeScale]);
-
-    // ─── Single-step ────────────────────────────────────────────────────────
-    const handleStep = () => {
-        solverRef.current.step(FIXED_DT);
-        setSnapshot({ ...solverRef.current.getSnapshot() });
-    };
-
-    // ─── Reset: restore parameter-set initial conditions ────────────────────
-    const handleReset = () => {
-        solverRef.current.reset();
-        setSnapshot({ ...solverRef.current.getSnapshot() });
+    // ─── Reset: also reset camera ────────────────────────────────────────────
+    const resetAll = () => {
+        hookReset();
         setZoom(1.0);
         setCameraMode('fit');
     };
@@ -225,7 +138,7 @@ export default function DoublePendulumLab() {
         setOmega1(p.omega1); setOmega2(p.omega2);
         setGravity(p.gravity);
         setDamping(p.damping);
-        handleReset();
+        resetAll();
     };
 
     const cycleTrail = () => setShowTrail(t => t === 'off' ? '1s' : t === '1s' ? '5s' : t === '5s' ? 'full' : 'off');
@@ -353,10 +266,10 @@ export default function DoublePendulumLab() {
                 <button onClick={togglePlayback} className={isPlaying ? btnOn : btnIdle} title="Play / Pause (Space)">
                     {isPlaying ? <Square size={13} /> : <Play size={13} />} {isPlaying ? 'Pause' : 'Play'}
                 </button>
-                <button onClick={handleStep} className={btnIdle} title="Step one fixed timestep (5 ms)">
+                <button onClick={handleStepForward} className={btnIdle} title="Step one fixed timestep (5 ms)">
                     <SkipForward size={13} /> Step
                 </button>
-                <button onClick={handleReset} className={btnIdle} title="Reset to initial conditions">
+                <button onClick={resetAll} className={btnIdle} title="Reset to initial conditions">
                     <RefreshCw size={13} /> Reset
                 </button>
                 <select

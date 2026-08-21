@@ -4,17 +4,11 @@ import {
     Sparkles, ArrowDown,
     Compass, Gauge
 } from 'lucide-react';
-import useStore from '../store/useStore';
 import PendulumPhysicsSolver from '../utils/solvers/pendulumSolver';
 import { PLANETARY_GRAVITY } from '../utils/solvers/freeFallSolver';
+import { useLabSimulation } from '../physics/useLabSimulation';
 
 export default function PendulumLab() {
-    const isPlaying = useStore(state => state.isPlaying);
-    const togglePlayback = useStore(state => state.togglePlayback);
-    const resetPlayback = useStore(state => state.resetPlayback);
-    const setLabData = useStore(state => state.setLabData);
-    const clearLabData = useStore(state => state.clearLabData);
-
     // Initial laboratory configuration
     const [length, setLength] = useState(2.0);       // rod length L (m)
     const [angle0, setAngle0] = useState(60.0);      // initial release angle θ₀ (deg)
@@ -31,34 +25,15 @@ export default function PendulumLab() {
     const [showTensionVector, setShowTensionVector] = useState(true);
     const [showAngleArc, setShowAngleArc] = useState(true);
 
-    // Physics solver instance (stable state holder, mutated externally by the loop)
-    const [solver] = useState(() => new PendulumPhysicsSolver({
-        length: 2.0, angle0: 60.0, gravity: PLANETARY_GRAVITY.earth.g, mass: 2.0, damping: 0.0, timeScale: 1.0
-    }));
-
-    const [snapshot, setSnapshot] = useState(solver.getSnapshot());
-
-    // Push lab data to store for Properties panel
-    useEffect(() => {
-        setLabData({
-            type: 'single_pendulum',
-            title: 'Simple Pendulum Laboratory',
-            snapshot: snapshot,
-            config: { length, angle0, gravity, mass, damping, timeScale }
-        });
-        return () => clearLabData();
-    }, [snapshot, length, angle0, gravity, mass, damping, timeScale]);
-
-    // Push lab data to store for Properties panel
-    useEffect(() => {
-        setLabData({
-            type: 'single_pendulum',
-            title: 'Simple Pendulum Laboratory',
-            snapshot: snapshot,
-            config: { length, angle0, gravity, mass, damping, timeScale }
-        });
-        return () => clearLabData();
-    }, [snapshot, length, angle0, gravity, mass, damping, timeScale]);
+    // Unified lab simulation hook
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward, solver } = useLabSimulation({
+        solver: new PendulumPhysicsSolver({
+            length: 2.0, angle0: 60.0, gravity: PLANETARY_GRAVITY.earth.g, mass: 2.0, damping: 0.0, timeScale: 1.0
+        }),
+        labType: 'single_pendulum',
+        labTitle: 'Simple Pendulum Laboratory',
+        config: { length, angle0, gravity, mass, damping, timeScale }
+    });
 
     // Listen for config changes from Properties panel
     useEffect(() => {
@@ -75,46 +50,6 @@ export default function PendulumLab() {
         window.addEventListener('lab-config-change', handleConfigChange)
         return () => window.removeEventListener('lab-config-change', handleConfigChange)
     }, [])
-
-    const reqRef = useRef(null);
-    const lastTimeRef = useRef(0);
-
-    // Update solver when configuration changes
-    useEffect(() => {
-        solver.updateConfig({ length, angle0, gravity, mass, damping, timeScale });
-        setSnapshot(solver.getSnapshot());
-    }, [length, angle0, gravity, mass, damping, timeScale, solver]);
-
-    // Handle Reset
-    const handleReset = () => {
-        resetPlayback();
-        solver.reset();
-        setSnapshot(solver.getSnapshot());
-    };
-
-    // Single step forward
-    const handleStepForward = () => {
-        if (!isPlaying) {
-            setSnapshot({ ...solver.step(0.016) });
-        }
-    };
-
-    // Main 60 FPS physics animation loop (frame-rate independent)
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-        lastTimeRef.current = performance.now();
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-            setSnapshot({ ...solver.step(elapsed) });
-            reqRef.current = requestAnimationFrame(loop);
-        };
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, solver]);
 
     // Sync AI query window hook
     useEffect(() => {

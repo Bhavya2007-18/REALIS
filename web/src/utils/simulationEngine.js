@@ -1,3 +1,4 @@
+import { newEntityId } from '../scene/entity';
 
 
 export default class SimulationEngine {
@@ -11,7 +12,9 @@ export default class SimulationEngine {
 
     addBody(body) {
         const defaults = {
-            id: Math.random().toString(36).substring(2, 9),
+            // Deterministic id (§1.9): two runs of the same script must produce
+            // the same body ids, or a recorded run cannot be replayed.
+            id: newEntityId('body_'),
             position: { x: 0, y: 0 },
             velocity: { x: 0, y: 0 },
             acceleration: { x: 0, y: 0 },

@@ -5,9 +5,15 @@ import useResizable from '../hooks/useResizable'
 import ObjectHierarchy from './ObjectHierarchy'
 import LayerPanel from './LayerPanel'
 import componentLibrary from '../models/componentLibrary'
+import { SimulationDemoManager } from '../utils/SimulationDemoManager'
+
+// Labs that use the 3D Viewport directly (need loadDemo to hydrate shapes3D)
+const THREE_D_LABS = new Set(['v6_engine_simulation', 'revolute_crank_slider', 'crank_slider'])
 
 // Standalone physics labs (no DesignWorkspace scene needed)
 const PHYSICS_LABS = [
+    { id: 'v6_engine_simulation', name: 'V6 Engine', icon: Beaker, accent: '#ef4444' },
+    { id: 'revolute_crank_slider', name: 'Crank-Slider', icon: Beaker, accent: '#ec4899' },
     { id: 'free_fall', name: 'Free Fall', icon: Beaker, accent: '#38bdf8' },
     { id: 'projectile_motion', name: 'Projectile Motion', icon: Beaker, accent: '#f59e0b' },
     { id: 'single_pendulum', name: 'Single Pendulum', icon: Beaker, accent: '#34d399' },
@@ -117,10 +123,14 @@ export default function Sidebar() {
                                             key={comp.id}
                                             onClick={() => {
                                                 useStore.setState({ is3DView: true });
-                                                addShape3D({
-                                                    ...comp,
-                                                    id: `comp_${Math.random().toString(36).substring(2,7)}`
-                                                });
+                                                // The library entry's own id is a CATALOGUE key, not
+                                                // an instance id — reusing it would give every placed
+                                                // copy of "I-Beam" the same id, so selecting one would
+                                                // select them all. Dropping it lets addShape3D mint a
+                                                // fresh deterministic id (§1.9) through
+                                                // withEntityIdentity, the one place identity is made.
+                                                const { id: _catalogueId, ...template } = comp;
+                                                addShape3D(template);
                                             }}
                                             className="group flex flex-col p-2.5 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
                                         >
@@ -156,9 +166,15 @@ export default function Sidebar() {
                                             <button
                                                 key={lab.id}
                                                 onClick={() => {
-                                                    useStore.getState().setActiveWorkspace('simulate')
-                                                    useStore.getState().setSimulationPreset(lab.id)
-                                                    useStore.getState().setIsPlaying(true)
+                                                    const store = useStore.getState()
+                                                    store.setActiveWorkspace('simulate')
+                                                    // 3D labs need loadDemo to hydrate shapes3D and set is3DView
+                                                    if (THREE_D_LABS.has(lab.id)) {
+                                                        SimulationDemoManager.loadDemo(lab.id, store)
+                                                    } else {
+                                                        store.setSimulationPreset(lab.id)
+                                                    }
+                                                    store.setIsPlaying(true)
                                                 }}
                                                 className="group w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden text-left"
                                                 style={{ borderLeft: `3px solid ${lab.accent}` }}

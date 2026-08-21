@@ -8,10 +8,10 @@ import {
     Play, Square, RefreshCw, SkipForward, Activity, Sliders,
     ArrowRight, ArrowLeft, Layers, TrendingUp, Zap, GitMerge, AlertTriangle
 } from 'lucide-react';
-import useStore from '../store/useStore';
 import CollisionPhysicsSolver, {
     COLLISION_TYPE, COLLISION_PHASE, DEFAULT_COLLISION_CONFIG, validateCollisionConfig
 } from '../utils/solvers/collisionSolver';
+import { useLabSimulation } from '../physics/useLabSimulation';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmt = (v, d = 3) => {
@@ -77,12 +77,6 @@ function MiniGraph({ data, keyA, keyB, labelA, labelB, colorA, colorB, unit = ''
 
 // ── Main Lab Component ─────────────────────────────────────────────────────────
 export default function CollisionLab() {
-    const isPlaying      = useStore(s => s.isPlaying);
-    const togglePlayback = useStore(s => s.togglePlayback);
-    const resetPlayback  = useStore(s => s.resetPlayback);
-    const setLabData     = useStore(s => s.setLabData);
-    const clearLabData   = useStore(s => s.clearLabData);
-
     // ── Lab Configuration (all in SI) ─────────────────────────────────────────
     const [cfg, setCfg] = useState({ ...DEFAULT_COLLISION_CONFIG });
     const [configErrors, setConfigErrors] = useState([]);
@@ -93,13 +87,16 @@ export default function CollisionLab() {
     const [showGraph,          setShowGraph]               = useState(true);
     const [showDimensions,     setShowDimensions]          = useState(false);
 
-    // ── Solver ────────────────────────────────────────────────────────────────
-    const solverRef = useRef(null);
-    if (!solverRef.current) {
-        solverRef.current = new CollisionPhysicsSolver({ ...DEFAULT_COLLISION_CONFIG });
-    }
+    // ── Solver (stable ref) ──────────────────────────────────────────────────
+    const [solver] = useState(() => new CollisionPhysicsSolver({ ...DEFAULT_COLLISION_CONFIG }));
 
-    const [snapshot, setSnapshot] = useState(() => solverRef.current.getSnapshot());
+    // ── Unified lab simulation hook ───────────────────────────────────────────
+    const { snapshot, isPlaying, togglePlayback, resetPlayback: handleReset, handleStepForward } = useLabSimulation({
+        solver,
+        labType: 'elastic_collision',
+        labTitle: 'Collision Physics Laboratory',
+        config: cfg
+    });
 
     // ── Canvas Viewport ───────────────────────────────────────────────────────
     const containerRef = useRef(null);
@@ -118,20 +115,6 @@ export default function CollisionLab() {
         window.addEventListener('resize', update);
         return () => window.removeEventListener('resize', update);
     }, []);
-
-    // ── Push lab data to Properties panel ─────────────────────────────────────
-    useEffect(() => {
-        setLabData({
-            type: 'elastic_collision',
-            title: 'Collision Physics Laboratory',
-            snapshot,
-            config: cfg,
-        });
-    }, [snapshot, cfg, setLabData]);
-
-    useEffect(() => {
-        return () => clearLabData();
-    }, [clearLabData]);
 
     // ── Listen for config changes fired by PropertiesPanel ────────────────────
     useEffect(() => {
@@ -161,25 +144,10 @@ export default function CollisionLab() {
     useEffect(() => {
         const errors = validateCollisionConfig(cfg);
         setConfigErrors(errors);
-        if (errors.length === 0) {
-            solverRef.current.updateConfig(cfg);
+        if (errors.length === 0 && solver.updateConfig) {
+            solver.updateConfig(cfg);
         }
     }, [cfg]);
-
-    // ── Handle Reset ──────────────────────────────────────────────────────────
-    const handleReset = useCallback(() => {
-        resetPlayback();
-        solverRef.current.reset();
-        setSnapshot(solverRef.current.getSnapshot());
-    }, [resetPlayback]);
-
-    // ── Handle Step ──────────────────────────────────────────────────────────
-    const handleStep = useCallback(() => {
-        if (!isPlaying) {
-            const next = solverRef.current.step(solverRef.current.config.dt);
-            setSnapshot({ ...next });
-        }
-    }, [isPlaying]);
 
     // ── Collision flash ───────────────────────────────────────────────────────
     const [collisionFlash, setCollisionFlash] = useState(false);
@@ -192,31 +160,6 @@ export default function CollisionLab() {
         }
         wasColliding.current = colliding;
     }, [snapshot.phase]);
-
-    // ── Main animation loop ───────────────────────────────────────────────────
-    const reqRef     = useRef(null);
-    const lastTimeRef = useRef(0);
-
-    useEffect(() => {
-        if (!isPlaying) {
-            cancelAnimationFrame(reqRef.current);
-            return;
-        }
-        if (configErrors.length > 0) return;
-
-        lastTimeRef.current = performance.now();
-
-        const loop = (now) => {
-            const elapsed = Math.min((now - lastTimeRef.current) / 1000, 0.05);
-            lastTimeRef.current = now;
-            const next = solverRef.current.tick(elapsed);
-            setSnapshot({ ...next });
-            reqRef.current = requestAnimationFrame(loop);
-        };
-
-        reqRef.current = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(reqRef.current);
-    }, [isPlaying, configErrors.length]);
 
     // ── Coordinate helpers ────────────────────────────────────────────────────
     // Physics world spans roughly ±8m; canvas is viewSize.width × viewSize.height
@@ -689,7 +632,7 @@ export default function CollisionLab() {
 
                 {/* Step */}
                 <button
-                    onClick={handleStep}
+                    onClick={() => handleStepForward(solver.config.dt)}
                     disabled={isPlaying || configErrors.length > 0}
                     className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 rounded-lg disabled:opacity-40"
                     title="Single Step"
